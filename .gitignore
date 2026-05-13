@@ -75,3 +75,4 @@ coverage/
 
 # Prettier
 .prettiercache
+.sisyphus
