@@ -197,11 +197,11 @@ artifacts:
     instruction: >
       __LANG_PLACEHOLDER__
 
-      Create the task list that breaks down the implementation work, then
-      generate the OMO-compatible plan file.
+      Create the task list (tasks.md) and generate the OMO-compatible plan file
+      (.sisyphus/plans/<change-name>.md).
 
 
-      **IMPORTANT: You MUST create TWO files:**
+      **You MUST create TWO files:**
 
       1. **tasks.md** — Standard checkbox task list at
       `openspec/changes/<change-name>/tasks.md`
@@ -210,88 +210,276 @@ artifacts:
       project root
 
 
-      === File 1: tasks.md ===
-
-      Follow the template format below. Use `## TODOs` as the section header,
-      with `### Wave N: Group Name` for sub-groupings.
-      Each task MUST be a checkbox: `- [ ] X.Y Task description`
-      Tasks not using `- [ ]` won't be tracked by the apply phase.
+      === PHASE 0: Understand the OpenSpec Context ===
 
 
-      === File 2: .sisyphus/plans/<change-name>.md ===
+      **Step 0: Read and Understand All OpenSpec Artifacts**
 
-      This is the OMO-compatible plan file. Follow this structure:
-
-      - **## TL;DR**: Write 1-2 sentence summary extracted from proposal.md.
-        Then reference the source:
-
-        > See [proposal.md](openspec/changes/<change-name>/proposal.md)
-
-      - **## Context**: 2-3 sentence background summary from proposal.md.
-        Then reference the source:
-
-        > See [proposal.md](openspec/changes/<change-name>/proposal.md)
-
-      - **## Work Objectives**: List each capability name from specs/.
-        Do NOT copy requirement text. Reference specs sections:
-
-        > See [spec.md#ADDED-Requirements](openspec/changes/<change-name>/specs/<capability>/spec.md)
-
-      - **## Verification Strategy**: Reference specs scenarios only:
-
-        > See [specs](openspec/changes/<change-name>/specs/)
-
-      - **## Execution Strategy**: If design.md exists, reference it:
-
-        > See [design.md](openspec/changes/<change-name>/design.md)
-
-        Otherwise note: "No separate design needed. See proposal + specs."
-
-      - **## TODOs**: Copy the EXACT checkbox list from tasks.md here.
-        This is required because `/start-work` parses this section.
-
-      - **## Final Verification Wave**: Standard OMO template with 4 parallel
-        reviewers.
-
-      - **## Commit Strategy**: Standard OMO template mapping tasks to files.
-
-      - **## Success Criteria**: Reference specs, do not copy content.
-
-        > See [spec.md#ADDED-Requirements](openspec/changes/<change-name>/specs/<capability>/spec.md)
+      Read every artifact file. Each has a specific role and format. Understand
+      their content before generating anything.
 
 
-      Guidelines:
+      Artifact overview (template = format definition, product = actual content):
 
-      - Group related tasks under ### Wave numbered headings (not ##)
-
-      - Include ## TODOs section for /start-work compatibility
-
-      - Each task MUST be a checkbox: `- [ ] X.Y Task description`
-
-      - Tasks should be small enough to complete in one session
-
-      - Order tasks by dependency (what must be done first?)
-
-      - Reference specs for what needs to be built, design for how to build it
+      | File | Role | Template (format) | Product (content) |
+      |------|------|-------------------|-------------------|
+      | `proposal.md` | WHY — why this change, what capabilities | `schemas/spec-driven/templates/proposal.md` | `openspec/changes/<name>/proposal.md` |
+      | `specs/<cap>/spec.md` | WHAT — requirements, acceptance scenarios | `schemas/spec-driven/templates/spec.md` | `openspec/changes/<name>/specs/*/spec.md` |
+      | `design.md` | HOW — technical approach, decisions, risks (optional) | `schemas/spec-driven/templates/design.md` | `openspec/changes/<name>/design.md` |
+      | `tasks.md` | DO — checkbox task list | `schemas/spec-driven/templates/tasks.md` | `openspec/changes/<name>/tasks.md` |
 
 
-      Example tasks.md:
+      How to use each artifact when generating the plan:
+
+      - **proposal.md** → extract Why for TL;DR, background for Context,
+      Capabilities list for Work Objectives
+
+      - **specs/<cap>/spec.md** → extract Requirements for Work Objectives,
+      Scenarios (WHEN/THEN) for Verification Strategy.
+      Each spec has fixed section anchors you can reference:
+      `#ADDED-Requirements`, `#MODIFIED-Requirements`, `#REMOVED-Requirements`
+
+      - **design.md** (if exists) → extract Goals, Decisions, Risks for
+      Execution Strategy. If design.md is absent, note: "No separate design
+      needed."
+
+      - **tasks.md** → copy checkbox list directly into ## TODOs. This is the
+      only section where content is copied, not referenced.
+
+
+      **Step 1: Quality Review of OpenSpec Artifacts (Last Quality Gate)**
+
+      Before generating anything, review all artifacts for quality issues:
+
+      1. **Coverage**: Does every proposal Capability have a corresponding spec?
+      2. **Verifiability**: Does every spec Requirement have at least one Scenario?
+      3. **Consistency**: Do proposal, specs, design, and tasks agree with each
+      other? No contradictions?
+      4. **Completeness**: Do the tasks cover all specs' Requirements?
+      5. **Clarity**: Are there ambiguous statements that could be interpreted
+      multiple ways?
+
+      → If ANY issue found: STOP. List specific problems. Wait for user
+      confirmation before proceeding.
+
+      → If all clean: Proceed.
+
+
+      **Step 2: Invoke Metis for Gap Analysis (MANDATORY)**
+
+      Before writing the plan, invoke Metis with the artifacts context:
 
       ```
+      task(subagent_type="metis", prompt="我准备为此变更生成 OMO plan。
+      已完成的产物:
+      - proposal.md: [2-3句摘要]
+      - specs: [列出每个capability名称+核心requirement]
+      - design.md: [存在/不存在，如果存在简述决策]
+      - tasks.md: [N个任务，主要分X个Wave]
 
-      ## TODOs
+      请对计划草案做gap analysis，识别：
+      1. 遗漏的需求或意图
+      2. 表达模糊的地方
+      3. scope creep / AI-slop
+      4. 缺失的验收标准
+      5. 未覆盖的边界情况")
+      ```
 
-      ### Wave 1: Setup
+      Apply Metis's findings:
+      - 🔴 Blocking issues → Fix them, re-invoke Metis
+      - 🟡 Suggestions → Address if feasible
+      - ✅ Confirmed → Proceed
 
-      - [ ] 1.1 Create new module structure
-      - [ ] 1.2 Add dependencies to package.json
 
-      ### Wave 2: Core Implementation
+      === GENERATE FILE 1: tasks.md ===
 
-      - [ ] 2.1 Implement data export function
-      - [ ] 2.2 Add CSV formatting utilities
+
+      Write to `openspec/changes/<change-name>/tasks.md`.
+
+      Use the template format: `## TODOs` as section header, `### Wave N: Group
+      Name` for sub-groupings. Each task MUST be `- [ ] N.M Description`.
+
+
+      === GENERATE FILE 2: .sisyphus/plans/<change-name>.md ===
+
+
+      This is the OMO plan file. Write to project-root-level
+      `.sisyphus/plans/<change-name>.md`.
+
+      Structure with 10 sections. For each section, WRITE A BRIEF SUMMARY then
+      APPEND OpenSpec document links with anchored references. Do NOT copy
+      artifact content verbatim (except TODOs).
+
+
+      **Section 1: ## TL;DR**
+
+      1-2 sentence summary extracted from proposal.md (the Why and core change).
+
+      Append:
+
+      > See [proposal.md](openspec/changes/<change-name>/proposal.md)
+
+
+      **Section 2: ## Context**
+
+      2-3 sentence background from proposal.md.
+
+      Append:
+
+      > See [proposal.md](openspec/changes/<change-name>/proposal.md)
+
+
+      **Section 3: ## Work Objectives**
+
+      List each capability name from specs/. For each, note the key
+      requirement. Do NOT copy full requirement text.
+
+      Append per capability:
+
+      > See [spec.md#ADDED-Requirements](openspec/changes/<change-name>/specs/<capability>/spec.md)
+
+
+      **Section 4: ## Verification Strategy**
+
+      Reference specs scenarios. Do NOT copy scenario text.
+
+      Append:
+
+      > See [specs](openspec/changes/<change-name>/specs/)
+
+
+      **Section 5: ## Execution Strategy**
+
+      If design.md exists: reference it and note key decisions.
+
+      > See [design.md](openspec/changes/<change-name>/design.md)
+
+      If design.md does not exist: note "No separate design needed. See
+      proposal + specs."
+
+
+      **Section 6: ## TODOs**
+
+      Copy the EXACT checkbox list from tasks.md here. This section is parsed
+      by `/start-work` for task tracking.
+
+      Each task MUST include these sub-fields:
 
       ```
+      ### Wave N: Group Name
+
+      - [ ] N.M Task title
+        **What to do**:
+        - Implementation step 1
+        - Implementation step 2
+
+        **Must NOT do**:
+        - Things to avoid
+
+        **Recommended Agent Profile**: category="[category]", load_skills=["[skill]"]
+
+        **References**:
+        - Pattern: [file:line](path)
+        - API: [file:line](path)
+
+        **Acceptance Criteria**:
+        `[executable command to verify]`
+
+        **QA Scenarios**:
+        Scenario: [name]
+          Preconditions: [setup]
+          Steps: [actions]
+          Expected: [result]
+          Evidence: .sisyphus/evidence/task-N.M-[slug].[ext]
+
+        > See OpenSpec context: [spec.md#ADDED-Requirements](openspec/changes/<name>/specs/<cap>/spec.md)
+      ```
+
+      CRITICAL: Each task's last line MUST append its OpenSpec source reference
+      so the executing AI can trace back to the original requirement.
+
+
+      **Section 7: ## Progress Tracking**
+
+      ```
+      - tasks.md (`openspec/changes/<name>/tasks.md`) is the single source of
+        truth for checkbox states
+      - When updating a checkbox in tasks.md, immediately mirror the change in
+        this plan's ## TODOs section
+      - On pause or all_done: sync checkbox states from tasks.md to this plan
+        and update .sisyphus/boulder.json
+      - Do NOT use todowrite/todoread — this plan file is the tracking source
+      ```
+
+
+      **Section 8: ## Final Verification Wave**
+
+      ```
+      - [ ] F1. **Plan Compliance Audit** — oracle
+        Verify all tasks match OpenSpec requirements. Check scope boundaries.
+        Output: "Must Have [N/N] | Scope [OK/LEAK] | VERDICT"
+
+      - [ ] F2. **Code Quality Review** — unspecified-high
+        Run typecheck, linter, tests. Output: "Build | Lint | Tests | VERDICT"
+
+      - [ ] F3. **Real Manual QA** — unspecified-high
+        Execute QA scenarios from each task. Output: "Scenarios [N/N] | VERDICT"
+
+      - [ ] F4. **Scope Fidelity Check** — deep
+        Compare implementation diff against specs. No extra, no missing.
+        Output: "Tasks [N/N] | Clean | VERDICT"
+      ```
+
+
+      **Section 9: ## Commit Strategy**
+
+      Map tasks to files and commit messages:
+
+      ```
+      - Task N.M → [file] → `type(scope): description`
+      ```
+
+
+      **Section 10: ## Success Criteria**
+
+      Final verification checklist. Append OpenSpec specs reference:
+
+      ```
+      - [ ] All acceptance criteria pass
+      - [ ] All QA scenarios pass
+      - [ ] Scope is clean (no extra, no missing)
+
+      > See [spec.md#ADDED-Requirements](openspec/changes/<change-name>/specs/<capability>/spec.md)
+      ```
+
+
+      === PHASE AFTER GENERATION ===
+
+
+      **Step 4: Invoke Momus for Review (OPTIONAL, recommended)**
+
+      If user wants high-accuracy review, invoke Momus:
+
+      ```
+      task(subagent_type="momus", prompt=".sisyphus/plans/<change-name>.md")
+      ```
+
+      Momus returns OKAY or REJECT with specific issues.
+      If REJECT: fix ALL issues, re-invoke Momus.
+      Loop until OKAY or user cancels.
+
+
+      === SUMMARY CHECKLIST ===
+
+      Before finishing, confirm:
+      - [ ] tasks.md exists with proper ## TODOs + ### Wave format
+      - [ ] .sisyphus/plans/<change-name>.md exists with all 10 sections
+      - [ ] Each plan section appends OpenSpec references with anchors
+      - [ ] Each task in TODOs has What to do, Must NOT do, Agent Profile,
+            References, Acceptance Criteria, QA Scenarios, Evidence, and
+            OpenSpec source reference
+      - [ ] Progress Tracking section included
+      - [ ] Final Verification Wave included
     requires:
       - specs
       - design
