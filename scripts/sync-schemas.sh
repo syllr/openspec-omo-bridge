@@ -42,14 +42,13 @@ for item in "$REPO_SCHEMAS"/*/; do
   schema_name="$(basename "$item")"
   target="${LOCAL_SCHEMAS}/${schema_name}"
 
-  cp -R "$item" "$LOCAL_SCHEMAS/"
   if [ -d "$target" ]; then
-    echo "  更新: ${schema_name}"
+    rm -rf "$target"
     ((updated++))
   else
-    echo "  新增: ${schema_name}"
     ((copied++))
   fi
+  cp -R "${item%/}" "$LOCAL_SCHEMAS/"
 done
 
 echo ""
