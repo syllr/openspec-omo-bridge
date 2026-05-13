@@ -7,7 +7,7 @@ artifacts:
     description: Initial proposal document outlining the change
     template: proposal.md
     instruction: >
-      __LANG_PLACEHOLDER__
+      **语言**: 所有生成的文档必须使用中文。
 
       Create the proposal document that establishes WHY this change is needed.
 
@@ -47,7 +47,7 @@ artifacts:
     description: Detailed specifications for the change
     template: spec.md
     instruction: >
-      __LANG_PLACEHOLDER__
+      **语言**: 所有生成的文档必须使用中文。
 
       Create specification files that define WHAT the system should do.
 
@@ -148,7 +148,7 @@ artifacts:
     description: Technical design document with implementation details
     template: design.md
     instruction: >
-      __LANG_PLACEHOLDER__
+      **语言**: 所有生成的文档必须使用中文。
 
       Create the design document that explains HOW to implement the change.
 
@@ -195,7 +195,7 @@ artifacts:
     description: Implementation checklist with trackable tasks
     template: tasks.md
     instruction: >
-      __LANG_PLACEHOLDER__
+      **语言**: 所有生成的文档必须使用中文。
 
       Create the task list that breaks down the implementation work, then
       generate the OMO-compatible plan file.
@@ -300,7 +300,7 @@ apply:
     - tasks
   tracks: tasks.md
   instruction: |
-    __LANG_PLACEHOLDER__
+    **语言**: 所有生成的文档必须使用中文。
 
     Read context files, work through pending tasks, mark complete as you go.
 
