@@ -189,18 +189,74 @@ artifacts:
     description: Implementation checklist with trackable tasks
     template: tasks.md
     instruction: >
-      Create the task list that breaks down the implementation work.
+      Create the task list that breaks down the implementation work, then
+      generate the OMO-compatible plan file.
 
 
-      **IMPORTANT: Follow the template below exactly.** The apply phase parses
+      **IMPORTANT: You MUST create TWO files:**
 
-      checkbox format to track progress. Tasks not using `- [ ]` won't be
-      tracked.
+      1. **tasks.md** — Standard checkbox task list at
+      `openspec/changes/<change-name>/tasks.md`
+
+      2. **.sisyphus/plans/<change-name>.md** — Aggregated plan document at
+      project root
+
+
+      === File 1: tasks.md ===
+
+      Follow the template format below. Use `## TODOs` as the section header,
+      with `### Wave N: Group Name` for sub-groupings.
+      Each task MUST be a checkbox: `- [ ] X.Y Task description`
+      Tasks not using `- [ ]` won't be tracked by the apply phase.
+
+
+      === File 2: .sisyphus/plans/<change-name>.md ===
+
+      This is the OMO-compatible plan file. Follow this structure:
+
+      - **## TL;DR**: Write 1-2 sentence summary extracted from proposal.md.
+        Then reference the source:
+
+        > See [proposal.md](openspec/changes/<change-name>/proposal.md)
+
+      - **## Context**: 2-3 sentence background summary from proposal.md.
+        Then reference the source:
+
+        > See [proposal.md](openspec/changes/<change-name>/proposal.md)
+
+      - **## Work Objectives**: List each capability name from specs/.
+        Do NOT copy requirement text. Reference specs sections:
+
+        > See [spec.md#ADDED-Requirements](openspec/changes/<change-name>/specs/<capability>/spec.md)
+
+      - **## Verification Strategy**: Reference specs scenarios only:
+
+        > See [specs](openspec/changes/<change-name>/specs/)
+
+      - **## Execution Strategy**: If design.md exists, reference it:
+
+        > See [design.md](openspec/changes/<change-name>/design.md)
+
+        Otherwise note: "No separate design needed. See proposal + specs."
+
+      - **## TODOs**: Copy the EXACT checkbox list from tasks.md here.
+        This is required because `/start-work` parses this section.
+
+      - **## Final Verification Wave**: Standard OMO template with 4 parallel
+        reviewers.
+
+      - **## Commit Strategy**: Standard OMO template mapping tasks to files.
+
+      - **## Success Criteria**: Reference specs, do not copy content.
+
+        > See [spec.md#ADDED-Requirements](openspec/changes/<change-name>/specs/<capability>/spec.md)
 
 
       Guidelines:
 
-      - Group related tasks under ## numbered headings
+      - Group related tasks under ### Wave numbered headings (not ##)
+
+      - Include ## TODOs section for /start-work compatibility
 
       - Each task MUST be a checkbox: `- [ ] X.Y Task description`
 
@@ -208,32 +264,26 @@ artifacts:
 
       - Order tasks by dependency (what must be done first?)
 
+      - Reference specs for what needs to be built, design for how to build it
 
-      Example:
+
+      Example tasks.md:
 
       ```
 
-      ## 1. Setup
+      ## TODOs
 
+      ### Wave 1: Setup
 
       - [ ] 1.1 Create new module structure
-
       - [ ] 1.2 Add dependencies to package.json
 
-
-      ## 2. Core Implementation
-
+      ### Wave 2: Core Implementation
 
       - [ ] 2.1 Implement data export function
-
       - [ ] 2.2 Add CSV formatting utilities
 
       ```
-
-
-      Reference specs for what needs to be built, design for how to build it.
-
-      Each task should be verifiable - you know when it's done.
     requires:
       - specs
       - design
@@ -243,4 +293,13 @@ apply:
   tracks: tasks.md
   instruction: |
     Read context files, work through pending tasks, mark complete as you go.
+
+    **Task State Sync Protocol**:
+    - tasks.md is the single source of truth for checkbox states
+    - EAGER SYNC: When you change a checkbox in tasks.md, immediately update
+      the same checkbox in .sisyphus/plans/<change-name>.md
+    - ON PAUSE: Before pausing, verify both files have identical checkbox
+      states. Run: diff <(grep -n '^- \[' tasks.md) <(grep -n '^- \[' .sisyphus/plans/<change-name>.md)
+    - ON ALL_DONE: Same verification as pause. All checkboxes should be [x].
+
     Pause if you hit blockers or need clarification.
