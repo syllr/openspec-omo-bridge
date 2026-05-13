@@ -44,9 +44,9 @@ for item in "$REPO_SCHEMAS"/*/; do
 
   if [ -d "$target" ]; then
     rm -rf "$target"
-    ((updated++))
+    updated=$((updated + 1))
   else
-    ((copied++))
+    copied=$((copied + 1))
   fi
   cp -R "${item%/}" "$LOCAL_SCHEMAS/"
 done
@@ -55,7 +55,7 @@ echo ""
 echo "同步完成！新增: ${copied}, 更新: ${updated}"
 echo ""
 
-find "$LOCAL_SCHEMAS" -name "schema.yaml" | while read -r file; do
+while IFS= read -r file; do
   schema_name="$(basename "$(dirname "$file")")"
   case "$LANG_ARG" in
     zh)
@@ -71,7 +71,7 @@ find "$LOCAL_SCHEMAS" -name "schema.yaml" | while read -r file; do
       echo "  ${schema_name}: 删除语言占位符（无偏好）"
       ;;
   esac
-done
+done < <(find "$LOCAL_SCHEMAS" -name "schema.yaml" 2>/dev/null || true)
 
 echo ""
 echo "语言处理完成"
