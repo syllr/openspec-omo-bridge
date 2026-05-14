@@ -76,6 +76,10 @@ artifacts:
       Create one spec file per capability listed in the proposal's Capabilities
       section.
 
+      If the proposal lists no capabilities (both New and Modified sections are
+      empty), skip spec file generation. Create an empty `specs/` directory and
+      proceed to the next artifact.
+
       - New capabilities: use the exact kebab-case name from the proposal
       (specs/<capability>/spec.md).
 
@@ -222,7 +226,7 @@ artifacts:
       project root
 
 
-      === PHASE 0: Understand the OpenSpec Context ===
+      === PHASE 1: Understand the OpenSpec Context ===
 
 
       **Step 0: Read and Understand All OpenSpec Artifacts**
@@ -237,7 +241,7 @@ artifacts:
       |------|------|-------------------|-------------------|
       | `proposal.md` | WHY — why this change, what capabilities | `schemas/spec-driven/templates/proposal.md` | `openspec/changes/<name>/proposal.md` |
       | `specs/<cap>/spec.md` | WHAT — requirements, acceptance scenarios | `schemas/spec-driven/templates/spec.md` | `openspec/changes/<name>/specs/*/spec.md` |
-      | `design.md` | HOW — technical approach, decisions, risks (optional) | `schemas/spec-driven/templates/design.md` | `openspec/changes/<name>/design.md` |
+      | `design.md` | HOW — technical approach, decisions, risks | `schemas/spec-driven/templates/design.md` | `openspec/changes/<name>/design.md` |
       | `tasks.md` | DO — checkbox task list | `schemas/spec-driven/templates/tasks.md` | `openspec/changes/<name>/tasks.md` |
 
 
@@ -254,7 +258,7 @@ artifacts:
       - **design.md** (if exists) → extract Goals, Decisions, Risks for
       Execution Strategy.
 
-      - **tasks.md** → copy checkbox list directly into ## TODOs. This is the
+      - **tasks.md** → copy checkbox list directly into ## Tasks. This is the
       only section where content is copied, not referenced.
 
 
@@ -304,16 +308,16 @@ artifacts:
       - ✅ Confirmed → Proceed
 
 
-      === GENERATE FILE 1: tasks.md ===
+      === PHASE 2: Generate tasks.md ===
 
 
       Write to `openspec/changes/<change-name>/tasks.md`.
 
-      Use the template format: `## TODOs` as section header, `### Wave N: Group
+      Use the template format: `## Tasks` as section header, `### Wave N: Group
       Name` for sub-groupings. Each task MUST be `- [ ] N.M Description`.
 
 
-      === GENERATE FILE 2: .sisyphus/plans/<change-name>.md ===
+      === PHASE 3: Generate Plan File ===
 
 
       This is the OMO plan file. Write to project-root-level
@@ -322,6 +326,12 @@ artifacts:
       Structure with 10 sections. For each section, WRITE A BRIEF SUMMARY then
       APPEND OpenSpec document links with anchored references. Do NOT copy
       artifact content verbatim (except TODOs).
+
+
+      ⚠️ Before writing, check if `.sisyphus/plans/<change-name>.md` already
+      exists. If it does, ask the user: "Plan file exists. Overwrite (will lose
+      existing progress) or append new tasks?" Do NOT overwrite without
+      confirmation.
 
 
       **Section 1: ## TL;DR**
@@ -368,7 +378,7 @@ artifacts:
       > See [design.md](openspec/changes/<change-name>/design.md)
 
 
-      **Section 6: ## TODOs**
+      **Section 6: ## Tasks**
 
       Copy the EXACT checkbox list from tasks.md here. This section is parsed
       by `/start-work` for task tracking.
@@ -409,20 +419,7 @@ artifacts:
       so the executing AI can trace back to the original requirement.
 
 
-      **Section 7: ## Progress Tracking**
-
-      ```
-      - tasks.md (`openspec/changes/<name>/tasks.md`) is the single source of
-        truth for checkbox states
-      - When updating a checkbox in tasks.md, immediately mirror the change in
-        this plan's ## TODOs section
-      - On pause or all_done: sync checkbox states from tasks.md to this plan
-        and update .sisyphus/boulder.json
-      - Do NOT use todowrite/todoread — this plan file is the tracking source
-      ```
-
-
-      **Section 8: ## Final Verification Wave**
+      **Section 7: ## Final Verification Wave**
 
       ```
       - [ ] F1. **Plan Compliance Audit** — oracle
@@ -441,7 +438,7 @@ artifacts:
       ```
 
 
-      **Section 9: ## Commit Strategy**
+      **Section 8: ## Commit Strategy**
 
       Map tasks to files and commit messages:
 
@@ -450,7 +447,7 @@ artifacts:
       ```
 
 
-      **Section 10: ## Success Criteria**
+      **Section 9: ## Success Criteria**
 
       Final verification checklist. Append OpenSpec specs reference:
 
@@ -463,7 +460,20 @@ artifacts:
       ```
 
 
-      === PHASE AFTER GENERATION ===
+      <!-- Progress Tracking (Meta: sync protocol for task states) -->
+
+      ```
+      - tasks.md (`openspec/changes/<name>/tasks.md`) is the single source of
+        truth for checkbox states
+      - When updating a checkbox in tasks.md, immediately mirror the change in
+        this plan's ## Tasks section
+      - On pause or all_done: sync checkbox states from tasks.md to this plan
+        and update .sisyphus/boulder.json
+      - Do NOT use todowrite/todoread — this plan file is the tracking source
+      ```
+
+
+      === PHASE 4: Validate and Finalize ===
 
 
       **Last Step: Invoke Momus for Review (OPTIONAL)**
@@ -478,10 +488,10 @@ artifacts:
       After writing both files, validate the plan structure before finishing:
 
       1. `grep -c '^## ' .sisyphus/plans/<change-name>.md` → must be at least 8
-      2. `grep -q '## TODOs' .sisyphus/plans/<change-name>.md` → TODOs section exists
+      2. `grep -q '## Tasks' .sisyphus/plans/<change-name>.md` → Tasks section exists
       3. `grep -q '## Final Verification Wave' .sisyphus/plans/<change-name>.md` → FVW exists
       4. Verify task coverage: count checkboxes in TODOs section only.
-         `sed -n '/^## TODOs/,/^## /p' .sisyphus/plans/<change-name>.md | grep -c '^- \['`
+         `sed -n '/^## Tasks/,/^## /p' .sisyphus/plans/<change-name>.md | grep -c '^- \['`
          should equal `grep -c '^- \[' tasks.md`
 
       If ANY check fails: STOP, fix the plan, re-validate.
@@ -490,7 +500,7 @@ artifacts:
       === SUMMARY CHECKLIST ===
 
       Before finishing, confirm:
-      - [ ] tasks.md exists with proper ## TODOs + ### Wave format
+      - [ ] tasks.md exists with proper ## Tasks + ### Wave format
       - [ ] .sisyphus/plans/<change-name>.md exists with all 10 sections
       - [ ] Each plan section appends OpenSpec references with anchors
       - [ ] Each task in TODOs has What to do, Must NOT do, Agent Profile,
@@ -548,7 +558,7 @@ apply:
     - EAGER SYNC: When you change a checkbox in tasks.md, immediately update
       the same checkbox in .sisyphus/plans/<change-name>.md
     - ON PAUSE: Before pausing, verify both files have identical checkbox
-      states. Run: diff <(grep '^- \[' tasks.md) <(sed -n '/^## TODOs/,/^## /p' .sisyphus/plans/<change-name>.md | grep '^- \[')
+      states. Run: diff <(grep '^- \[' tasks.md) <(sed -n '/^## Tasks/,/^## /p' .sisyphus/plans/<change-name>.md | grep '^- \[')
     - ON ALL_DONE: Same verification as pause. All checkboxes should be [x].
       Also create/update .sisyphus/evidence/ directory for any evidence files.
 

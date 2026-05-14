@@ -1,4 +1,4 @@
-## TODOs
+## Tasks
 
 ### Wave 1: <!-- Task Group Name -->
 
