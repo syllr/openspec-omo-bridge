@@ -49,6 +49,27 @@ artifacts:
     instruction: >
       __LANG_PLACEHOLDER__
 
+      **VALIDATION RULES (MUST follow — `openspec validate` enforces these):**
+
+      1. Each requirement MUST start with `### Requirement: <name>`
+
+      2. **Requirement description MUST contain uppercase MUST or SHALL.**
+         Do NOT use Chinese "必须" — it fails validation.
+         - Affirmative: "The system MUST ..."
+         - Negative: "The system MUST NOT ..."
+
+      3. Each requirement MUST have at least one scenario.
+
+      4. Each scenario MUST start with `#### Scenario: <name>` — exactly 4 `#`.
+         Using 3 `#` or bullet points fails silently.
+
+      5. Each scenario body MUST contain WHEN / THEN keywords.
+
+      After writing ALL spec files, run:
+      `openspec validate <change-name>`
+      Fix any ERROR before proceeding.
+
+
       Create specification files that define WHAT the system should do.
 
 
