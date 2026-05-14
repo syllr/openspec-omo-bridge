@@ -252,7 +252,7 @@ artifacts:
       - **specs/<cap>/spec.md** → extract Requirements for Work Objectives,
       Scenarios (WHEN/THEN) for Verification Strategy.
       Each spec has fixed section anchors you can reference:
-      `#ADDED-Requirements`, `#MODIFIED-Requirements`, `#REMOVED-Requirements`
+      `#added-requirements`, `#modified-requirements`, `#removed-requirements`
 
       - **design.md** (if exists) → extract Goals, Decisions, Risks for
       Execution Strategy.
@@ -358,7 +358,7 @@ artifacts:
 
       Append per capability:
 
-      > See [spec.md#ADDED-Requirements](openspec/changes/<change-name>/specs/<capability>/spec.md)
+        > See [spec.md#added-requirements](openspec/changes/<change-name>/specs/<capability>/spec.md)
 
 
       **Section 4: ## Verification Strategy**
@@ -411,7 +411,7 @@ artifacts:
           Expected: [result]
           Evidence: .sisyphus/evidence/task-N.M-[slug].[ext]
 
-        > See OpenSpec context: [spec.md#ADDED-Requirements](openspec/changes/<name>/specs/<cap>/spec.md)
+        > See OpenSpec context: [spec.md#added-requirements](openspec/changes/<name>/specs/<cap>/spec.md)
       ```
 
       CRITICAL: Each task's last line MUST append its OpenSpec source reference
@@ -455,7 +455,7 @@ artifacts:
       - [ ] All QA scenarios pass
       - [ ] Scope is clean (no extra, no missing)
 
-      > See [spec.md#ADDED-Requirements](openspec/changes/<change-name>/specs/<capability>/spec.md)
+        > See [spec.md#added-requirements](openspec/changes/<change-name>/specs/<capability>/spec.md)
       ```
 
 
