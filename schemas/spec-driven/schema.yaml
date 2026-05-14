@@ -486,6 +486,18 @@ artifacts:
       If REJECT: fix ALL issues, re-invoke Momus.
       Loop until OKAY or you decide to stop.
 
+      **Step: Plan Structure Validation (MANDATORY)**
+
+      After writing both files, validate the plan structure before finishing:
+
+      1. `grep -c '^## ' .sisyphus/plans/<change-name>.md` → must be at least 8
+      2. `grep -q '## TODOs' .sisyphus/plans/<change-name>.md` → TODOs section exists
+      3. `grep -q '## Final Verification Wave' .sisyphus/plans/<change-name>.md` → FVW exists
+      4. Count checkboxes: `grep -c '^- \[' tasks.md` should equal
+         `grep -c '^- \[' .sisyphus/plans/<change-name>.md`
+
+      If ANY check fails: STOP, fix the plan, re-validate.
+      Do NOT proceed until all checks pass.
 
       === SUMMARY CHECKLIST ===
 
@@ -508,7 +520,40 @@ apply:
   instruction: |
     __LANG_PLACEHOLDER__
 
-    Read context files, work through pending tasks, mark complete as you go.
+    Implement tasks from the change's task list.
+
+    === STEP 1: Load Context ===
+
+    Read these context files:
+    - `openspec/changes/<change-name>/proposal.md` — why the change exists
+    - `openspec/changes/<change-name>/specs/` — what to build (requirements + scenarios)
+    - `openspec/changes/<change-name>/design.md` — technical approach
+    - `openspec/changes/<change-name>/tasks.md` — task list with checkboxes
+
+    Also read the plan file at `.sisyphus/plans/<change-name>.md` for
+    execution strategy and task details.
+
+    === STEP 2: Execute Tasks ===
+
+    Work through pending tasks one at a time (dependency order first).
+
+    For each task:
+    1. Read the task's **What to do** and **References** for implementation guidance
+    2. **Must NOT do**: Respect the task's exclusion list
+    3. Make minimal, focused changes
+    4. Run the task's **Acceptance Criteria** command to verify
+    5. Run the task's **QA Scenarios** to validate
+
+    On task completion:
+    - Mark `- [ ]` → `- [x]` in tasks.md
+    - EAGER SYNC: Immediately update the same checkbox in
+      .sisyphus/plans/<change-name>.md
+
+    On task failure (criteria not met):
+    - Diagnose the failure, fix the issue, re-test
+    - If stuck after 3 attempts: note in plan, move to next task
+
+    === STEP 3: State Sync ===
 
     **Task State Sync Protocol**:
     - tasks.md is the single source of truth for checkbox states
@@ -517,5 +562,6 @@ apply:
     - ON PAUSE: Before pausing, verify both files have identical checkbox
       states. Run: diff <(grep '^- \[' tasks.md) <(grep '^- \[' .sisyphus/plans/<change-name>.md)
     - ON ALL_DONE: Same verification as pause. All checkboxes should be [x].
+      Also create/update .sisyphus/evidence/ directory for any evidence files.
 
     Pause if you hit blockers or need clarification.
