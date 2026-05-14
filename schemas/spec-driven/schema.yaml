@@ -36,7 +36,6 @@ artifacts:
 
 
       Keep it concise (1-2 pages). Focus on the "why" not the "how" -
-
       implementation details belong in design.md.
 
 
@@ -323,7 +322,7 @@ artifacts:
       This is the OMO plan file. Write to project-root-level
       `.sisyphus/plans/<change-name>.md`.
 
-      Structure with 10 sections. For each section, WRITE A BRIEF SUMMARY then
+      Structure with 9 sections. For each section, WRITE A BRIEF SUMMARY then
       APPEND OpenSpec document links with anchored references. Do NOT copy
       artifact content verbatim (except TODOs).
 
@@ -490,7 +489,7 @@ artifacts:
       1. `grep -c '^## ' .sisyphus/plans/<change-name>.md` → must be at least 8
       2. `grep -q '## Tasks' .sisyphus/plans/<change-name>.md` → Tasks section exists
       3. `grep -q '## Final Verification Wave' .sisyphus/plans/<change-name>.md` → FVW exists
-      4. Verify task coverage: count checkboxes in TODOs section only.
+      4. Verify task coverage: count checkboxes in Tasks section only.
          `sed -n '/^## Tasks/,/^## /p' .sisyphus/plans/<change-name>.md | grep -c '^- \['`
          should equal `grep -c '^- \[' tasks.md`
 
@@ -501,9 +500,9 @@ artifacts:
 
       Before finishing, confirm:
       - [ ] tasks.md exists with proper ## Tasks + ### Wave format
-      - [ ] .sisyphus/plans/<change-name>.md exists with all 10 sections
+      - [ ] .sisyphus/plans/<change-name>.md exists with all 9 sections
       - [ ] Each plan section appends OpenSpec references with anchors
-      - [ ] Each task in TODOs has What to do, Must NOT do, Agent Profile,
+      - [ ] Each task in Tasks has What to do, Must NOT do, Agent Profile,
             References, Acceptance Criteria, QA Scenarios, Evidence, and
             OpenSpec source reference
       - [ ] Progress Tracking section included
