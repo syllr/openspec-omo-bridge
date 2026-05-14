@@ -174,17 +174,8 @@ artifacts:
       Create the design document that explains HOW to implement the change.
 
 
-      When to include design.md (create only if any apply):
-
-      - Cross-cutting change (multiple services/modules) or new architectural
-      pattern
-
-      - New external dependency or significant data model changes
-
-      - Security, performance, or migration complexity
-
-      - Ambiguity that benefits from technical decisions before coding
-
+      Always create design.md with at least Context and Decisions sections.
+      Expand to include Migration Plan and Open Questions when needed.
 
       Sections:
 
@@ -261,8 +252,7 @@ artifacts:
       `#ADDED-Requirements`, `#MODIFIED-Requirements`, `#REMOVED-Requirements`
 
       - **design.md** (if exists) → extract Goals, Decisions, Risks for
-      Execution Strategy. If design.md is absent, note: "No separate design
-      needed."
+      Execution Strategy.
 
       - **tasks.md** → copy checkbox list directly into ## TODOs. This is the
       only section where content is copied, not referenced.
@@ -377,9 +367,6 @@ artifacts:
 
       > See [design.md](openspec/changes/<change-name>/design.md)
 
-      If design.md does not exist: note "No separate design needed. See
-      proposal + specs."
-
 
       **Section 6: ## TODOs**
 
@@ -493,8 +480,9 @@ artifacts:
       1. `grep -c '^## ' .sisyphus/plans/<change-name>.md` → must be at least 8
       2. `grep -q '## TODOs' .sisyphus/plans/<change-name>.md` → TODOs section exists
       3. `grep -q '## Final Verification Wave' .sisyphus/plans/<change-name>.md` → FVW exists
-      4. Count checkboxes: `grep -c '^- \[' tasks.md` should equal
-         `grep -c '^- \[' .sisyphus/plans/<change-name>.md`
+      4. Verify task coverage: count checkboxes in TODOs section only.
+         `sed -n '/^## TODOs/,/^## /p' .sisyphus/plans/<change-name>.md | grep -c '^- \['`
+         should equal `grep -c '^- \[' tasks.md`
 
       If ANY check fails: STOP, fix the plan, re-validate.
       Do NOT proceed until all checks pass.
@@ -560,7 +548,7 @@ apply:
     - EAGER SYNC: When you change a checkbox in tasks.md, immediately update
       the same checkbox in .sisyphus/plans/<change-name>.md
     - ON PAUSE: Before pausing, verify both files have identical checkbox
-      states. Run: diff <(grep '^- \[' tasks.md) <(grep '^- \[' .sisyphus/plans/<change-name>.md)
+      states. Run: diff <(grep '^- \[' tasks.md) <(sed -n '/^## TODOs/,/^## /p' .sisyphus/plans/<change-name>.md | grep '^- \[')
     - ON ALL_DONE: Same verification as pause. All checkboxes should be [x].
       Also create/update .sisyphus/evidence/ directory for any evidence files.
 
