@@ -288,22 +288,24 @@ artifacts:
 
       **Step 2: Invoke Metis for Gap Analysis (MANDATORY)**
 
-      Before writing the plan, invoke Metis with the artifacts context:
+      Before writing the plan, invoke Metis with the artifacts context.
+      If task() fails (e.g. agent unavailable), proceed without Metis
+      and note the gap analysis was skipped.
 
       ```
       task(subagent_type="metis", prompt="我准备为此变更生成 OMO plan。
-      已完成的产物:
-      - proposal.md: [2-3句摘要]
-      - specs: [列出每个capability名称+核心requirement]
-      - design.md: [存在/不存在，如果存在简述决策]
-      - tasks.md: [N个任务，主要分X个Wave]
+       已完成的产物:
+       - proposal.md: [2-3句摘要]
+       - specs: [列出每个capability名称+核心requirement]
+       - design.md: [存在/不存在，如果存在简述决策]
+       - 计划草案: [简述主要任务分组和Wave划分]
 
-      请对计划草案做gap analysis，识别：
-      1. 遗漏的需求或意图
-      2. 表达模糊的地方
-      3. scope creep / AI-slop
-      4. 缺失的验收标准
-      5. 未覆盖的边界情况")
+       请对计划草案做gap analysis，识别：
+       1. 遗漏的需求或意图
+       2. 表达模糊的地方
+       3. scope creep / AI-slop
+       4. 缺失的验收标准
+       5. 未覆盖的边界情况")
       ```
 
       Apply Metis's findings:
@@ -477,17 +479,12 @@ artifacts:
       === PHASE AFTER GENERATION ===
 
 
-      **Step 4: Invoke Momus for Review (OPTIONAL, recommended)**
+      **Last Step: Invoke Momus for Review (OPTIONAL)**
 
-      If user wants high-accuracy review, invoke Momus:
-
-      ```
-      task(subagent_type="momus", prompt=".sisyphus/plans/<change-name>.md")
-      ```
-
-      Momus returns OKAY or REJECT with specific issues.
+      If you want Momus to validate the final plan, invoke it.
+      It returns OKAY or REJECT with specific issues.
       If REJECT: fix ALL issues, re-invoke Momus.
-      Loop until OKAY or user cancels.
+      Loop until OKAY or you decide to stop.
 
 
       === SUMMARY CHECKLIST ===
@@ -518,7 +515,7 @@ apply:
     - EAGER SYNC: When you change a checkbox in tasks.md, immediately update
       the same checkbox in .sisyphus/plans/<change-name>.md
     - ON PAUSE: Before pausing, verify both files have identical checkbox
-      states. Run: diff <(grep -n '^- \[' tasks.md) <(grep -n '^- \[' .sisyphus/plans/<change-name>.md)
+      states. Run: diff <(grep '^- \[' tasks.md) <(grep '^- \[' .sisyphus/plans/<change-name>.md)
     - ON ALL_DONE: Same verification as pause. All checkboxes should be [x].
 
     Pause if you hit blockers or need clarification.
