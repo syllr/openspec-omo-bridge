@@ -38,6 +38,8 @@ artifacts:
 
       Keep it concise (1-2 pages). Focus on the "why" not the "how" -
       implementation details belong in design.md.
+      The proposal should be understandable by both technical and non-technical
+      readers.
 
 
       This is the foundation - specs, design, and tasks all build on this.
@@ -208,6 +210,10 @@ artifacts:
 
 
       Good design docs explain the "why" behind technical decisions.
+
+      After writing, verify that each design decision maps to at least one
+      spec requirement. Check that the chosen approach addresses the relevant
+      requirement's scenario.
     requires:
       - proposal
   - id: tasks
@@ -292,7 +298,10 @@ artifacts:
       - design
   - id: critic
     generates: critic.md
-    description: Multi-agent plan review checking spec compliance, plan quality, edge cases, and risks
+    description: >
+      Multi-agent plan review and plan generation. Generates critic.md
+      (review report) plus .sisyphus/plans/<change-name>.md (plan file,
+      side effect not tracked by OpenSpec).
     template: critic.md
     instruction: |
       __LANG_PLACEHOLDER__
@@ -494,8 +503,10 @@ artifacts:
       报告遗漏和 scope leak。用表格展示。
 
       维度 2 — Plan Quality：
-      逐 task 检查子字段完整性、Must NOT do 是否存在、Agent Profile 是否合理、
-      Acceptance Criteria 是否可执行、QA Scenarios 是否完整。
+       逐 task 检查子字段完整性、Must NOT do 是否存在、Agent Profile 是否合理、
+       References 路径是否有效、Acceptance Criteria 是否可执行、QA Scenarios 是否完整。
+       同时检查 Verification Strategy 是否覆盖了所有 spec scenarios，
+       Success Criteria 是否可衡量。
 
       维度 3 — Edge Cases & Risks：
       scope 边界、遗漏场景、风险缓解措施、未声明的依赖、验收完整性。
