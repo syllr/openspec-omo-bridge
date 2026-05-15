@@ -10,7 +10,7 @@
 
 ## 1. Spec Compliance Review
 
-> From: Momus (deepseek-v4-flash)
+> From: Momus Review 1
 
 | #   | Requirement       | Plan Coverage     | Status  |
 | --- | ----------------- | ----------------- | ------- |
@@ -26,7 +26,7 @@
 
 ## 2. Plan Quality Review
 
-> From: Momus (deepseek-v4-flash)
+> From: Momus Review 2
 
 ### Per-Task Quality
 
@@ -44,7 +44,7 @@
 
 ## 3. Edge Cases & Risks Review
 
-> From: Momus (deepseek-v4-flash)
+> From: Momus Review 3
 
 ### Scope Boundaries
 
@@ -68,7 +68,7 @@
 
 ## 4. Additional Perspectives
 
-> From: Momus (minimax 2.7 highspeed)
+> From: Momus Review 4
 
 <!-- Additional review perspectives -->
 
@@ -76,7 +76,7 @@
 
 ## 5. Additional Perspectives
 
-> From: Momus (minimax 2.7 highspeed)
+> From: Momus Review 5
 
 <!-- Additional review perspectives -->
 
