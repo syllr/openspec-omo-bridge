@@ -523,9 +523,82 @@ artifacts:
     requires:
       - specs
       - design
+  - id: critic
+    generates: .sisyphus/critical/<change-name>.md
+    description: Multi-agent plan review checking spec compliance, plan quality, edge cases, and risks
+    template: critic.md
+    instruction: |
+      __LANG_PLACEHOLDER__
+
+      **SCOPE RESTRICTION: Do NOT modify any source code. Only generate critic.md.**
+
+      Review the plan and artifacts against spec requirements.
+
+      === PHASE 1: Read Context ===
+
+      Read these files:
+      - `.sisyphus/plans/<change-name>.md` — the plan to review
+      - `openspec/changes/<change-name>/tasks.md` — checkbox task list
+      - `openspec/changes/<change-name>/specs/` — all spec files
+      - `openspec/changes/<change-name>/design.md` — technical design
+      - `openspec/changes/<change-name>/proposal.md` — proposal
+
+      === PHASE 2: Launch 5 Parallel Reviews ===
+
+      Launch 5 Momus agents IN PARALLEL, each with a different focus:
+
+      ```
+      # Review 1: Spec Compliance (deepseek-v4-flash model)
+      task1 = task(subagent_type="momus", run_in_background=true, prompt="[read spec files and plan] 逐条对比每个 spec requirement 在 plan 中是否有对应 task。报告遗漏和 scope leak。格式用表格。")
+
+      # Review 2: Plan Quality (deepseek-v4-flash model)
+      task2 = task(subagent_type="momus", run_in_background=true, prompt="[read plan only] 逐 task 检查子字段完整性: What to do、MUST NOT do、Agent Profile、Acceptance Criteria、QA Scenarios。对每个字段标✅/❌。")
+
+      # Review 3: Edge Cases & Risks (deepseek-v4-flash model)
+      task3 = task(subagent_type="momus", run_in_background=true, prompt="[read plan + specs + design] scope边界、遗漏场景、风险缓解、依赖声明、验收完整性。分层输出🔴/🟡/⚪。")
+
+      # Review 4: Additional Perspective (minimax 2.7 highspeed model)
+      task4 = task(subagent_type="momus", run_in_background=true, prompt="[read plan + specs] 从执行者角度审查：任务之间是否有依赖冲突？验收标准是否真的可执行？有无歧义？")
+
+      # Review 5: Additional Perspective (minimax 2.7 highspeed model)
+      task5 = task(subagent_type="momus", run_in_background=true, prompt="[read plan + specs + design] 审查 plan 是否充分体现了 design 的决策和风险缓解措施。spec 中的 scenarios 是否都在 plan 中有对应的验收步骤。")
+      ```
+
+      === PHASE 3: Aggregate Results ===
+
+      Collect all 5 results:
+      ```
+      r1 = background_output(task_id=task1)
+      r2 = background_output(task_id=task2)
+      r3 = background_output(task_id=task3)
+      r4 = background_output(task_id=task4)
+      r5 = background_output(task_id=task5)
+      ```
+
+      Deduplicate and merge findings. Classify by severity:
+      - 🔴 BLOCKER: Must fix before apply
+      - 🟡 WARNING: Should address
+      - ⚪ INFO: Suggestion
+
+      === PHASE 4: Generate critic.md ===
+
+      Write to `.sisyphus/critical/<change-name>.md` using the template format.
+
+      Determine VERDICT:
+      - If any 🔴 → **🔴 BLOCKED**
+      - If only 🟡/⚪ (no 🔴) → **⚠️ CONDITIONAL**
+      - If no issues → **✅ PASS**
+
+      === PHASE 5: Blocking Decision ===
+
+      - If BLOCKED: Print "🛑 Critic BLOCKED. Fix 🔴 issues above, then re-run critic." Do NOT allow apply.
+      - If CONDITIONAL: Print message listing 🟡 items. User can acknowledge risks or fix.
+      - If PASS: Print "✅ All checks passed. Proceed to apply."
+    requires:
+      - tasks
 apply:
   requires:
-    - tasks
+    - critic
   tracks: tasks.md
   instruction: |
     __LANG_PLACEHOLDER__
@@ -539,9 +612,20 @@ apply:
     - `openspec/changes/<change-name>/specs/` — what to build (requirements + scenarios)
     - `openspec/changes/<change-name>/design.md` — technical approach
     - `openspec/changes/<change-name>/tasks.md` — task list with checkboxes
+    - `.sisyphus/critical/<change-name>.md` — critic review results
 
     Also read the plan file at `.sisyphus/plans/<change-name>.md` for
     execution strategy and task details.
+
+    **CRITIC VERDICT CHECK**
+
+    Before executing any task, read `.sisyphus/critical/<change-name>.md`
+    and check the VERDICT:
+
+    1. Read the first section `## Verdict` and find `**VERDICT**: ...`
+    2. If `🔴 BLOCKED`: STOP. Print "🛑 Critic BLOCKED this change. Fix issues and re-run critic." Do NOT execute any tasks.
+    3. If `⚠️ CONDITIONAL`: List the 🟡 items. Ask user to confirm before proceeding.
+    4. If `✅ PASS`: Continue normally.
 
     === STEP 2: Execute Tasks ===
 
