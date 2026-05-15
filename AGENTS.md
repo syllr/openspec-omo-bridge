@@ -21,24 +21,28 @@ files during the `tasks` artifact phase.
 
 ```
 proposal ──┬──► specs ──┐
-           │            ├──► tasks ──► apply
+           │            ├──► tasks ──► critic ──► apply
            └──► design ──┘
 ```
 
-- `tasks.instruction` generates **two files**: `tasks.md` (simple checkbox) + `.sisyphus/plans/<name>.md` (OMO plan with
-  rich sub-fields)
-- `.sisyphus/plans/<name>.md` uses **9 sections**: TL;DR, Context, Work Objectives, Verification Strategy, Execution
-  Strategy, Tasks, Final Verification Wave, Commit Strategy, Success Criteria
+- `tasks.instruction` generates `tasks.md` (simple checkbox list)
+- `critic.instruction` generates `.sisyphus/plans/<name>.md` (OMO plan with rich sub-fields) + `critic.md` (review report)
+- `.sisyphus/plans/<name>.md` uses **9 sections**: TL;DR, Context, Work Objectives, Verification Strategy, Execution Strategy, Tasks, Final Verification Wave, Commit Strategy, Success Criteria
 - Non-Tasks sections use "summary + link" pattern (references `openspec/changes/<name>/` artifacts)
 - The plan is parsed by `/start-work` (OMO's Atlas agent)
 
-## Quality gates in tasks.instruction
+## Quality gates
 
-1. **Artifact review** (step 1) — checks coverage, verifiability, consistency before generation
-2. **Metis invocation** (step 2, mandatory) — gap analysis; falls back to "proceed without Metis" if unavailable
-3. **Plan structure validation** (after generation, mandatory) — 4 grep checks verify sections exist and checkbox counts
+1. **Spec validation** (critic, mandatory) — runs `openspec validate`, if errors consult Metis for fix guidance
+2. **Plan generation** (critic, after validation passes) — generates the 9-section plan
+3. **Plan structure validation** (critic, mandatory) — 4 grep checks verify sections exist and checkbox counts match
+4. **5 parallel Momus reviews** (critic, mandatory) — comprehensive review: spec compliance, plan quality, edge cases, execution feasibility, design alignment
+5. **Critic verdict** (critic, hard block) — if 🔴 BLOCKED, apply cannot proceed; if ⚠️ CONDITIONAL, user must acknowledge; if ✅ PASS, proceed
+6. **Metis invocation** (tasks, mandatory) — gap analysis on task list before generation
+7. **Metis invocation** (step 2, mandatory) — gap analysis; falls back to "proceed without Metis" if unavailable
+8. **Plan structure validation** (after generation, mandatory) — 4 grep checks verify sections exist and checkbox counts
    match
-4. **Momus review** (optional) — post-generation review loop with OKAY/REJECT
+9. **Momus review** (optional) — post-generation review loop with OKAY/REJECT
 
 ## Language support
 
