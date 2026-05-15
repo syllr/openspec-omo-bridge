@@ -548,19 +548,19 @@ artifacts:
       Launch 5 Momus agents IN PARALLEL, each with a different focus:
 
       ```
-      # Review 1: Spec Compliance (deepseek-v4-flash model)
+      # Spec Compliance
       task1 = task(subagent_type="momus", run_in_background=true, prompt="[read spec files and plan] 逐条对比每个 spec requirement 在 plan 中是否有对应 task。报告遗漏和 scope leak。格式用表格。")
 
-      # Review 2: Plan Quality (deepseek-v4-flash model)
+      # Plan Quality
       task2 = task(subagent_type="momus", run_in_background=true, prompt="[read plan only] 逐 task 检查子字段完整性: What to do、MUST NOT do、Agent Profile、Acceptance Criteria、QA Scenarios。对每个字段标✅/❌。")
 
-      # Review 3: Edge Cases & Risks (deepseek-v4-flash model)
+      # Edge Cases & Risks
       task3 = task(subagent_type="momus", run_in_background=true, prompt="[read plan + specs + design] scope边界、遗漏场景、风险缓解、依赖声明、验收完整性。分层输出🔴/🟡/⚪。")
 
-      # Review 4: Additional Perspective (minimax 2.7 highspeed model)
+      # Execution Perspective
       task4 = task(subagent_type="momus", run_in_background=true, prompt="[read plan + specs] 从执行者角度审查：任务之间是否有依赖冲突？验收标准是否真的可执行？有无歧义？")
 
-      # Review 5: Additional Perspective (minimax 2.7 highspeed model)
+      # Design Implementation Review
       task5 = task(subagent_type="momus", run_in_background=true, prompt="[read plan + specs + design] 审查 plan 是否充分体现了 design 的决策和风险缓解措施。spec 中的 scenarios 是否都在 plan 中有对应的验收步骤。")
       ```
 
