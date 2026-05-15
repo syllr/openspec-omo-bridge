@@ -11,7 +11,7 @@ files during the `tasks` artifact phase.
 ## Key files
 
 | Path                              | Purpose                                                                   |
-|-----------------------------------|---------------------------------------------------------------------------|
+| --------------------------------- | ------------------------------------------------------------------------- |
 | `schemas/spec-driven/schema.yaml` | Schema definition. 5 artifacts: proposal → specs → design → tasks → apply |
 | `schemas/spec-driven/templates/`  | 4 template files (proposal.md, spec.md, design.md, tasks.md)              |
 | `scripts/sync-schemas.sh`         | Syncs repo schemas to `~/.local/share/openspec/schemas/`                  |
@@ -93,11 +93,28 @@ cd ~/tmp
 
 ### Run a test
 
-```bash
+````bash
+# 先初始化一个测试项目
+mkdir -p /tmp/test-project && cd /tmp/test-project
+git init
+mkdir -p openspec/schemas/spec-driven .opencode
+# 复制当前仓库的 schema 到测试项目
+cp -R /Users/yutao/Projects/openspec-omo-bridge/schemas/spec-driven/* openspec/schemas/spec-driven/
+# 添加目录权限（避免 AI 申请权限打断流程）
+cat > .opencode/opencode.json << 'EOF'
+{
+  "$schema": "https://opencode.ai/config.json",
+  "permission": { "external_directory": "allow", "read": "allow", "write": "allow" }
+}
+EOF
+# 处理语言占位符（替换 __LANG_PLACEHOLDER__ 为中文提示）
+sed -i '' 's/__LANG_PLACEHOLDER__/**语言**: 所有生成的文档必须使用中文。/g' openspec/schemas/spec-driven/schema.yaml
+
 bunx oh-my-opencode run --attach http://127.0.0.1:12396 "\
-在 /tmp/test-project 中，使用 openspec-ff-change 创建一个名为 test-schema change，\
-然后执行 openspec-apply-change 完成所有任务。"
-```
+在 /tmp/test-project 中，使用 openspec-ff-change 创建一个名为 hello-world 的 change。\
+这个 change 的功能是：在项目中添加一个 README.md 文件，内容是 '# Hello World'。\
+请完成 proposal → specs → design → tasks 所有阶段，然后执行 apply 完成任务。\
+"
 
 - If `Unable to connect`: OpenCode Web plugin not running in IDE
 - If `Unauthorized`: restart the IDE plugin
@@ -114,7 +131,7 @@ task(
     (run_in_background = true),
     (prompt = "...bunx oh-my-opencode run..."),
 );
-```
+````
 
 ## Git
 
