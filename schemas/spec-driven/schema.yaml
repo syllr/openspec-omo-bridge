@@ -524,7 +524,7 @@ artifacts:
       - specs
       - design
   - id: critic
-    generates: .sisyphus/critical/<change-name>.md
+    generates: critic.md
     description: Multi-agent plan review checking spec compliance, plan quality, edge cases, and risks
     template: critic.md
     instruction: |
@@ -603,7 +603,13 @@ artifacts:
 
       === PHASE 4: Generate critic.md ===
 
-      Write to `.sisyphus/critical/<change-name>.md` using the template format.
+      Write the full review to TWO locations:
+      1. `.sisyphus/critical/<change-name>.md` — canonical review document
+         (read by apply phase for verdict check)
+      2. `openspec/changes/<change-name>/critic.md` — tracking file for
+         OpenSpec (generates field target)
+
+      Both files have the same content. Use the template format.
 
       Determine VERDICT:
       - If any 🔴 → **🔴 BLOCKED**
