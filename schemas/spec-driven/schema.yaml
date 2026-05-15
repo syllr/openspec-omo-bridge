@@ -545,23 +545,44 @@ artifacts:
 
       === PHASE 2: Launch 5 Parallel Reviews ===
 
-      Launch 5 Momus agents IN PARALLEL, each with a different focus:
+      Launch 5 Momus agents IN PARALLEL with the same comprehensive review
+      prompt. Each runs independently — aggregate and deduplicate results.
 
       ```
-      # Spec Compliance
-      task1 = task(subagent_type="momus", run_in_background=true, prompt="[read spec files and plan] 逐条对比每个 spec requirement 在 plan 中是否有对应 task。报告遗漏和 scope leak。格式用表格。")
+      REVIEW_PROMPT = "你正在对一个 OpenSpec change 生成的 plan 进行全面审查。
+      请审查以下所有维度，按严重程度输出发现（🔴阻塞 / 🟡警告 / ⚪建议）。
 
-      # Plan Quality
-      task2 = task(subagent_type="momus", run_in_background=true, prompt="[read plan only] 逐 task 检查子字段完整性: What to do、MUST NOT do、Agent Profile、Acceptance Criteria、QA Scenarios。对每个字段标✅/❌。")
+      审查文件：
+      - plan: .sisyphus/plans/<change-name>.md
+      - specs: openspec/changes/<change-name>/specs/
+      - design: openspec/changes/<change-name>/design.md（如果存在）
+      - tasks: openspec/changes/<change-name>/tasks.md
 
-      # Edge Cases & Risks
-      task3 = task(subagent_type="momus", run_in_background=true, prompt="[read plan + specs + design] scope边界、遗漏场景、风险缓解、依赖声明、验收完整性。分层输出🔴/🟡/⚪。")
+      请逐一检查以下 5 个维度：
 
-      # Execution Perspective
-      task4 = task(subagent_type="momus", run_in_background=true, prompt="[read plan + specs] 从执行者角度审查：任务之间是否有依赖冲突？验收标准是否真的可执行？有无歧义？")
+      维度 1 — Spec Compliance：
+      逐条对比每个 spec requirement 在 plan 中是否有对应 task。
+      报告遗漏和 scope leak。用表格展示。
 
-      # Design Implementation Review
-      task5 = task(subagent_type="momus", run_in_background=true, prompt="[read plan + specs + design] 审查 plan 是否充分体现了 design 的决策和风险缓解措施。spec 中的 scenarios 是否都在 plan 中有对应的验收步骤。")
+      维度 2 — Plan Quality：
+      逐 task 检查子字段完整性：What to do、MUST NOT do、Agent Profile、
+      Acceptance Criteria、QA Scenarios。对每个字段标 ✅/❌。
+
+      维度 3 — Edge Cases & Risks：
+      scope 边界、遗漏场景、风险缓解措施、未声明的依赖、验收完整性。
+
+      维度 4 — Execution Feasibility：
+      任务之间是否有依赖冲突？验收标准是否真的可执行？有无歧义？
+
+      维度 5 — Design Alignment：
+      plan 是否充分体现了 design 的决策和风险缓解措施。
+      spec 中的 scenarios 是否都在 plan 中有对应的验收步骤。"
+
+      task1 = task(subagent_type="momus", run_in_background=true, prompt=REVIEW_PROMPT)
+      task2 = task(subagent_type="momus", run_in_background=true, prompt=REVIEW_PROMPT)
+      task3 = task(subagent_type="momus", run_in_background=true, prompt=REVIEW_PROMPT)
+      task4 = task(subagent_type="momus", run_in_background=true, prompt=REVIEW_PROMPT)
+      task5 = task(subagent_type="momus", run_in_background=true, prompt=REVIEW_PROMPT)
       ```
 
       === PHASE 3: Aggregate Results ===
