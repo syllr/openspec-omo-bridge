@@ -14,6 +14,9 @@
 <!-- For delta specs. Copy FULL requirement block (including all scenarios) from original spec. -->
 <!-- ### Requirement: <exact original name> -->
 <!-- Description with MUST/SHALL -->
+<!-- #### Scenario: <scenario name> -->
+<!-- - **WHEN** <condition> -->
+<!-- - **THEN** <expected outcome> -->
 
 ## REMOVED Requirements
 

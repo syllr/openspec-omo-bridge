@@ -22,15 +22,14 @@ artifacts:
       **BREAKING**.
 
       - **Capabilities**: Identify which specs will be created or modified:
-        - **New Capabilities**: List capabilities being introduced. Each becomes a new `specs/<name>/spec.md`. Use kebab-case names (e.g., `user-auth`, `data-export`).
+        - **New Capabilities**: List capabilities being introduced. Each becomes a new `specs/<capability>/spec.md`. Use kebab-case names (e.g., `user-auth`, `data-export`).
         - **Modified Capabilities**: List existing capabilities whose REQUIREMENTS are changing. Only include if spec-level behavior changes (not just implementation details). Each needs a delta spec file. Check `openspec/specs/` for existing spec names. Leave empty if no requirement changes.
       - **Impact**: Affected code, APIs, dependencies, or systems.
 
 
       IMPORTANT: The Capabilities section is critical. It creates the contract
-      between
-
-      proposal and specs phases. Research existing specs before filling this in.
+      between proposal and specs phases. Research existing specs before filling
+      this in.
 
       Each capability listed here will need a corresponding spec file.
 
@@ -83,7 +82,7 @@ artifacts:
       (specs/<capability>/spec.md).
 
       - Modified capabilities: use the existing spec folder name from
-      openspec/specs/<capability>/ when creating the delta spec at
+      openspec/specs/<capability> when creating the delta spec at
       specs/<capability>/spec.md.
 
 
@@ -238,10 +237,10 @@ artifacts:
 
       | File | Role | Template (format) | Product (content) |
       |------|------|-------------------|-------------------|
-      | `proposal.md` | WHY — why this change, what capabilities | `schemas/spec-driven/templates/proposal.md` | `openspec/changes/<name>/proposal.md` |
-      | `specs/<cap>/spec.md` | WHAT — requirements, acceptance scenarios | `schemas/spec-driven/templates/spec.md` | `openspec/changes/<name>/specs/*/spec.md` |
-      | `design.md` | HOW — technical approach, decisions, risks | `schemas/spec-driven/templates/design.md` | `openspec/changes/<name>/design.md` |
-      | `tasks.md` | DO — checkbox task list | `schemas/spec-driven/templates/tasks.md` | `openspec/changes/<name>/tasks.md` |
+      | `proposal.md` | WHY — why this change, what capabilities | `schemas/spec-driven/templates/proposal.md` | `openspec/changes/<change-name>/proposal.md` |
+      | `specs/<capability>/spec.md` | WHAT — requirements, acceptance scenarios | `schemas/spec-driven/templates/spec.md` | `openspec/changes/<change-name>/specs/*/spec.md` |
+      | `design.md` | HOW — technical approach, decisions, risks | `schemas/spec-driven/templates/design.md` | `openspec/changes/<change-name>/design.md` |
+      | `tasks.md` | DO — checkbox task list | `schemas/spec-driven/templates/tasks.md` | `openspec/changes/<change-name>/tasks.md` |
 
 
       How to use each artifact when generating the plan:
@@ -249,7 +248,7 @@ artifacts:
       - **proposal.md** → extract Why for TL;DR, background for Context,
       Capabilities list for Work Objectives
 
-      - **specs/<cap>/spec.md** → extract Requirements for Work Objectives,
+      - **specs/<capability>/spec.md** → extract Requirements for Work Objectives,
       Scenarios (WHEN/THEN) for Verification Strategy.
       Each spec has fixed section anchors you can reference:
       `#added-requirements`, `#modified-requirements`, `#removed-requirements`
@@ -312,8 +311,10 @@ artifacts:
 
       Write to `openspec/changes/<change-name>/tasks.md`.
 
-      Use the template format: `## Tasks` as section header, `### Wave N: Group
-      Name` for sub-groupings. Each task MUST be `- [ ] N.M Description`.
+      Use `## Tasks` as section header, `### Wave N: Group Name` for
+      sub-groupings. Each task MUST start with `- [ ] N.M Description`.
+      tasks.md keeps this simple format. The rich sub-fields go in the plan
+      file only (see PHASE 3).
 
 
       === PHASE 3: Generate Plan File ===
@@ -379,10 +380,12 @@ artifacts:
 
       **Section 6: ## Tasks**
 
-      Copy the EXACT checkbox list from tasks.md here. This section is parsed
-      by `/start-work` for task tracking.
+      Start with the checkbox list from tasks.md and expand each task with the
+      following sub-fields. This section is parsed by `/start-work` for task
+      tracking.
 
-      Each task MUST include these sub-fields:
+      Each task MUST include these sub-fields (expand the simple checkbox into
+      this format):
 
       ```
       ### Wave N: Group Name
@@ -411,7 +414,7 @@ artifacts:
           Expected: [result]
           Evidence: .sisyphus/evidence/task-N.M-[slug].[ext]
 
-        > See OpenSpec context: [spec.md#added-requirements](openspec/changes/<name>/specs/<cap>/spec.md)
+        > See OpenSpec context: [spec.md#added-requirements](openspec/changes/<change-name>/specs/<capability>/spec.md)
       ```
 
       CRITICAL: Each task's last line MUST append its OpenSpec source reference
@@ -448,21 +451,23 @@ artifacts:
 
       **Section 9: ## Success Criteria**
 
-      Final verification checklist. Append OpenSpec specs reference:
+      Final verification checklist. Append OpenSpec specs reference for each
+      capability:
 
       ```
       - [ ] All acceptance criteria pass
       - [ ] All QA scenarios pass
       - [ ] Scope is clean (no extra, no missing)
 
-        > See [spec.md#added-requirements](openspec/changes/<change-name>/specs/<capability>/spec.md)
+      For each capability:
+      > See [spec.md#added-requirements](openspec/changes/<change-name>/specs/<capability>/spec.md)
       ```
 
 
       <!-- Progress Tracking (Meta: sync protocol for task states) -->
 
       ```
-      - tasks.md (`openspec/changes/<name>/tasks.md`) is the single source of
+      - tasks.md (`openspec/changes/<change-name>/tasks.md`) is the single source of
         truth for checkbox states
       - When updating a checkbox in tasks.md, immediately mirror the change in
         this plan's ## Tasks section

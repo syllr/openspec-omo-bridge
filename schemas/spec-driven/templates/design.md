@@ -14,7 +14,17 @@
 
 ## Decisions
 
-<!-- Key design decisions and rationale -->
+### Decision: <!-- decision name -->
+
+<!-- Brief context for this decision -->
+
+**Rationale**:
+
+<!-- Why this choice over alternatives -->
+
+**Alternatives Considered**:
+
+<!-- What else was considered and why rejected -->
 
 ## Risks / Trade-offs
 
