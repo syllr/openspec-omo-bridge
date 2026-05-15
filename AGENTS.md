@@ -1,0 +1,123 @@
+# openspec-omo-bridge
+
+Custom OpenSpec `spec-driven` schema that bridges OpenSpec workflows with oh-my-openagent (OMO) plan execution.
+
+## Repository purpose
+
+This is a **configuration repository** — not a code project. It houses a customized OpenSpec schema at
+`schemas/spec-driven/` that extends the standard spec-driven workflow to generate OMO-compatible `.sisyphus/plans/` plan
+files during the `tasks` artifact phase.
+
+## Key files
+
+| Path                              | Purpose                                                                   |
+|-----------------------------------|---------------------------------------------------------------------------|
+| `schemas/spec-driven/schema.yaml` | Schema definition. 5 artifacts: proposal → specs → design → tasks → apply |
+| `schemas/spec-driven/templates/`  | 4 template files (proposal.md, spec.md, design.md, tasks.md)              |
+| `scripts/sync-schemas.sh`         | Syncs repo schemas to `~/.local/share/openspec/schemas/`                  |
+| `.opencode/opencode.json`         | OpenCode project config — allows external directory access                |
+
+## Schema architecture
+
+```
+proposal ──┬──► specs ──┐
+           │            ├──► tasks ──► apply
+           └──► design ──┘
+```
+
+- `tasks.instruction` generates **two files**: `tasks.md` (simple checkbox) + `.sisyphus/plans/<name>.md` (OMO plan with
+  rich sub-fields)
+- `.sisyphus/plans/<name>.md` uses **9 sections**: TL;DR, Context, Work Objectives, Verification Strategy, Execution
+  Strategy, Tasks, Final Verification Wave, Commit Strategy, Success Criteria
+- Non-Tasks sections use "summary + link" pattern (references `openspec/changes/<name>/` artifacts)
+- The plan is parsed by `/start-work` (OMO's Atlas agent)
+
+## Quality gates in tasks.instruction
+
+1. **Artifact review** (step 1) — checks coverage, verifiability, consistency before generation
+2. **Metis invocation** (step 2, mandatory) — gap analysis; falls back to "proceed without Metis" if unavailable
+3. **Plan structure validation** (after generation, mandatory) — 4 grep checks verify sections exist and checkbox counts
+   match
+4. **Momus review** (optional) — post-generation review loop with OKAY/REJECT
+
+## Language support
+
+Schema uses `__LANG_PLACEHOLDER__` markers in all 5 instructions. The `sync-schemas.sh` script replaces them:
+
+```bash
+scripts/sync-schemas.sh --lang zh    # 中文: "所有生成的文档必须使用中文"
+scripts/sync-schemas.sh --lang en    # English: "MUST be written in English"
+scripts/sync-schemas.sh              # No preference: remove placeholders
+```
+
+The sync script uses `rm -rf + cp -R` (not `cp -R dir/ dest/` alone, which has macOS directory overwrite quirks).
+Arithmetic uses `$((var + 1))` syntax (not `((var++))`) to avoid `set -e` exit on zero.
+
+## Apply phase sync protocol
+
+`apply.instruction` has a Task State Sync Protocol:
+
+- **EAGER SYNC**: checkbox changes in `tasks.md` immediately mirrored to plan file
+- **ON PAUSE / ON ALL_DONE**: `diff <(grep ... tasks.md) <(sed -n '/^## Tasks/,/^## /p' plan.md | grep ...)` verifies
+  consistency
+- `diff` is scoped to `## Tasks` section only (excludes FVW/Success Criteria checkboxes)
+
+## Spec validation rules
+
+`schema.yaml` specs.instruction includes `openspec validate` rules:
+
+- Requirement must contain uppercase `MUST` or `SHALL` (Chinese "必须" fails)
+- Scenario uses exactly 4 `#` (`#### Scenario:`)
+- Each requirement ≥1 scenario with WHEN/THEN
+- AI is instructed to run `openspec validate <change-name>` after writing specs
+
+## Architecture constraints
+
+- **Do NOT modify** `requires`, `generates`, or `tracks` fields — they define the dependency graph
+- **Do NOT modify** OMO source code or built-in schemas — this repo only overrides the custom schema layer
+- The `design` artifact is **mandatory** (`tasks.requires: [specs, design]`)
+- Plan file is **not tracked** by OpenSpec's `detectCompleted()` — it's a side effect of the tasks instruction
+
+## CLI testing
+
+Schema changes affect AI behavior during `openspec-ff-change` / `openspec-apply-change`, so testing requires actually
+running the AI, not just static validation.
+
+### Setup
+
+```bash
+# 1. OpenCode Web 插件必须在 JetBrains IDE 中运行（端口 12396）
+# 2. 进入临时测试目录
+cd ~/tmp
+```
+
+### Run a test
+
+```bash
+bunx oh-my-opencode run --attach http://127.0.0.1:12396 "\
+在 /tmp/test-project 中，使用 openspec-ff-change 创建一个名为 test-schema change，\
+然后执行 openspec-apply-change 完成所有任务。"
+```
+
+- If `Unable to connect`: OpenCode Web plugin not running in IDE
+- If `Unauthorized`: restart the IDE plugin
+- Clean up test files: `rm -rf /tmp/test-project`
+
+### Parallel tests
+
+For multiple test cases, fan out with `run_in_background=true`:
+
+```typescript
+task(
+    (category = "quick"),
+    (load_skills = []),
+    (run_in_background = true),
+    (prompt = "...bunx oh-my-opencode run..."),
+);
+```
+
+## Git
+
+- Remote: `git@github.com:syllr/openspec-omo-bridge.git`
+- Branch: `main`
+- All commits require user authorization per `git-commit-block` rule
