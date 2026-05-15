@@ -66,15 +66,15 @@
 
 ---
 
-## 4. Additional Perspectives
+## 4. Execution Feasibility Review
 
 > From: Momus Review 4
 
-<!-- Additional review perspectives -->
+<!-- Task dependencies, acceptance criteria executability, ambiguity -->
 
 ---
 
-## 5. Additional Perspectives
+## 5. Design Alignment Review
 
 > From: Momus Review 5
 

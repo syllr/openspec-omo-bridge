@@ -564,5 +564,5 @@ apply:
     - After `/start-work` completes or pauses, copy checkbox states from
       `.sisyphus/plans/<change-name>.md` to
       `openspec/changes/<change-name>/tasks.md` to keep them in sync
-    - Run: diff <(grep '^- \[' tasks.md) <(sed -n '/^## Tasks/,/^## /p' .sisyphus/plans/<change-name>.md | grep '^- \[')
+    - Run: diff <(grep '^- \[' openspec/changes/<change-name>/tasks.md) <(sed -n '/^## Tasks/,/^## /p' .sisyphus/plans/<change-name>.md | grep '^- \[')
       to verify consistency on pause/all_done

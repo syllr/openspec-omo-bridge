@@ -80,7 +80,7 @@ Arithmetic uses `$((var + 1))` syntax (not `((var++))`) to avoid `set -e` exit o
 - **Do NOT modify** `requires`, `generates`, or `tracks` fields — they define the dependency graph
 - **Do NOT modify** OMO source code or built-in schemas — this repo only overrides the custom schema layer
 - The `design` artifact is **mandatory** (`tasks.requires: [specs, design]`)
-- Plan file is **not tracked** by OpenSpec's `detectCompleted()` — it's a side effect of the tasks instruction
+- Plan file is **not tracked** by OpenSpec's `detectCompleted()` — it's a side effect of the critic instruction
 
 ## CLI testing
 
