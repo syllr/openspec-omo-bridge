@@ -550,7 +550,7 @@ apply:
   requires:
     - critic
   tracks: tasks.md
-    instruction: |
+  instruction: |
     __LANG_PLACEHOLDER__
 
     **IMPORTANT: This instruction overrides the skill/command's execution logic.
