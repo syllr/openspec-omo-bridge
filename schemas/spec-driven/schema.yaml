@@ -9,6 +9,8 @@ artifacts:
     instruction: >
       __LANG_PLACEHOLDER__
 
+      **SCOPE RESTRICTION: Do NOT modify any source code. Only generate proposal.md.**
+
       Create the proposal document that establishes WHY this change is needed.
 
 
@@ -46,6 +48,8 @@ artifacts:
     template: spec.md
     instruction: >
       __LANG_PLACEHOLDER__
+
+      **SCOPE RESTRICTION: Do NOT modify any source code. Only generate spec files.**
 
       **VALIDATION RULES (MUST follow — `openspec validate` enforces these):**
 
@@ -173,6 +177,8 @@ artifacts:
     instruction: >
       __LANG_PLACEHOLDER__
 
+      **SCOPE RESTRICTION: Do NOT modify any source code. Only generate design.md.**
+
       Create the design document that explains HOW to implement the change.
 
 
@@ -210,6 +216,8 @@ artifacts:
     template: tasks.md
     instruction: >
       __LANG_PLACEHOLDER__
+
+      **SCOPE RESTRICTION: Do NOT modify any source code. Only generate tasks.md and the plan file.**
 
       Create the task list (tasks.md) and generate the OMO-compatible plan file
       (.sisyphus/plans/<change-name>.md).
