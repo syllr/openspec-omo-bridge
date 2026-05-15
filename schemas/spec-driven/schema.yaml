@@ -217,96 +217,62 @@ artifacts:
     instruction: >
       __LANG_PLACEHOLDER__
 
-      **SCOPE RESTRICTION: Do NOT modify any source code. Only generate tasks.md and the plan file.**
+      **SCOPE RESTRICTION: Do NOT modify any source code. Only generate tasks.md.**
 
-      Create the task list (tasks.md) and generate the OMO-compatible plan file
-      (.sisyphus/plans/<change-name>.md).
-
-
-      **You MUST create TWO files:**
-
-      1. **tasks.md** — Standard checkbox task list at
-      `openspec/changes/<change-name>/tasks.md`
-
-      2. **.sisyphus/plans/<change-name>.md** — Aggregated plan document at
-      project root
+      Create the task list (tasks.md).
 
 
-      === PHASE 1: Understand the OpenSpec Context ===
+      **You MUST create ONE file:**
+
+      `openspec/changes/<change-name>/tasks.md` — Standard checkbox task list
+
+
+      === PHASE 1: Understand the Context ===
 
 
       **Step 0: Read and Understand All OpenSpec Artifacts**
 
-      Read every artifact file. Each has a specific role and format. Understand
-      their content before generating anything.
+      Read every artifact file. Each has a specific role:
+
+      | File | Role |
+      |------|------|
+      | `proposal.md` | WHY — why this change, what capabilities |
+      | `specs/<capability>/spec.md` | WHAT — requirements, acceptance scenarios |
+      | `design.md` | HOW — technical approach, decisions, risks |
+      | `tasks.md` | DO — checkbox task list |
 
 
-      Artifact overview (template = format definition, product = actual content):
-
-      | File | Role | Template (format) | Product (content) |
-      |------|------|-------------------|-------------------|
-      | `proposal.md` | WHY — why this change, what capabilities | `schemas/spec-driven/templates/proposal.md` | `openspec/changes/<change-name>/proposal.md` |
-      | `specs/<capability>/spec.md` | WHAT — requirements, acceptance scenarios | `schemas/spec-driven/templates/spec.md` | `openspec/changes/<change-name>/specs/*/spec.md` |
-      | `design.md` | HOW — technical approach, decisions, risks | `schemas/spec-driven/templates/design.md` | `openspec/changes/<change-name>/design.md` |
-      | `tasks.md` | DO — checkbox task list | `schemas/spec-driven/templates/tasks.md` | `openspec/changes/<change-name>/tasks.md` |
+      How to use each artifact:
+      - **proposal.md** → list Capabilities to determine task groupings
+      - **specs/<capability>/spec.md** → extract Requirements to define task scope
+      - **design.md** → extract Decisions to plan execution approach
 
 
-      How to use each artifact when generating the plan:
+      **Step 1: Quick Artifact Review**
 
-      - **proposal.md** → extract Why for TL;DR, background for Context,
-      Capabilities list for Work Objectives
-
-      - **specs/<capability>/spec.md** → extract Requirements for Work Objectives,
-      Scenarios (WHEN/THEN) for Verification Strategy.
-      Each spec has fixed section anchors you can reference:
-      `#added-requirements`, `#modified-requirements`, `#removed-requirements`
-
-      - **design.md** (if exists) → extract Goals, Decisions, Risks for
-      Execution Strategy.
-
-      - **tasks.md** → copy checkbox list directly into ## Tasks. This is the
-      only section where content is copied, not referenced.
-
-
-      **Step 1: Quality Review of OpenSpec Artifacts (Last Quality Gate)**
-
-      Before generating anything, review all artifacts for quality issues:
-
-      1. **Coverage**: Does every proposal Capability have a corresponding spec?
-      2. **Verifiability**: Does every spec Requirement have at least one Scenario?
-      3. **Consistency**: Do proposal, specs, design, and tasks agree with each
-      other? No contradictions?
-      4. **Completeness**: Do the tasks cover all specs' Requirements?
-      5. **Clarity**: Are there ambiguous statements that could be interpreted
-      multiple ways?
-
-      → If ANY issue found: STOP. List specific problems. Wait for user
-      confirmation before proceeding.
-
+      Before generating, quickly check:
+      1. Does every proposal Capability have a corresponding spec?
+      2. Do the tasks cover all specs' key Requirements?
+      3. Any contradictions?
+      → If issues found: STOP, list specifics, wait for user.
       → If all clean: Proceed.
 
 
       **Step 2: Invoke Metis for Gap Analysis (MANDATORY)**
 
-      Before writing the plan, invoke Metis with the artifacts context.
-      If task() fails (e.g. agent unavailable), proceed without Metis
-      and note the gap analysis was skipped.
-
-      ```
-      task(subagent_type="metis", prompt="我准备为此变更生成 OMO plan。
+      Invoke Metis before writing tasks.md.
+      task(subagent_type="metis", prompt="我准备为此变更生成 tasks.md。
        已完成的产物:
        - proposal.md: [2-3句摘要]
        - specs: [列出每个capability名称+核心requirement]
        - design.md: [存在/不存在，如果存在简述决策]
-       - 计划草案: [简述主要任务分组和Wave划分]
 
-       请对计划草案做gap analysis，识别：
+       请对任务清单草稿做gap analysis，识别：
        1. 遗漏的需求或意图
        2. 表达模糊的地方
        3. scope creep / AI-slop
        4. 缺失的验收标准
        5. 未覆盖的边界情况")
-      ```
 
       Apply Metis's findings:
       - 🔴 Blocking issues → Fix them, re-invoke Metis
@@ -314,33 +280,64 @@ artifacts:
       - ✅ Confirmed → Proceed
 
 
-      === PHASE 2: Generate tasks.md ===
+      === GENERATE tasks.md ===
 
 
       Write to `openspec/changes/<change-name>/tasks.md`.
 
       Use `## Tasks` as section header, `### Wave N: Group Name` for
       sub-groupings. Each task MUST start with `- [ ] N.M Description`.
-      tasks.md keeps this simple format. The rich sub-fields go in the plan
-      file only (see PHASE 3).
+    requires:
+      - specs
+      - design
+  - id: critic
+    generates: critic.md
+    description: Multi-agent plan review checking spec compliance, plan quality, edge cases, and risks
+    template: critic.md
+    instruction: |
+      __LANG_PLACEHOLDER__
 
+      **SCOPE RESTRICTION: Do NOT modify any source code. Only generate critic.md and .sisyphus/plans/<change-name>.md.**
+
+      === PHASE 1: Read Context ===
+
+      Read these files:
+      - `.sisyphus/plans/<change-name>.md` — existing plan (if re-run)
+      - `openspec/changes/<change-name>/tasks.md` — checkbox task list
+      - `openspec/changes/<change-name>/specs/` — all spec files
+      - `openspec/changes/<change-name>/design.md` — technical design
+      - `openspec/changes/<change-name>/proposal.md` — proposal
+
+      === PHASE 2: Spec Validation (MANDATORY) ===
+
+      Run `openspec validate <change-name>` to check spec format.
+
+      If validation passes → Proceed to PHASE 3.
+
+      If validation ERRORS → Invoke Metis for fix guidance:
+      ```
+      task(subagent_type="metis", prompt="openspec validate 报告了以下格式错误：
+      [复制验证错误信息]
+
+      请分析每个错误的原因并给出具体的修复建议。
+      Spec 格式要求：
+      - Requirement 必须以 `### Requirement: <name>` 开头
+      - 描述中必须包含大写 MUST 或 SHALL（不能用中文"必须"）
+      - 每个 requirement 至少一个 scenario
+      - Scenario 以 `#### Scenario: <name>` 开头（4 个 #）
+      - Scenario 正文包含 WHEN / THEN")
+      ```
+
+      Apply Metis's fix suggestions. Re-run `openspec validate`.
+      Repeat until validation passes.
 
       === PHASE 3: Generate Plan File ===
 
+      Generate `.sisyphus/plans/<change-name>.md` — the OMO-compatible plan.
 
-      This is the OMO plan file. Write to project-root-level
-      `.sisyphus/plans/<change-name>.md`.
-
-      Structure with 9 sections. For each section, WRITE A BRIEF SUMMARY then
+      Structure with 9 sections. For each section, write a brief summary then
       APPEND OpenSpec document links with anchored references. Do NOT copy
       artifact content verbatim (except TODOs).
-
-
-      ⚠️ Before writing, check if `.sisyphus/plans/<change-name>.md` already
-      exists. If it does, ask the user: "Plan file exists. Overwrite (will lose
-      existing progress) or append new tasks?" Do NOT overwrite without
-      confirmation.
-
 
       **Section 1: ## TL;DR**
 
@@ -392,8 +389,7 @@ artifacts:
       following sub-fields. This section is parsed by `/start-work` for task
       tracking.
 
-      Each task MUST include these sub-fields (expand the simple checkbox into
-      this format):
+      Each task MUST include these sub-fields:
 
       ```
       ### Wave N: Group Name
@@ -401,7 +397,6 @@ artifacts:
       - [ ] N.M Task title
         **What to do**:
         - Implementation step 1
-        - Implementation step 2
 
         **Must NOT do**:
         - Things to avoid
@@ -410,10 +405,9 @@ artifacts:
 
         **References**:
         - Pattern: [file:line](path)
-        - API: [file:line](path)
 
         **Acceptance Criteria**:
-        `[executable command to verify]`
+        `[executable command]`
 
         **QA Scenarios**:
         Scenario: [name]
@@ -425,32 +419,20 @@ artifacts:
         > See OpenSpec context: [spec.md#added-requirements](openspec/changes/<change-name>/specs/<capability>/spec.md)
       ```
 
-      CRITICAL: Each task's last line MUST append its OpenSpec source reference
-      so the executing AI can trace back to the original requirement.
+      CRITICAL: Each task's last line MUST append its OpenSpec source reference.
 
 
       **Section 7: ## Final Verification Wave**
 
       ```
       - [ ] F1. **Plan Compliance Audit** — oracle
-        Verify all tasks match OpenSpec requirements. Check scope boundaries.
-        Output: "Must Have [N/N] | Scope [OK/LEAK] | VERDICT"
-
       - [ ] F2. **Code Quality Review** — unspecified-high
-        Run typecheck, linter, tests. Output: "Build | Lint | Tests | VERDICT"
-
       - [ ] F3. **Real Manual QA** — unspecified-high
-        Execute QA scenarios from each task. Output: "Scenarios [N/N] | VERDICT"
-
       - [ ] F4. **Scope Fidelity Check** — deep
-        Compare implementation diff against specs. No extra, no missing.
-        Output: "Tasks [N/N] | Clean | VERDICT"
       ```
 
 
       **Section 8: ## Commit Strategy**
-
-      Map tasks to files and commit messages:
 
       ```
       - Task N.M → [file] → `type(scope): description`
@@ -459,14 +441,10 @@ artifacts:
 
       **Section 9: ## Success Criteria**
 
-      Final verification checklist. Append OpenSpec specs reference for each
-      capability:
-
       ```
       - [ ] All acceptance criteria pass
       - [ ] All QA scenarios pass
       - [ ] Scope is clean (no extra, no missing)
-
       For each capability:
       > See [spec.md#added-requirements](openspec/changes/<change-name>/specs/<capability>/spec.md)
       ```
@@ -475,78 +453,29 @@ artifacts:
       <!-- Progress Tracking (Meta: sync protocol for task states) -->
 
       ```
-      - tasks.md (`openspec/changes/<change-name>/tasks.md`) is the single source of
-        truth for checkbox states
-      - When updating a checkbox in tasks.md, immediately mirror the change in
-        this plan's ## Tasks section
+      - tasks.md is the single source of truth for checkbox states
+      - When updating a checkbox in tasks.md, immediately mirror the change
+        in this plan's ## Tasks section
       - On pause or all_done: sync checkbox states from tasks.md to this plan
         and update .sisyphus/boulder.json
-      - Do NOT use todowrite/todoread — this plan file is the tracking source
+      - Do NOT use todowrite/todoread
       ```
 
 
-      === PHASE 4: Validate and Finalize ===
+      === PHASE 4: Plan Structure Validation ===
 
-
-      **Last Step: Invoke Momus for Review (OPTIONAL)**
-
-      If you want Momus to validate the final plan, invoke it.
-      It returns OKAY or REJECT with specific issues.
-      If REJECT: fix ALL issues, re-invoke Momus.
-      Loop until OKAY or you decide to stop.
-
-      **Step: Plan Structure Validation (MANDATORY)**
-
-      After writing both files, validate the plan structure before finishing:
-
+      After writing the plan, validate:
       1. `grep -c '^## ' .sisyphus/plans/<change-name>.md` → must be at least 8
       2. `grep -q '## Tasks' .sisyphus/plans/<change-name>.md` → Tasks section exists
       3. `grep -q '## Final Verification Wave' .sisyphus/plans/<change-name>.md` → FVW exists
-      4. Verify task coverage: count checkboxes in Tasks section only.
-         `sed -n '/^## Tasks/,/^## /p' .sisyphus/plans/<change-name>.md | grep -c '^- \['`
-         should equal `grep -c '^- \[' tasks.md`
+      4. `sed -n '/^## Tasks/,/^## /p' .sisyphus/plans/<change-name>.md | grep -c '^- \['` should equal `grep -c '^- \[' openspec/changes/<change-name>/tasks.md`
 
       If ANY check fails: STOP, fix the plan, re-validate.
-      Do NOT proceed until all checks pass.
 
-      === SUMMARY CHECKLIST ===
 
-      Before finishing, confirm:
-      - [ ] tasks.md exists with proper ## Tasks + ### Wave format
-      - [ ] .sisyphus/plans/<change-name>.md exists with all 9 sections
-      - [ ] Each plan section appends OpenSpec references with anchors
-      - [ ] Each task in Tasks has What to do, Must NOT do, Agent Profile,
-            References, Acceptance Criteria, QA Scenarios, Evidence, and
-            OpenSpec source reference
-      - [ ] Progress Tracking section included
-      - [ ] Final Verification Wave included
-    requires:
-      - specs
-      - design
-  - id: critic
-    generates: critic.md
-    description: Multi-agent plan review checking spec compliance, plan quality, edge cases, and risks
-    template: critic.md
-    instruction: |
-      __LANG_PLACEHOLDER__
+      === PHASE 5: Launch 5 Parallel Reviews ===
 
-      **SCOPE RESTRICTION: Do NOT modify any source code. Only generate critic.md.**
-
-      Review the plan and artifacts against spec requirements.
-
-      === PHASE 1: Read Context ===
-
-      Read these files:
-      - `.sisyphus/plans/<change-name>.md` — the plan to review
-      - `openspec/changes/<change-name>/tasks.md` — checkbox task list
-      - `openspec/changes/<change-name>/specs/` — all spec files
-      - `openspec/changes/<change-name>/design.md` — technical design
-      - `openspec/changes/<change-name>/proposal.md` — proposal
-
-      === PHASE 2: Launch 5 Parallel Reviews ===
-
-      Launch 5 Momus agents IN PARALLEL with the same comprehensive review
-      prompt. Each runs independently — aggregate and deduplicate results.
+      Launch 5 Momus agents IN PARALLEL with the same comprehensive review prompt:
 
       ```
       REVIEW_PROMPT = "你正在对一个 OpenSpec change 生成的 plan 进行全面审查。
@@ -565,18 +494,18 @@ artifacts:
       报告遗漏和 scope leak。用表格展示。
 
       维度 2 — Plan Quality：
-      逐 task 检查子字段完整性：What to do、MUST NOT do、Agent Profile、
-      Acceptance Criteria、QA Scenarios。对每个字段标 ✅/❌。
+      逐 task 检查子字段完整性、Must NOT do 是否存在、Agent Profile 是否合理、
+      Acceptance Criteria 是否可执行、QA Scenarios 是否完整。
 
       维度 3 — Edge Cases & Risks：
       scope 边界、遗漏场景、风险缓解措施、未声明的依赖、验收完整性。
 
       维度 4 — Execution Feasibility：
-      任务之间是否有依赖冲突？验收标准是否真的可执行？有无歧义？
+      任务依赖是否合理？验收标准是否可执行？有无歧义？
 
       维度 5 — Design Alignment：
-      plan 是否充分体现了 design 的决策和风险缓解措施。
-      spec 中的 scenarios 是否都在 plan 中有对应的验收步骤。"
+      plan 是否体现了 design 的决策和风险缓解措施。
+      spec 中的 scenarios 是否都有对应的验收步骤。"
 
       task1 = task(subagent_type="momus", run_in_background=true, prompt=REVIEW_PROMPT)
       task2 = task(subagent_type="momus", run_in_background=true, prompt=REVIEW_PROMPT)
@@ -585,37 +514,25 @@ artifacts:
       task5 = task(subagent_type="momus", run_in_background=true, prompt=REVIEW_PROMPT)
       ```
 
-      === PHASE 3: Aggregate Results ===
+      === PHASE 6: Aggregate Results ===
 
-      Collect all 5 results:
-      ```
-      r1 = background_output(task_id=task1)
-      r2 = background_output(task_id=task2)
-      r3 = background_output(task_id=task3)
-      r4 = background_output(task_id=task4)
-      r5 = background_output(task_id=task5)
-      ```
+      Collect all 5 results, deduplicate, merge findings. Classify by severity.
 
-      Deduplicate and merge findings. Classify by severity:
-      - 🔴 BLOCKER: Must fix before apply
-      - 🟡 WARNING: Should address
-      - ⚪ INFO: Suggestion
 
-      === PHASE 4: Generate critic.md ===
+      === PHASE 7: Generate critic.md ===
 
-      Write the review to `openspec/changes/<change-name>/critic.md` using the
-      template format.
+      Write to `openspec/changes/<change-name>/critic.md` using the template format.
 
       Determine VERDICT:
       - If any 🔴 → **🔴 BLOCKED**
       - If only 🟡/⚪ (no 🔴) → **⚠️ CONDITIONAL**
       - If no issues → **✅ PASS**
 
-      === PHASE 5: Blocking Decision ===
+      === PHASE 8: Blocking Decision ===
 
-      - If BLOCKED: Print "🛑 Critic BLOCKED. Fix 🔴 issues above, then re-run critic." Do NOT allow apply.
-      - If CONDITIONAL: Print message listing 🟡 items. User can acknowledge risks or fix.
-      - If PASS: Print "✅ All checks passed. Proceed to apply."
+      - If BLOCKED: "🛑 Critic BLOCKED. Fix 🔴 issues above, then re-run critic."
+      - If CONDITIONAL: List 🟡 items. User can acknowledge risks or fix.
+      - If PASS: "✅ All checks passed. Proceed to apply."
     requires:
       - tasks
 apply:
