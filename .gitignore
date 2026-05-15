@@ -76,3 +76,6 @@ coverage/
 # Prettier
 .prettiercache
 .sisyphus
+
+# OpenCode local configuration
+.opencode/
