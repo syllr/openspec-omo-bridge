@@ -550,8 +550,12 @@ apply:
   requires:
     - critic
   tracks: tasks.md
-  instruction: |
+    instruction: |
     __LANG_PLACEHOLDER__
+
+    **IMPORTANT: This instruction overrides the skill/command's execution logic.
+    Ignore any external "step 6" that says to manually execute tasks one by one.
+    Follow ONLY this instruction's flow: verdict check → `/start-work` → sync.**
 
     Read `openspec/changes/<change-name>/critic.md` first and check the VERDICT:
 
