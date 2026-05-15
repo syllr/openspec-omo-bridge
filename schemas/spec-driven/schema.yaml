@@ -603,13 +603,8 @@ artifacts:
 
       === PHASE 4: Generate critic.md ===
 
-      Write the full review to TWO locations:
-      1. `.sisyphus/critical/<change-name>.md` — canonical review document
-         (read by apply phase for verdict check)
-      2. `openspec/changes/<change-name>/critic.md` — tracking file for
-         OpenSpec (generates field target)
-
-      Both files have the same content. Use the template format.
+      Write the review to `openspec/changes/<change-name>/critic.md` using the
+      template format.
 
       Determine VERDICT:
       - If any 🔴 → **🔴 BLOCKED**
@@ -639,14 +634,14 @@ apply:
     - `openspec/changes/<change-name>/specs/` — what to build (requirements + scenarios)
     - `openspec/changes/<change-name>/design.md` — technical approach
     - `openspec/changes/<change-name>/tasks.md` — task list with checkboxes
-    - `.sisyphus/critical/<change-name>.md` — critic review results
+    - `openspec/changes/<change-name>/critic.md` — critic review results
 
     Also read the plan file at `.sisyphus/plans/<change-name>.md` for
     execution strategy and task details.
 
     **CRITIC VERDICT CHECK**
 
-    Before executing any task, read `.sisyphus/critical/<change-name>.md`
+    Before executing any task, read `openspec/changes/<change-name>/critic.md`
     and check the VERDICT:
 
     1. Read the first section `## Verdict` and find `**VERDICT**: ...`
