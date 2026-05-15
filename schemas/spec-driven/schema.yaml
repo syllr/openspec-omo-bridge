@@ -542,59 +542,27 @@ apply:
   instruction: |
     __LANG_PLACEHOLDER__
 
-    Implement tasks from the change's task list.
+    Read `openspec/changes/<change-name>/critic.md` first and check the VERDICT:
 
-    === STEP 1: Load Context ===
-
-    Read these context files:
-    - `openspec/changes/<change-name>/proposal.md` — why the change exists
-    - `openspec/changes/<change-name>/specs/` — what to build (requirements + scenarios)
-    - `openspec/changes/<change-name>/design.md` — technical approach
-    - `openspec/changes/<change-name>/tasks.md` — task list with checkboxes
-    - `openspec/changes/<change-name>/critic.md` — critic review results
-
-    Also read the plan file at `.sisyphus/plans/<change-name>.md` for
-    execution strategy and task details.
-
-    **CRITIC VERDICT CHECK**
-
-    Before executing any task, read `openspec/changes/<change-name>/critic.md`
-    and check the VERDICT:
-
-    1. Read the first section `## Verdict` and find `**VERDICT**: ...`
-    2. If `🔴 BLOCKED`: STOP. Print "🛑 Critic BLOCKED this change. Fix issues and re-run critic." Do NOT execute any tasks.
+    1. Read the `## Verdict` section and find `**VERDICT**: ...`
+    2. If `🔴 BLOCKED`: STOP. Print "🛑 Critic BLOCKED this change. Fix issues and re-run critic." Do NOT proceed.
     3. If `⚠️ CONDITIONAL`: List the 🟡 items. Ask user to confirm before proceeding.
-    4. If `✅ PASS`: Continue normally.
+    4. If `✅ PASS`: Continue.
 
-    === STEP 2: Execute Tasks ===
+    After VERDICT is clear, call:
+    ```
+    /start-work .sisyphus/plans/<change-name>.md
+    ```
 
-    Work through pending tasks one at a time (dependency order first).
+    This invokes OMO's built-in plan executor (Atlas) which reads the plan
+    file and executes tasks with proper delegation, verification, and session
+    continuity.
 
-    For each task:
-    1. Read the task's **What to do** and **References** for implementation guidance
-    2. **Must NOT do**: Respect the task's exclusion list
-    3. Make minimal, focused changes
-    4. Run the task's **Acceptance Criteria** command to verify
-    5. Run the task's **QA Scenarios** to validate
-
-    On task completion:
-    - Mark `- [ ]` → `- [x]` in tasks.md
-    - EAGER SYNC: Immediately update the same checkbox in
-      .sisyphus/plans/<change-name>.md
-
-    On task failure (criteria not met):
-    - Diagnose the failure, fix the issue, re-test
-    - If stuck after 3 attempts: note in plan, move to next task
-
-    === STEP 3: State Sync ===
-
-    **Task State Sync Protocol**:
-    - tasks.md is the single source of truth for checkbox states
-    - EAGER SYNC: When you change a checkbox in tasks.md, immediately update
-      the same checkbox in .sisyphus/plans/<change-name>.md
-    - ON PAUSE: Before pausing, verify both files have identical checkbox
-      states. Run: diff <(grep '^- \[' tasks.md) <(sed -n '/^## Tasks/,/^## /p' .sisyphus/plans/<change-name>.md | grep '^- \[')
-    - ON ALL_DONE: Same verification as pause. All checkboxes should be [x].
-      Also create/update .sisyphus/evidence/ directory for any evidence files.
-
-    Pause if you hit blockers or need clarification.
+    **Critic Sync Protocol**:
+    - The plan file's `## Tasks` section tracks checkbox states for `/start-work`
+    - `openspec/changes/<change-name>/tasks.md` is the OpenSpec source of truth
+    - After `/start-work` completes or pauses, copy checkbox states from
+      `.sisyphus/plans/<change-name>.md` to
+      `openspec/changes/<change-name>/tasks.md` to keep them in sync
+    - Run: diff <(grep '^- \[' tasks.md) <(sed -n '/^## Tasks/,/^## /p' .sisyphus/plans/<change-name>.md | grep '^- \[')
+      to verify consistency on pause/all_done
