@@ -264,26 +264,51 @@ artifacts:
       → If all clean: Proceed.
 
 
-      **Step 2: Invoke Metis for Gap Analysis (MANDATORY)**
+      **Step 2: Invoke Oracle for Gap Analysis (MANDATORY)**
 
-      Invoke Metis before writing tasks.md.
-      task(subagent_type="metis", prompt="我准备为此变更生成 tasks.md。
-       已完成的产物:
-       - proposal.md: [2-3句摘要]
-       - specs: [列出每个capability名称+核心requirement]
-       - design.md: [存在/不存在，如果存在简述决策]
+      Invoke Oracle before writing tasks.md. Oracle 会按信源优先级分析冲突并给出修复建议。
+      在调用 Oracle 前，先读取所有 artifacts，然后在 prompt 中附上关键内容的原文（而非仅摘要），确保 Oracle 有足够上下文做出准确判断。
 
-       请对任务清单草稿做gap analysis，识别：
-       1. 遗漏的需求或意图
-       2. 表达模糊的地方
-       3. scope creep / AI-slop
-       4. 缺失的验收标准
-       5. 未覆盖的边界情况")
+      task(subagent_type="oracle", prompt="我准备为此变更生成 tasks.md（任务清单）。
 
-      Apply Metis's findings:
-      - 🔴 Blocking issues → Fix them, re-invoke Metis
-      - 🟡 Suggestions → Address if feasible
-      - ✅ Confirmed → Proceed
+      已完成的产物原文（关键段落）：
+
+      - **proposal.md** 核心变更陈述: [引用原文 2-3 句]
+      - **各 spec 的关键 requirement 原文**:
+        - <capability-1>: 「### Requirement: <名称>
+          <完整描述，须含 MUST/SHALL>」
+          Scenario 示例: 「#### Scenario: <名称>  WHEN ... THEN ...」
+        - <capability-2>: 「### Requirement: <名称>
+          <完整描述，须含 MUST/SHALL>」
+      - **design.md** 关键决策原文（如果存在）: [引用决策原文]
+
+      请做 gap analysis，识别：
+      1. 遗漏的需求或意图
+      2. 表达模糊的地方
+      3. scope creep / AI-slop
+      4. 缺失的验收标准
+      5. 未覆盖的边界情况
+
+      **信源优先级（冲突处理依据）**：
+      1. proposal.md（最高）— WHY 和核心变更
+      2. design.md — 技术决策
+      3. specs — 详细需求
+
+      **冲突处理规则**：
+      - 低优先级与高优先级存在**明显冲突**时，给出具体的修改建议以对齐高优先级
+      - 如果 design.md 与 specs 冲突，以 proposal 为基准回溯判定
+      - 明确可自动修复的 → 标注「🔧 可自动修复：...」并说明修改内容
+      - 需要用户判断的 → 标注「👤 需用户确认：...」并提供选项
+      - 模糊不清的 → 标注「❓ 需追问：...」并说明需要什么信息")
+
+      应用 Oracle 的分析结果，循环执行以下冲突修复流程（**最多循环 3 轮**）：
+
+      1. 如果有「🔧 可自动修复」项 → 按建议修改对应文件，然后重新调用 Oracle（回到本步骤）
+      2. 如果只剩「👤 需用户确认」和/或「❓ 需追问」→ 停止循环
+         - 需用户确认 → 提供方案让用户选择
+         - 需追问 → 直接提问让用户回答
+      3. 如果全部 ✅ Confirmed → Proceed
+      4. **达到 3 轮上限时**：即使仍有「🔧 可自动修复」项，也停止循环，将所有未解决项（🔧/👤/❓）汇总展示给用户
 
 
       === GENERATE tasks.md ===
@@ -323,10 +348,15 @@ artifacts:
 
       If validation passes → Proceed to PHASE 3.
 
-      If validation ERRORS → Invoke Metis for fix guidance:
+      If validation ERRORS → Invoke Oracle for fix guidance:
+      （格式修复通常不涉及内容冲突，信源优先级规则在此作为兜底保障。）
+      如果 Oracle 调用失败，则由 AI 自行分析验证错误并修复格式问题。
       ```
-      task(subagent_type="metis", prompt="openspec validate 报告了以下格式错误：
+      task(subagent_type="oracle", prompt="openspec validate 报告了以下格式错误：
       [复制验证错误信息]
+
+      以下是出错的 requirement 原文块（供内容冲突判断参考）：
+      [复制相关 requirement 的完整 `### Requirement:` 块，含所有 scenarios]
 
       请分析每个错误的原因并给出具体的修复建议。
       Spec 格式要求：
@@ -334,10 +364,16 @@ artifacts:
       - 描述中必须包含大写 MUST 或 SHALL（不能用中文"必须"）
       - 每个 requirement 至少一个 scenario
       - Scenario 以 `#### Scenario: <name>` 开头（4 个 #）
-      - Scenario 正文包含 WHEN / THEN")
+      - Scenario 正文包含 WHEN / THEN
+
+      修复过程中如涉及内容冲突，按信源优先级处理：
+        1. proposal.md（最高）— WHY 和核心变更
+        2. design.md — 技术决策
+        3. specs — 详细需求
+      低优先级与高优先级明显冲突时，给出修改建议对齐高优先级，标注「🔧 可自动修复」。（格式修复通常不涉及内容冲突，此规则作为兜底保障。）")
       ```
 
-      Apply Metis's fix suggestions. Re-run `openspec validate`.
+      Apply Oracle's fix suggestions. Re-run `openspec validate`.
       Repeat until validation passes.
 
       === PHASE 3: Generate Plan File ===

@@ -35,13 +35,13 @@ proposal ──┬──► specs ──┐
 
 ## Quality gates
 
-1. **Spec validation** (critic, mandatory) — runs `openspec validate`, if errors consult Metis for fix guidance
+1. **Spec validation** (critic, mandatory) — runs `openspec validate`, if errors consult Oracle for fix guidance
 2. **Plan generation** (critic, after validation passes) — generates the 9-section plan
 3. **Plan structure validation** (critic, mandatory) — 4 grep checks verify sections exist and checkbox counts match
 4. **5 parallel Momus reviews** (critic, mandatory) — comprehensive review: spec compliance, plan quality, edge cases, execution feasibility, design alignment
 5. **Critic verdict** (critic, hard block) — if 🔴 BLOCKED, apply cannot proceed; if ⚠️ CONDITIONAL, user must acknowledge; if ✅ PASS, proceed
-6. **Metis invocation** (tasks, mandatory) — gap analysis on task list before generation
-7. **Metis invocation** (step 2, mandatory) — gap analysis; falls back to "proceed without Metis" if unavailable
+6. **Oracle invocation** (tasks, mandatory) — gap analysis on task list before generation; Oracle 按信源优先级（proposal.md > design.md > specs）分析冲突并给出修复建议，自动修复后循环调用直至仅剩用户判断项
+7. **Oracle invocation** (critic, mandatory) — spec validation fix guidance; 如果 Oracle 调用失败则由 AI 自行修复格式问题
 8. **Plan structure validation** (after generation, mandatory) — 4 grep checks verify sections exist and checkbox counts
    match
 9. **Momus review** (optional) — post-generation review loop with OKAY/REJECT
