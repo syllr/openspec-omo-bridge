@@ -10,12 +10,14 @@ files during the `tasks` artifact phase.
 
 ## Key files
 
-| Path                              | Purpose                                                                   |
-| --------------------------------- | ------------------------------------------------------------------------- |
-| `schemas/spec-driven/schema.yaml` | Schema definition. 5 artifacts: proposal → specs → design → tasks → apply |
-| `schemas/spec-driven/templates/`  | 4 template files (proposal.md, spec.md, design.md, tasks.md)              |
-| `scripts/sync-schemas.sh`         | Syncs repo schemas to `~/.local/share/openspec/schemas/`                  |
-| `.opencode/opencode.json`         | OpenCode project config — allows external directory access                |
+| Path                               | Purpose                                                                              |
+| ---------------------------------- | ------------------------------------------------------------------------------------ |
+| `schemas/spec-driven/schema.yaml`  | Schema definition. 5 artifacts: proposal → specs → design → tasks → apply            |
+| `schemas/spec-driven/templates/`   | 4 template files (proposal.md, spec.md, design.md, tasks.md)                         |
+| `schemas/constitution/schema.yaml` | Independent constitution schema. 5 artifacts: scan → design → tasks → critic → apply |
+| `schemas/constitution/templates/`  | 4 template files (scan.md, constitution-design.md, tasks.md, critic.md)              |
+| `scripts/sync-schemas.sh`          | Syncs repo schemas to `~/.local/share/openspec/schemas/`                             |
+| `.opencode/opencode.json`          | OpenCode project config — allows external directory access                           |
 
 ## Schema architecture
 
@@ -74,6 +76,37 @@ Arithmetic uses `$((var + 1))` syntax (not `((var++))`) to avoid `set -e` exit o
 - Scenario uses exactly 4 `#` (`#### Scenario:`)
 - Each requirement ≥1 scenario with WHEN/THEN
 - AI is instructed to run `openspec validate <change-name>` after writing specs
+
+## Constitution Schema
+
+A standalone `constitution` schema is available alongside the default `spec-driven` schema. It provides a standardized workflow for project constitution initialization and updates.
+
+**Purpose**: Manage project-level metadata — tech stack, coding standards, architecture constraints, and testing conventions — that exist independently of individual changes.
+
+**Artifact chain** (5 steps):
+
+```
+scan → design → tasks → critic → apply
+```
+
+- **scan**: Tech stack analysis with 4-phase process (config detection → user conversation → 3~5 parallel librarian agents → summary). Handles both existing projects (analyze current stack) and empty projects (recommend stack).
+- **design**: Multi-agent research for best practices per technology, `/summarize-research` to generate reference docs, optional code sync question.
+- **tasks**: Simple checkbox list (2 base tasks: update AGENTS.md + create skill files; 1 optional: fix violations).
+- **critic**: 5 parallel Momus reviews + quality gates (frontmatter, AGENTS.md section, references integrity). Reuses spec-driven's critic mechanism with adaptations.
+- **apply**: Writes AGENTS.md (`## Constitution` section) + `.opencode/skills/constitution/` (SKILL.md + references). Init/update/incomplete detection via fixed file paths.
+
+**Output**: `.opencode/skills/constitution/SKILL.md` with YAML frontmatter + references/ organized by domain.
+
+**Re-entrant design**: Re-run `openspec new change --schema constitution <name>` at any time. Apply detects existing files to determine init/update/incomplete mode.
+
+**Usage**:
+
+```bash
+# Create a new constitution change (init or update)
+openspec new change --schema constitution my-constitution
+```
+
+**Single-module vs multi-module**: For single-module projects, references are flat under `references/`. For multi-module monorepos (e.g., frontend + backend + model-service), references are organized per-module subdirectory. Cross-module architecture constraints go in top-level `architecture.md`.
 
 ## Architecture constraints
 

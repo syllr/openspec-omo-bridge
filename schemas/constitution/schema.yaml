@@ -1,0 +1,368 @@
+name: constitution
+version: 1
+description: Independent schema for project constitution initialization and updates - scan → design → tasks → critic → apply
+artifacts:
+  - id: scan
+    generates: scan.md
+    description: Tech stack analysis and multi-agent parallel research
+    template: scan.md
+    instruction: >
+      __LANG_PLACEHOLDER__
+
+      **SCOPE RESTRICTION: Do NOT modify any source code. Only generate scan.md.**
+
+
+      Analyze the project's technology stack through a structured 4-phase process:
+
+
+      **Phase 1: Project Detection & Config Parsing**
+
+      - Read configuration files: package.json, go.mod, pyproject.toml, Cargo.toml, etc.
+      - Use Glob and Grep to analyze project structure, build tools, test frameworks
+      - Distinguish between existing project (has code) and empty project
+
+      **Phase 2: User Conversation (/openspec-explore)**
+
+      - Present current tech stack analysis results
+      - Discuss whether to introduce new technologies or upgrade dependencies
+
+      **Phase 3: Parallel Research (3~5 librarian agents)**
+
+      - Launch multiple librarian agents concurrently (thread-pool pattern, 3~5 agents)
+      - Each agent handles one technology direction (e.g., frontend framework, backend language, database)
+      - Agents independently search, compare, and output technology reports
+
+      **Phase 4: Summary**
+
+      - Merge research results from all agents
+      - Document decisions and alternatives
+      - Output structured scan.md with decision log
+
+
+      **Existing project path**: Full 4-phase process starting with config analysis.
+
+      **Empty project path**: Start from Phase 2 (ask user about requirements, recommend tech stack),
+      then proceed to Phase 3 for uncertain decisions, skip Phase 1.
+
+
+      Output: scan.md — structured tech stack analysis report with decision records and alternatives.
+    requires: []
+  - id: design
+    generates: constitution-design.md
+    description: Constitution design document with best practices and reference structure
+    template: constitution-design.md
+    instruction: >
+      __LANG_PLACEHOLDER__
+
+      **SCOPE RESTRICTION: Do NOT modify any source code. Only generate constitution-design.md.**
+
+
+      Based on the confirmed tech stack from scan.md, design the constitution structure.
+
+
+      **Step 1: Multi-Agent Best Practice Research**
+
+      - Launch multiple librarian agents in parallel, each focused on one technology from the scan results
+      - Research official documentation, community standards, and common pitfalls
+      - Each agent produces a technology-specific best practice report
+
+      **Step 2: User Review**
+
+      - Present each technology's research results to the user for confirmation
+      - User can approve, request changes, or reject specific recommendations
+
+      **Step 3: Generate Reference Documents**
+
+      - Call /summarize-research to produce structured reference files:
+        - coding-standards/naming.md
+        - coding-standards/imports.md
+        - testing/unit-testing.md
+        - architecture.md
+        - gotchas.md
+      - Files are organized by domain following the constitution directory structure
+
+      **Step 4 (Optional): Ask About Code Sync**
+
+      - Use question tool to ask the user: "Do you want to scan existing code for constitution violations?"
+      - If user confirms: add code sync logic to this design, and the tasks phase will include
+        an additional task for fixing violations
+      - If user declines: skip, proceed with standard constitution creation only
+
+      **Step 5: Summary**
+
+      - Compile all findings into constitution-design.md
+      - Include complete constitution structure design with chapter organization and module layout
+
+
+      Reference documents created in Step 3 are temporary working files that will be
+      finalized during the apply phase.
+    requires:
+      - scan
+  - id: tasks
+    generates: tasks.md
+    description: Simple execution plan with 2 base tasks plus 1 optional task
+    template: tasks.md
+    instruction: >
+      __LANG_PLACEHOLDER__
+
+      **SCOPE RESTRICTION: Do NOT modify any source code. Only generate tasks.md.**
+
+
+      Create the task list (tasks.md). Tasks are simple — only file-writing operations.
+
+      **You MUST create ONE file:**
+
+      `openspec/changes/<change-name>/tasks.md` — Standard checkbox task list
+
+
+      **Base tasks (mandatory):**
+
+      1. Update AGENTS.md — add or update the `## Constitution` section as the top-level index
+      2. Create or update `.opencode/skills/constitution/` — SKILL.md (with frontmatter) and reference files
+
+
+      **Optional task (only if user chose code sync in design phase):**
+
+      3. Fix existing code that violates the constitution — scan project for violations and fix them
+
+
+      Use `## Tasks` as section header, `### Wave N: Group Name` for sub-groupings.
+      Each task MUST start with `- [ ] N.M Description`.
+    requires:
+      - design
+  - id: critic
+    generates: critic.md
+    description: >
+      Multi-agent plan review and plan generation. Generates critic.md
+      (review report) plus .sisyphus/plans/<change-name>.md (plan file,
+      side effect not tracked by OpenSpec).
+    template: critic.md
+    instruction: |
+      __LANG_PLACEHOLDER__
+
+      **SCOPE RESTRICTION: Do NOT modify any source code. Only generate critic.md and .sisyphus/plans/<change-name>.md.**
+
+      === PHASE 1: Read Context ===
+
+      Read these files:
+      - `.sisyphus/plans/<change-name>.md` — existing plan (if re-run)
+      - `openspec/changes/<change-name>/tasks.md` — checkbox task list
+      - `openspec/changes/<change-name>/scan.md` — tech stack analysis
+      - `openspec/changes/<change-name>/constitution-design.md` — constitution design
+
+      === PHASE 2: Quality Gate Validation ===
+
+      Validate the constitution output quality:
+
+      1. **SKILL.md frontmatter format (BLOCKING)**: Check that .opencode/skills/constitution/SKILL.md
+         has valid YAML frontmatter with `name: constitution` and non-empty `description`.
+         Grep for `^---` boundaries.
+
+      2. **AGENTS.md constitution section (BLOCKING)**: Check that AGENTS.md contains `## Constitution`.
+         Grep for the section header.
+
+      3. **Core reference files (WARNING)**: Check that essential reference files exist:
+         - Single-module: tech-stack.md, architecture.md
+         - Multi-module: each module's tech-stack.md + top-level architecture.md
+
+      4. **Reference link integrity (WARNING)**: Check that SKILL.md's reference links point to
+         existing files under .opencode/skills/constitution/references/.
+
+      If any BLOCKING check fails: STOP, fix the issue, re-validate.
+
+      === PHASE 3: Generate Plan File ===
+
+      Generate `.sisyphus/plans/<change-name>.md` — the OMO-compatible plan.
+
+      Structure with 9 sections. For each section, write a brief summary then
+      APPEND OpenSpec document links with anchored references. Do NOT copy
+      artifact content verbatim (except TODOs).
+
+      **Section 1: ## TL;DR**
+
+      1-2 sentence summary from scan.md/constitution-design.md.
+
+      Append:
+
+      > See [constitution-design.md](openspec/changes/<change-name>/constitution-design.md)
+
+
+      **Section 2: ## Context**
+
+      2-3 sentence background from scan.md.
+
+      Append:
+
+      > See [scan.md](openspec/changes/<change-name>/scan.md)
+
+
+      **Section 3: ## Work Objectives**
+
+      List the key requirements from constitution-design.md.
+
+      Append:
+
+      > See [constitution-design.md](openspec/changes/<change-name>/constitution-design.md)
+
+
+      **Section 4: ## Execution Strategy**
+
+      Reference constitution-design.md for the approach and key decisions.
+
+      **Note for constitution plans: Verification Strategy and Commit Strategy sections
+      are skipped per Design Decision 6 — this is a file-writing plan, not a code change plan.**
+
+
+      **Section 5: ## Tasks**
+
+      Start with the checkbox list from tasks.md and expand each task with the
+      following sub-fields. This section is parsed by `/start-work` for task
+      tracking.
+
+      Each task MUST include these sub-fields:
+
+      ```
+      ### Wave N: Group Name
+
+      - [ ] N.M Task title
+        **What to do**:
+        - Implementation step 1
+
+        **Must NOT do**:
+        - Things to avoid
+
+        **Recommended Agent Profile**: category="[category]", load_skills=["[skill]"]
+
+        **References**:
+        - Pattern: [file:line](path)
+
+        **Acceptance Criteria**:
+        `[executable command]`
+
+        **QA Scenarios**:
+        Scenario: [name]
+          Preconditions: [setup]
+          Steps: [actions]
+          Expected: [result]
+          Evidence: .sisyphus/evidence/task-N.M-[slug].[ext]
+
+        > See OpenSpec context: [constitution-design.md](openspec/changes/<change-name>/constitution-design.md)
+      ```
+
+      CRITICAL: Each task's last line MUST append its OpenSpec source reference.
+
+
+      **Section 6: ## Final Verification Wave**
+
+      ```
+      - [ ] F1. **Constitution Output Audit** — oracle
+      - [ ] F2. **Reference Completeness Check** — unspecified-high
+      - [ ] F3. **Manual QA (init/update paths)** — unspecified-high
+      - [ ] F4. **Scope Fidelity Check** — deep
+      ```
+
+
+      **Section 7: ## Success Criteria**
+
+      ```
+      - [ ] All acceptance criteria pass
+      - [ ] All QA scenarios pass
+      - [ ] Scope is clean (no extra, no missing)
+      > See [constitution-design.md](openspec/changes/<change-name>/constitution-design.md)
+      ```
+
+
+      <!-- Progress Tracking (Meta: sync protocol for task states) -->
+
+      ```
+      - tasks.md is the single source of truth for checkbox states
+      - When updating a checkbox in tasks.md, immediately mirror the change
+        in this plan's ## Tasks section
+      - On pause or all_done: sync checkbox states from tasks.md to this plan
+        and update .sisyphus/boulder.json
+      - Do NOT use todowrite/todoread
+      ```
+
+
+      === PHASE 4: Plan Structure Validation ===
+
+      After writing the plan, validate:
+      1. `grep -c '^## ' .sisyphus/plans/<change-name>.md` → must be at least 7 (skipping Verification Strategy and Commit Strategy)
+      2. `grep -q '## Tasks' .sisyphus/plans/<change-name>.md` → Tasks section exists
+      3. `grep -q '## Final Verification Wave' .sisyphus/plans/<change-name>.md` → FVW exists
+      4. `sed -n '/^## Tasks/,/^## /p' .sisyphus/plans/<change-name>.md | grep -c '^- \\['` should equal `grep -c '^- \\[' openspec/changes/<change-name>/tasks.md`
+
+      If ANY check fails: STOP, fix the plan, re-validate.
+
+
+      === PHASE 5: Launch 5 Parallel Reviews ===
+
+      Launch 5 Momus agents IN PARALLEL with the constitution review prompt reviewing:
+      - Plan quality and completeness
+      - Reference file structure
+      - Constitution output correctness
+      - Edge cases and risks
+      - Design alignment
+
+      === PHASE 6: Aggregate Results ===
+
+      Collect all 5 results, deduplicate, merge findings. Classify by severity.
+
+
+      === PHASE 7: Generate critic.md ===
+
+      Write to `openspec/changes/<change-name>/critic.md` using the template format.
+
+      Determine VERDICT:
+      - If any 🔴 → **🔴 BLOCKED**
+      - If only 🟡/⚪ (no 🔴) → **⚠️ CONDITIONAL**
+      - If no issues → **✅ PASS**
+
+      === PHASE 8: Blocking Decision ===
+
+      - If BLOCKED: "🛑 Critic BLOCKED. Fix 🔴 issues above, then re-run critic."
+      - If CONDITIONAL: List 🟡 items. User can acknowledge risks or fix.
+      - If PASS: "✅ All checks passed. Proceed to apply."
+    requires:
+      - tasks
+apply:
+  requires:
+    - critic
+  tracks: tasks.md
+  instruction: |
+    __LANG_PLACEHOLDER__
+
+    **IMPORTANT: This instruction overrides the skill/command's execution logic.
+    Ignore any external "step 6" that says to manually execute tasks one by one.
+    Follow ONLY this instruction's flow: verdict check → `/start-work` → sync.**
+
+    Read `openspec/changes/<change-name>/critic.md` first and check the VERDICT:
+
+    1. Read the `## Verdict` section and find `**VERDICT**: ...`
+    2. If `🔴 BLOCKED`: STOP. Print "🛑 Critic BLOCKED this change. Fix issues and re-run critic." Do NOT proceed.
+    3. If `⚠️ CONDITIONAL`: List the 🟡 items. Ask user to confirm before proceeding.
+    4. If `✅ PASS`: Continue.
+
+    After VERDICT is clear, call:
+    ```
+    /start-work .sisyphus/plans/<change-name>.md
+    ```
+
+    This invokes OMO's built-in plan executor (Atlas) which reads the plan
+    file and executes tasks with proper delegation, verification, and session
+    continuity.
+
+    **Init/Update Detection**:
+    - Before executing, check if `.opencode/skills/constitution/SKILL.md` and `AGENTS.md`'s `## Constitution` section exist
+    - Both exist → **Update mode**: diff existing content, prompt user for confirmation
+    - Both missing → **Init mode**: create all files fresh
+    - Partial → **Incomplete mode**: warn user, offer options (overwrite/complete/abort)
+
+    **Critic Sync Protocol**:
+    - The plan file's `## Tasks` section tracks checkbox states for `/start-work`
+    - `openspec/changes/<change-name>/tasks.md` is the OpenSpec source of truth
+    - After `/start-work` completes or pauses, copy checkbox states from
+      `.sisyphus/plans/<change-name>.md` to
+      `openspec/changes/<change-name>/tasks.md` to keep them in sync
+    - Run: diff <(grep '^- \[' openspec/changes/<change-name>/tasks.md) <(sed -n '/^## Tasks/,/^## /p' .sisyphus/plans/<change-name>.md | grep '^- \[')
+      to verify consistency on pause/all_done
