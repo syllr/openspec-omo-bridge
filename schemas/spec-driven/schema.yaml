@@ -756,7 +756,7 @@ apply:
 
     **IMPORTANT: This instruction overrides the skill/command's execution logic.
     Ignore any external "step 6" that says to manually execute tasks one by one.
-    Follow ONLY this instruction's flow: verdict check → `/start-work` → sync.**
+    Follow ONLY this instruction's flow: verdict check → `/start-work` → Oracle verify → sync.**
 
     Read `openspec/changes/<change-name>/critic.md` first and check the VERDICT:
 
@@ -773,6 +773,72 @@ apply:
     This invokes OMO's built-in plan executor (Atlas) which reads the plan
     file and executes tasks with proper delegation, verification, and session
     continuity.
+
+    After `/start-work` completes, capture the list of changed files:
+    ```
+    git diff --name-only HEAD
+    ```
+    This tells Oracle which files were created or modified by this change.
+    Then run Oracle verification with a loop of up to 3 rounds.
+
+    如果 Oracle task() 调用失败，AI 自行分析 git diff 和 artifacts 并生成 verify.md，
+    然后继续判定流程（参照 critic PHASE 3 的 fallback 模式）。
+
+    ```
+    task(subagent_type="oracle", run_in_background=false, prompt="你正在验证实现产出与 OpenSpec change artifacts 的一致性。
+    请检查所有实现产出（代码、配置、文档等）是否按 proposal、spec、design 的要求正确实现。
+    按严重程度输出发现（🔴阻塞 / 🟡警告 / ⚪建议）。
+
+    审查文件：
+    - proposal: openspec/changes/<change-name>/proposal.md
+    - specs:    openspec/changes/<change-name>/specs/
+    - design:   openspec/changes/<change-name>/design.md（如果存在）
+    - tasks:    openspec/changes/<change-name>/tasks.md
+    - plan:     .sisyphus/plans/<change-name>.md
+    - research: openspec/changes/<change-name>/research/（如果存在）
+
+    变更文件清单（来自 git diff --name-only HEAD）：
+    [在此填入上个命令的输出]
+
+    请逐一检查变更文件是否满足以下条件：
+
+    维度 1 — Spec 合规性：
+    - 每个 spec requirement 的 scenario 是否在实现中有对应体现？
+    - 实现行为是否满足 spec 中 WHEN/THEN 的条件？
+
+    维度 2 — Design 对齐（实现与 Design 一致性）：
+    - 实现方案是否符合 design.md 的技术决策？
+    - design 中明确排除的 Non-Goals 是否在实现中出现？
+    - research/ 中的调研结论是否在实现中得到正确应用？
+
+    维度 3 — Proposal 范围：
+    - 实现内容是否在 proposal 定义的 Capabilities 范围内？
+    - 是否有超出 proposal 范围的 scope leak？
+    - proposal 中的所有 Capability 是否都有对应实现？
+
+    维度 4 — Task 完成度：
+    - tasks.md 中的所有 task 是否都有对应的实现产出？
+    - plan 中每个 task 的 Evidence 路径（.sisyphus/evidence/）是否存在且有效？
+
+    输出格式：逐维度分析 + 问题汇总 + 总体结论。
+
+    最终判定标准：
+    - 🔴 BLOCKED：存在严重的实现偏离，必须修复才能继续
+    - ⚠️ CONDITIONAL：实现基本正确但有 🟡/⚪ 瑕疵，可接受风险继续推进
+    注意：请谨慎区分 BLOCKED 和 CONDITIONAL。只有确实阻碍功能正确性的问题才标 🔴。
+
+    将完整结果保存到 openspec/changes/<change-name>/verify-round-{N}.md。")
+    ```
+
+    读取 `openspec/changes/<change-name>/verify-round-{N}.md` 中的最终判定：
+    1. 如果 ✅ PASS → 通过，继续
+    2. 如果 🔴 BLOCKED → 修复问题后重新运行 Oracle 验证（**最多 3 轮**，超限后汇总给用户）
+       **修复策略**：
+       - 只修复 🔴 问题，不要修改 🟡/⚪（那些在 CONDITIONAL 路径处理）
+       - 每轮最多修复 3 个 🔴 问题，防止一次改动过大引入新问题
+       - 修复前记录当前状态（git stash），以便失败后回滚
+       - 修复后不要重新运行 /start-work，只修改产出文件
+    3. 如果 ⚠️ CONDITIONAL → 汇总 🟡/⚪ 问题展示给用户，让用户决定是接受继续还是修复后再重新运行 Oracle 验证
 
     **Sync Protocol**:
     - The plan file's `## Tasks` section tracks checkbox states for `/start-work`
