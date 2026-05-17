@@ -12,7 +12,7 @@ artifacts:
       **SCOPE RESTRICTION: Do NOT modify any source code. Only generate scan.md.**
 
 
-      Analyze the project's technology stack through a structured 4-phase process:
+      Analyze the project's technology stack through a structured 3-phase process:
 
 
       **Phase 1: Project Detection & Config Parsing**
@@ -25,24 +25,18 @@ artifacts:
 
       - Present current tech stack analysis results
       - Discuss whether to introduce new technologies or upgrade dependencies
+      - Identify any technology decisions that may need verification
 
-      **Phase 3: Parallel Research (3~5 librarian agents)**
+      **Phase 3: Summary**
 
-      - Launch multiple librarian agents concurrently (thread-pool pattern, 3~5 agents)
-      - Each agent handles one technology direction (e.g., frontend framework, backend language, database)
-      - Agents independently search, compare, and output technology reports
-
-      **Phase 4: Summary**
-
-      - Merge research results from all agents
       - Document decisions and alternatives
       - Output structured scan.md with decision log
 
 
-      **Existing project path**: Full 4-phase process starting with config analysis.
+      **Existing project path**: 3-phase process starting with config analysis.
 
       **Empty project path**: Start from Phase 2 (ask user about requirements, recommend tech stack),
-      then proceed to Phase 3 for uncertain decisions, skip Phase 1.
+      then proceed directly to Summary, skip Phase 1.
 
 
       Output: scan.md — structured tech stack analysis report with decision records and alternatives.
@@ -65,6 +59,9 @@ artifacts:
       - Launch multiple librarian agents in parallel, each focused on one technology from the scan results
       - Research official documentation, community standards, and common pitfalls
       - Each agent produces a technology-specific best practice report
+      - After all librarians complete, generate a summary file `research-scope.md` listing all
+        researched topics and their key findings. This file is later used by Technical Research
+        to determine which topics already have coverage.
 
       **Step 2: User Review**
 
@@ -80,6 +77,52 @@ artifacts:
         - architecture.md
         - gotchas.md
       - Files are organized by domain following the constitution directory structure
+
+
+      === Technical Research (Optional) ===
+
+      When reading scan.md, watch out for **uncertainty signals** such as:
+
+      - Words like "可能", "maybe", "might", "needs investigation"
+      - Unclear library behavior or compatibility concerns
+      - Technology decisions that need verification before finalizing
+      - References to undocumented APIs or protocols
+
+      对于每个不确定点，按以下流程处理：
+
+      1. **Identify research topics**: Extract each uncertain point from scan.md
+         into a named research topic (kebab-case).
+
+      2. **Research and validate**: For each topic, determine if Step 1's librarian
+         research already covers it. If yes → directly run deep validation.
+         If no → fire a librarian first, then deep validation.
+
+         All research artifacts are saved to `$project/spectest/<topic>/`.
+         After user confirmation, move to `openspec/changes/<change-name>/research/<topic>/`.
+
+         ```
+         # If topic already researched in Step 1:
+         task(category="deep", run_in_background=false, prompt="基于已调研的结果，写验证脚本...")
+
+         # If topic needs new research first:
+         task(subagent_type="librarian", run_in_background=false, prompt="调研此技术点...")
+         task(category="deep", run_in_background=false, prompt="基于调研结果，写验证脚本...")
+         ```
+
+         Fire ALL deep agents in ONE message (Wave 2). If any topics need a new
+         librarian, fire those first (Wave 1), then all deep agents.
+
+      3. **User confirmation**: Present summary of findings. After user confirms,
+         move `spectest/<topic>/` → `openspec/changes/<change-name>/research/<topic>/`.
+
+      4. **Update constitution-design.md**: Reference research findings in relevant sections.
+         Use links like `详见 research/<topic>/notes.md`.
+
+      **Important**:
+      - research/ 是**可选的** — 只有 scan.md 中存在不确定点时才创建
+      - research/ 是 side effect，不被 OpenSpec generations 跟踪
+      - spectest/ 是临时目录，用户确认后数据才会移到 research/
+
 
       **Step 4 (Optional): Ask About Code Sync**
 
@@ -108,23 +151,83 @@ artifacts:
       **SCOPE RESTRICTION: Do NOT modify any source code. Only generate tasks.md.**
 
 
-      Create the task list (tasks.md). Tasks are simple — only file-writing operations.
+      === PHASE 1: Understand the Context ===
 
-      **You MUST create ONE file:**
 
-      `openspec/changes/<change-name>/tasks.md` — Standard checkbox task list
+      Read every artifact file. Each has a specific role:
 
+      | File | Role |
+      |------|------|
+      | `scan.md` | WHY — tech stack analysis, decisions |
+      | `constitution-design.md` | HOW — reference structure, best practices |
+      | `tasks.md` | DO — checkbox task list |
+
+      How to use each artifact:
+      - **scan.md** → list key technologies to determine task groupings
+      - **constitution-design.md** → extract decisions to plan execution approach
+
+
+      **Step 1: Quick Artifact Review**
+
+      Before generating, quickly check:
+      1. Does scan.md's technology decisions align with constitution-design.md's reference structure?
+      2. Any contradictions between scan.md and constitution-design.md?
+      → If issues found: STOP, list specifics, wait for user.
+      → If all clean: Proceed.
+
+
+      **Step 2: Invoke Oracle for Gap Analysis (MANDATORY)**
+
+      Invoke Oracle before writing tasks.md. Oracle 会按信源优先级分析冲突并给出修复建议。
+      在调用 Oracle 前，先读取所有 artifacts，然后在 prompt 中附上关键内容的原文。
+
+      task(subagent_type="oracle", run_in_background=false, prompt="我准备为此变更生成 tasks.md。
+
+      已完成的产物原文（关键段落）：
+      - **scan.md** 核心技术决策: [引用原文 2-3 句]
+      - **constitution-design.md** 关键设计决策: [引用原文]
+
+      请做 gap analysis，识别：
+      1. 遗漏的需求或意图
+      2. 表达模糊的地方
+      3. scope creep / AI-slop
+      4. 缺失的验收标准
+      5. 未覆盖的边界情况
+      6. **research 完整性**：
+         - 检查 scan.md 中的不确定性信号
+         - 如果 scan.md 有不确切表述但 research/ 中无对应调研 → 标记为 🔴 缺失
+
+      **信源优先级（冲突处理依据）**：
+      1. scan.md（最高）— 技术栈分析和决策
+      2. research/（如果存在）— 实证调研结果，优先级高于未经验证的设计假设
+      3. constitution-design.md — 参考结构设计
+
+      **冲突处理规则**：
+      - 低优先级与高优先级存在**明显冲突**时，给出具体的修改建议以对齐高优先级
+      - 明确可自动修复的 → 标注「🔧 可自动修复：...」并说明修改内容
+      - 需要用户判断的 → 标注「👤 需用户确认：...」并提供选项
+      - 模糊不清的 → 标注「❓ 需追问：...」并说明需要什么信息")
+
+      应用 Oracle 的分析结果，循环执行以下冲突修复流程（**最多循环 3 轮**）：
+
+      1. 如果有「🔧 可自动修复」项 → 按建议修改对应文件，然后重新调用 Oracle
+      2. 如果只剩「👤 需用户确认」和/或「❓ 需追问」→ 停止循环
+         - 需用户确认 → 提供方案让用户选择
+         - 需追问 → 直接提问让用户回答
+      3. 如果全部 ✅ Confirmed → Proceed
+      4. **达到 3 轮上限时**：即使仍有「🔧 可自动修复」项，也停止循环，将所有未解决项汇总展示给用户
+
+
+      === GENERATE tasks.md ===
+
+      Write to `openspec/changes/<change-name>/tasks.md`.
 
       **Base tasks (mandatory):**
+       1. Update AGENTS.md — add or update the `## Constitution` section
+       2. Create or update `.opencode/skills/constitution/` — SKILL.md and reference files
 
-      1. Update AGENTS.md — add or update the `## Constitution` section as the top-level index
-      2. Create or update `.opencode/skills/constitution/` — SKILL.md (with frontmatter) and reference files
-
-
-      **Optional task (only if user chose code sync in design phase):**
-
-      3. Fix existing code that violates the constitution — scan project for violations and fix them
-
+      **Optional task (only if user chose code sync):**
+       3. Fix existing code violations
 
       Use `## Tasks` as section header, `### Wave N: Group Name` for sub-groupings.
       Each task MUST start with `- [ ] N.M Description`.
@@ -133,9 +236,9 @@ artifacts:
   - id: critic
     generates: critic.md
     description: >
-      Multi-agent plan review and plan generation. Generates critic.md
-      (review report) plus .sisyphus/plans/<change-name>.md (plan file,
-      side effect not tracked by OpenSpec).
+      Plan generation and multi-agent review. Generates
+      .sisyphus/plans/<change-name>.md (OMO plan) and critic.md
+      (review report with verdict).
     template: critic.md
     instruction: |
       __LANG_PLACEHOLDER__
@@ -145,182 +248,257 @@ artifacts:
       === PHASE 1: Read Context ===
 
       Read these files:
-      - `.sisyphus/plans/<change-name>.md` — existing plan (if re-run)
       - `openspec/changes/<change-name>/tasks.md` — checkbox task list
       - `openspec/changes/<change-name>/scan.md` — tech stack analysis
       - `openspec/changes/<change-name>/constitution-design.md` — constitution design
+      - `openspec/changes/<change-name>/research/` — technical research (if exists)
 
-      === PHASE 2: Quality Gate Validation ===
+      === PHASE 2: Basic Structure Check ===
 
-      Validate the constitution output quality:
+      Check the basic structure of the change:
+      1. `ls openspec/changes/<change-name>/scan.md` — scan.md 存在
+      2. `ls openspec/changes/<change-name>/constitution-design.md` — constitution-design.md 存在
+      3. `test -f openspec/changes/<change-name>/tasks.md && echo exists` — tasks.md 存在
+      4. `grep -c '^- \[' openspec/changes/<change-name>/tasks.md` — 至少 1 个 task checkbox
 
-      1. **SKILL.md frontmatter format (BLOCKING)**: Check that .opencode/skills/constitution/SKILL.md
-         has valid YAML frontmatter with `name: constitution` and non-empty `description`.
-         Grep for `^---` boundaries.
+      If ANY check fails: STOP, list what's missing, wait for user.
+      If all pass: Proceed.
 
-      2. **AGENTS.md constitution section (BLOCKING)**: Check that AGENTS.md contains `## Constitution`.
-         Grep for the section header.
+      === PHASE 3: Oracle + Metis Concurrent Review of tasks.md ===
 
-      3. **Core reference files (WARNING)**: Check that essential reference files exist:
-         - Single-module: tech-stack.md, architecture.md
-         - Multi-module: each module's tech-stack.md + top-level architecture.md
+      Launch 1 Oracle + 1 Metis agent IN PARALLEL to review tasks.md.
+      Oracle 专注于内容拆分合理性，Metis 专注于 OMO 格式合规性。
 
-      4. **Reference link integrity (WARNING)**: Check that SKILL.md's reference links point to
-         existing files under .opencode/skills/constitution/references/.
+      ```
+      ORACLE_REVIEW_PROMPT = "你正在对一个 OpenSpec change 的任务清单（tasks.md）进行 Oracle 评审。
+      评审目标：评估任务拆分的合理性（内容导向）。
+      按严重程度输出发现（🔴阻塞 / 🟡警告 / ⚪建议）。
 
-      If any BLOCKING check fails: STOP, fix the issue, re-validate.
+      审查文件：
+      - tasks:    openspec/changes/<change-name>/tasks.md
+      - scan:     openspec/changes/<change-name>/scan.md
+      - design:   openspec/changes/<change-name>/constitution-design.md
 
-      === PHASE 3: Generate Plan File ===
+      信源优先级（冲突处理依据）：
+      1. scan.md（最高）— 技术栈分析和决策
+      2. constitution-design.md — 参考结构设计
+
+      请逐一检查以下 3 个维度：
+
+      维度 1 — 内容拆分合理性：
+      - 每个 task 是否足够原子化？
+      - Wave 分组是否合理？同一 Wave 内的 task 是否互不依赖？
+
+      维度 2 — 优化建议（从内容必要性出发）：
+      - 哪些 task 之间的依赖是虚假的？
+      - 每个 Wave 是否有足够的并发度？
+      - 如果调整并发/顺序，是否会影响质量？
+
+      维度 3 — 完整性与覆盖度：
+      - scan.md 和 constitution-design.md 的要求是否都有对应 task？
+      - 有无遗漏的边界场景？
+
+      输出格式：先逐维度分析，然后汇总问题清单，每个问题标注 severity。"
+
+      METIS_REVIEW_PROMPT = "你正在对一个 OpenSpec change 的任务清单（tasks.md）进行 Metis 评审。
+      评审目标：评估 OMO 格式合规性（格式规则驱动）。
+      按严重程度输出发现（🔴阻塞 / 🟡警告 / ⚪建议）。
+
+      审查文件：
+      - tasks: openspec/changes/<change-name>/tasks.md
+
+      OMO Task 标准子字段（共 9 个）：
+      1. **What to do** — 可执行的实施步骤
+      2. **Must NOT do** — 明确的排除项
+      3. **Recommended Agent Profile** — category + skills
+      4. **References** — 代码模式参考
+      5. **Acceptance Criteria** — 可执行的验证命令
+      6. **QA Scenarios** — 强制：快乐路径 + 失败路径
+      7. **Parallelization** — 并行组、阻塞关系
+      8. **Evidence** — 验证证据路径
+      9. **Commit** — 是否提交及信息
+
+      OMO Wave 规则：
+      - Wave = 一组可并发执行的任务，同一 Wave 内默认并发
+      - 不同 Wave 之间串行
+      - 只有 Input dependency 和 File conflict 需要串行
+
+      请逐一检查以下 3 个维度：
+
+       维度 1 — OMO 格式合规性（逐 task 表格检查）：
+       | Task | What to do | Must NOT do | Agent Profile | References | Acceptance Criteria | QA Scenarios | Parallelization | Evidence |
+       |------|-----------|-------------|---------------|------------|-------------------|--------------|-----------------|----------|
+       - QA Scenarios 是否包含 Tool/Preconditions/Steps/Expected/Evidence 五要素？
+         1. **Tool**: 验证工具（如 Playwright / Bash / curl）
+         2. **Preconditions**: 前置条件（如"用户已登录"、"数据库包含测试数据"）
+         3. **Steps**: 具体操作步骤（如"点击按钮"、"发送 GET 请求到 /api/user"）
+         4. **Expected**: 预期结果（具体可观测的值，如"状态码 200"、"元素可见"）
+         5. **Evidence**: 证据路径（如 .sisyphus/evidence/task-N.M-xxx.png）
+
+      维度 2 — Wave 结构合规性：
+      - Wave 命名是否清晰？
+      - Wave 内任务数量是否合理？
+      - 是否有 Wave 中混入了有依赖关系的 task？
+
+      维度 3 — 优化建议（从格式规则出发）：
+      - 哪些 task 的 QA Scenarios 不足？
+      - 所有优化建议必须标注「质量影响：无/低/中/高」"
+
+      task(subagent_type="oracle", run_in_background=false, prompt=ORACLE_REVIEW_PROMPT)
+      task(subagent_type="metis", run_in_background=false, prompt=METIS_REVIEW_PROMPT)
+      ```
+
+      Wait for ALL 2 agents to complete. Collect results, merge findings. Classify by severity.
+      - 🔴 from any source → BLOCKED, fix source files and re-run PHASE 3（**最多 3 轮**，超限后汇总 🔴 问题给用户）
+      - 🟡/⚪ → evaluate and fix if needed
+
+      === PHASE 4: Generate Plan ===
 
       Generate `.sisyphus/plans/<change-name>.md` — the OMO-compatible plan.
 
-      Structure with 9 sections. For each section, write a brief summary then
-      APPEND OpenSpec document links with anchored references. Do NOT copy
-      artifact content verbatim (except TODOs).
-
-      **Section 1: ## TL;DR**
-
-      1-2 sentence summary from scan.md/constitution-design.md.
-
-      Append:
-
-      > See [constitution-design.md](openspec/changes/<change-name>/constitution-design.md)
-
-
-      **Section 2: ## Context**
-
-      2-3 sentence background from scan.md.
-
-      Append:
-
-      > See [scan.md](openspec/changes/<change-name>/scan.md)
-
-
-      **Section 3: ## Work Objectives**
-
-      List the key requirements from constitution-design.md.
-
-      Append:
-
-      > See [constitution-design.md](openspec/changes/<change-name>/constitution-design.md)
-
-
-      **Section 4: ## Execution Strategy**
-
-      Reference constitution-design.md for the approach and key decisions.
-
-      **Note for constitution plans: Verification Strategy and Commit Strategy sections
-      are skipped per Design Decision 6 — this is a file-writing plan, not a code change plan.**
-
-
-      **Section 5: ## Tasks**
-
-      Start with the checkbox list from tasks.md and expand each task with the
-      following sub-fields. This section is parsed by `/start-work` for task
-      tracking.
-
-      Each task MUST include these sub-fields:
-
+      First, try using Prometheus:
       ```
-      ### Wave N: Group Name
+      task(subagent_type="prometheus", run_in_background=false, prompt="基于 OpenSpec change 生成执行计划。
 
-      - [ ] N.M Task title
-        **What to do**:
-        - Implementation step 1
+      输入文件：
+      - scan:     openspec/changes/<change-name>/scan.md
+      - design:   openspec/changes/<change-name>/constitution-design.md
+      - tasks:    openspec/changes/<change-name>/tasks.md
+      - research: openspec/changes/<change-name>/research/（如果存在）
 
-        **Must NOT do**:
-        - Things to avoid
+      输出文件：.sisyphus/plans/<change-name>.md
 
-        **Recommended Agent Profile**: category="[category]", load_skills=["[skill]"]
+      必须包含以下 sections，使用 summary + link 模式：
+      1. ## TL;DR
+      2. ## Context
+      3. ## Work Objectives
+      4. ## Execution Strategy
+      5. ## Tasks — tasks.md 的 checkbox 展开为子字段格式
+      6. ## Final Verification Wave — F1~F4
+      7. ## Success Criteria
 
-        **References**:
-        - Pattern: [file:line](path)
+      Note: Verification Strategy and Commit Strategy sections are skipped per Design Decision 6.
+      每个 task 必须包含：**What to do** / **Must NOT do** / **Recommended Agent Profile** / **References** / **Acceptance Criteria** / **QA Scenarios** / **Parallelization** / **Evidence** / **Commit**
 
-        **Acceptance Criteria**:
-        `[executable command]`
-
-        **QA Scenarios**:
-        Scenario: [name]
-          Preconditions: [setup]
-          Steps: [actions]
-          Expected: [result]
-          Evidence: .sisyphus/evidence/task-N.M-[slug].[ext]
-
-        > See OpenSpec context: [constitution-design.md](openspec/changes/<change-name>/constitution-design.md)
+      关键规则：
+      - Task 编号必须与 tasks.md 一致
+      - Acceptance Criteria 必须是可执行的命令")
       ```
 
-      CRITICAL: Each task's last line MUST append its OpenSpec source reference.
-
-
-      **Section 6: ## Final Verification Wave**
-
+      If Prometheus is unavailable (task call fails), fall back to:
       ```
-      - [ ] F1. **Constitution Output Audit** — oracle
-      - [ ] F2. **Reference Completeness Check** — unspecified-high
-      - [ ] F3. **Manual QA (init/update paths)** — unspecified-high
-      - [ ] F4. **Scope Fidelity Check** — deep
+      task(category="deep", run_in_background=false, prompt="基于 OpenSpec change 生成执行计划...（同上）")
       ```
 
-
-      **Section 7: ## Success Criteria**
-
-      ```
-      - [ ] All acceptance criteria pass
-      - [ ] All QA scenarios pass
-      - [ ] Scope is clean (no extra, no missing)
-      > See [constitution-design.md](openspec/changes/<change-name>/constitution-design.md)
-      ```
-
-
-      <!-- Progress Tracking (Meta: sync protocol for task states) -->
-
-      ```
-      - tasks.md is the single source of truth for checkbox states
-      - When updating a checkbox in tasks.md, immediately mirror the change
-        in this plan's ## Tasks section
-      - On pause or all_done: sync checkbox states from tasks.md to this plan
-        and update .sisyphus/boulder.json
-      - Do NOT use todowrite/todoread
-      ```
-
-
-      === PHASE 4: Plan Structure Validation ===
+      === PHASE 5: Plan Structure Validation ===
 
       After writing the plan, validate:
       1. `grep -c '^## ' .sisyphus/plans/<change-name>.md` → must be at least 7 (skipping Verification Strategy and Commit Strategy)
       2. `grep -q '## Tasks' .sisyphus/plans/<change-name>.md` → Tasks section exists
       3. `grep -q '## Final Verification Wave' .sisyphus/plans/<change-name>.md` → FVW exists
-      4. `sed -n '/^## Tasks/,/^## /p' .sisyphus/plans/<change-name>.md | grep -c '^- \\['` should equal `grep -c '^- \\[' openspec/changes/<change-name>/tasks.md`
+      4. `sed -n '/^## Tasks/,/^## /p' .sisyphus/plans/<change-name>.md | grep -c '^- \['` should equal `grep -c '^- \[' openspec/changes/<change-name>/tasks.md`
 
-      If ANY check fails: STOP, fix the plan, re-validate.
+      If ANY check fails: STOP, fix the plan, re-validate（**最多 3 轮**，超限后汇总给用户）。
 
+      === PHASE 6: Oracle + Metis + Momus Concurrent Review of Plan ===
 
-      === PHASE 5: Launch 5 Parallel Reviews ===
+      Launch 1 Oracle + 1 Metis + 1 Momus agent ALL IN PARALLEL to review the generated plan.
+      Oracle 专注于 content 层面：设计对齐、成功标准。
+      Metis 专注于 quality 层面：结构、QA Scenarios、Wave 并发。
+      Momus 专注于最终可执行性判定：执行路径审查 + 风险矩阵审查。
 
-      Launch 5 Momus agents IN PARALLEL with the constitution review prompt reviewing:
-      - Plan quality and completeness
-      - Reference file structure
-      - Constitution output correctness
-      - Edge cases and risks
-      - Design alignment
+      ```
+      ORACLE_PLAN_REVIEW_PROMPT = "你正在评审 OMO plan 的内容准确性（Oracle 评审）。
+      按严重程度输出发现（🔴阻塞 / 🟡警告 / ⚪建议）。
 
-      === PHASE 6: Aggregate Results ===
+      审查文件：
+      - plan:  .sisyphus/plans/<change-name>.md
+      - design: openspec/changes/<change-name>/constitution-design.md
+      - tasks: openspec/changes/<change-name>/tasks.md
+      - research: openspec/changes/<change-name>/research/（如果存在）
 
-      Collect all 5 results, deduplicate, merge findings. Classify by severity.
+      信源优先级（冲突处理依据）：
+      1. scan.md（最高）— 技术栈分析和决策
+      2. constitution-design.md — 参考结构设计
 
+      请逐一检查以下 3 个维度：
+
+      维度 1 — Design Alignment：
+      - plan 的 Execution Strategy 是否反映了 constitution-design.md 的决策？
+
+      维度 2 — Verification Strategy：
+      - FVW（Final Verification Wave）是否合理？
+
+      维度 3 — Success Criteria：
+      - Success Criteria 是否可衡量？
+
+      输出格式：逐维度分析 + 问题汇总。"
+
+      METIS_PLAN_REVIEW_PROMPT = "你正在评审 OMO plan 的结构和质量（Metis 评审）。
+      按严重程度输出发现（🔴阻塞 / 🟡警告 / ⚪建议）。
+
+      审查文件：
+      - plan: .sisyphus/plans/<change-name>.md
+
+      请逐一检查以下 3 个维度：
+
+      维度 1 — 结构完整性：
+      - 所有 7 个 section 是否都存在？
+      - 每个 section 是否使用 summary + link 模式？
+
+      维度 2 — QA Scenarios 质量：
+      - 每个 task 的 QA Scenarios 是否包含五要素？
+
+      维度 3 — Wave 结构与并发：
+      - Wave 分组是否合理？
+      - 同一 Wave 内的 task 是否确实可以并发执行？
+
+      输出格式：逐维度分析 + 问题汇总。"
+
+      MOMUS_PLAN_REVIEW_PROMPT = "你正在对 OMO plan 执行双重门禁审查（Momus 评审）。
+
+      **Part A — 执行路径审查**：
+      1. Wave 依赖是否合理？同一 Wave 内的 task 是否真的可以并发？
+      2. 每个 task 的 Acceptance Criteria 是否可执行？
+      3. FVW 是否覆盖了关键验证点？
+
+      **Part B — 风险矩阵审查**：
+      1. 是否有遗漏的边界场景？
+      2. QA Scenarios 是否至少包含一个快乐路径 + 一个失败路径？
+      3. Success Criteria 是否真正可衡量？
+
+      审查文件：
+      - plan:  .sisyphus/plans/<change-name>.md
+      - tasks: openspec/changes/<change-name>/tasks.md
+
+      最终判定（综合 Part A 和 Part B）：
+      - ✅ OKAY — plan 可执行
+      - ❌ REJECT — plan 不可执行，需要修复后重新评审"
+
+      task(subagent_type="oracle", run_in_background=false, prompt=ORACLE_PLAN_REVIEW_PROMPT)
+      task(subagent_type="metis", run_in_background=false, prompt=METIS_PLAN_REVIEW_PROMPT)
+      task(subagent_type="momus", run_in_background=false, prompt=MOMUS_PLAN_REVIEW_PROMPT)
+      ```
+
+      Wait for ALL 3 agents to complete. Collect results, merge findings.
+      - If Momus says ❌ REJECT → fix plan based on all findings, re-run PHASE 6（**最多 3 轮**，超限后汇总给用户）
+      - If 🔴 from Oracle/Metis → evaluate, fix, and re-run PHASE 6（**最多 3 轮**，超限后汇总给用户）
+      - 🟡/⚪ → evaluate and fix if needed
 
       === PHASE 7: Generate critic.md ===
 
       Write to `openspec/changes/<change-name>/critic.md` using the template format.
+      Include a summary of all review findings from PHASE 3（tasks.md 评审）and PHASE 6（plan 评审）.
 
       Determine VERDICT:
-      - If any 🔴 → **🔴 BLOCKED**
+      - If any Momus says ❌ REJECT → **🔴 BLOCKED**
+      - If any 🔴 from other reviews → **🔴 BLOCKED**
       - If only 🟡/⚪ (no 🔴) → **⚠️ CONDITIONAL**
       - If no issues → **✅ PASS**
 
       === PHASE 8: Blocking Decision ===
 
-      - If BLOCKED: "🛑 Critic BLOCKED. Fix 🔴 issues above, then re-run critic."
+      - If BLOCKED: "🛑 Critic BLOCKED. Fix 🔴 issues above, then re-create critic artifact. Re-run critic（最多 3 轮）。"
       - If CONDITIONAL: List 🟡 items. User can acknowledge risks or fix.
       - If PASS: "✅ All checks passed. Proceed to apply."
     requires:
@@ -358,7 +536,16 @@ apply:
     - Both missing → **Init mode**: create all files fresh
     - Partial → **Incomplete mode**: warn user, offer options (overwrite/complete/abort)
 
-    **Critic Sync Protocol**:
+    **Output Quality Validation**:
+    After `/start-work` completes, validate the created output files:
+    1. **SKILL.md frontmatter**: Check that `.opencode/skills/constitution/SKILL.md` has valid YAML frontmatter with `name: constitution` and non-empty `description`. Grep for `^---` boundaries.
+    2. **AGENTS.md constitution section**: Check that `AGENTS.md` contains `## Constitution`.
+    3. **Core reference files**: Check that essential reference files exist（tech-stack.md, architecture.md 等）
+    4. **Reference link integrity**: Check that SKILL.md's reference links point to existing files under `.opencode/skills/constitution/references/`.
+
+    If any validation fails: warn user and offer to fix.
+
+    **Sync Protocol**:
     - The plan file's `## Tasks` section tracks checkbox states for `/start-work`
     - `openspec/changes/<change-name>/tasks.md` is the OpenSpec source of truth
     - After `/start-work` completes or pauses, copy checkbox states from

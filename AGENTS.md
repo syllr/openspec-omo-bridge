@@ -6,14 +6,14 @@ Custom OpenSpec `spec-driven` schema that bridges OpenSpec workflows with oh-my-
 
 This is a **configuration repository** — not a code project. It houses a customized OpenSpec schema at
 `schemas/spec-driven/` that extends the standard spec-driven workflow to generate OMO-compatible `.sisyphus/plans/` plan
-files during the `tasks` artifact phase.
+files during the `critic` artifact phase.
 
 ## Key files
 
 | Path                               | Purpose                                                                              |
 | ---------------------------------- | ------------------------------------------------------------------------------------ |
-| `schemas/spec-driven/schema.yaml`  | Schema definition. 5 artifacts: proposal → specs → design → tasks → apply            |
-| `schemas/spec-driven/templates/`   | 4 template files (proposal.md, spec.md, design.md, tasks.md)                         |
+| `schemas/spec-driven/schema.yaml`  | Schema definition. 5 artifacts: proposal → specs → design → tasks → critic → apply   |
+| `schemas/spec-driven/templates/`   | 5 template files (proposal.md, spec.md, design.md, tasks.md, critic.md)              |
 | `schemas/constitution/schema.yaml` | Independent constitution schema. 5 artifacts: scan → design → tasks → critic → apply |
 | `schemas/constitution/templates/`  | 4 template files (scan.md, constitution-design.md, tasks.md, critic.md)              |
 | `scripts/sync-schemas.sh`          | Syncs repo schemas to `~/.local/share/openspec/schemas/`                             |
@@ -29,26 +29,27 @@ proposal ──┬──► specs ──┐
 
 - `tasks.instruction` generates `tasks.md` (simple checkbox list)
 - `critic.instruction` generates `.sisyphus/plans/<name>.md` (OMO plan with rich sub-fields) + `critic.md` (review report)
-- `.sisyphus/plans/<name>.md` uses **9 sections**: TL;DR, Context, Work Objectives, Verification Strategy, Execution Strategy, Tasks, Final Verification Wave, Commit Strategy, Success Criteria
+- `.sisyphus/plans/<name>.md` uses **9 sections** in spec-driven: TL;DR, Context, Work Objectives, Verification Strategy, Execution Strategy, Tasks, Final Verification Wave, Commit Strategy, Success Criteria (7 sections in constitution, skipping Verification Strategy and Commit Strategy per Design Decision 6)
 - Non-Tasks sections use "summary + link" pattern (references `openspec/changes/<name>/` artifacts)
 - The plan is parsed by `/start-work` (OMO's Atlas agent)
 
 ## Quality gates
 
-1. **Spec validation** (critic, mandatory) — runs `openspec validate`, if errors consult Oracle for fix guidance
-2. **Plan generation** (critic, after validation passes) — generates the 9-section plan
-3. **Plan structure validation** (critic, mandatory) — 4 grep checks verify sections exist and checkbox counts match
-4. **5 parallel Momus reviews** (critic, mandatory) — comprehensive review: spec compliance, plan quality, edge cases, execution feasibility, design alignment
-5. **Critic verdict** (critic, hard block) — if 🔴 BLOCKED, apply cannot proceed; if ⚠️ CONDITIONAL, user must acknowledge; if ✅ PASS, proceed
-6. **Oracle invocation** (tasks, mandatory) — gap analysis on task list before generation; Oracle 按信源优先级（proposal.md > design.md > specs）分析冲突并给出修复建议，自动修复后循环调用直至仅剩用户判断项
-7. **Oracle invocation** (critic, mandatory) — spec validation fix guidance; 如果 Oracle 调用失败则由 AI 自行修复格式问题
-8. **Plan structure validation** (after generation, mandatory) — 4 grep checks verify sections exist and checkbox counts
-   match
-9. **Momus review** (optional) — post-generation review loop with OKAY/REJECT
+The following gates apply to the **spec-driven** schema. Constitution schema has its own quality mechanisms documented in the Constitution Schema section.
+
+1. **Basic structure check** (critic, mandatory) — checks spec dir, tasks.md, and task count
+2. **Spec validation** (critic, after structure check passes) — runs `openspec validate`, if errors consult Oracle for fix guidance
+3. **1 parallel Oracle + 1 parallel Metis review** (critic, after spec validation) — concurrent review of tasks.md: Oracle covers content split reasonableness & optimization; Metis covers OMO format compliance & wave structure optimization
+4. **Plan generation** (critic, mandatory) — generate .sisyphus/plans/<name>.md via Prometheus (fallback: category="deep")
+5. **Plan structure validation** (critic, mandatory) — 4 grep checks verify sections exist and checkbox counts match
+6. **1 parallel Oracle + 1 parallel Metis + 1 parallel Momus review** (critic, mandatory) — concurrent review of plan: Oracle covers design alignment & success criteria; Metis covers structure & QA scenarios; Momus gives final OKAY/REJECT verdict
+7. **Critic verdict** (critic, hard block) — if 🔴 BLOCKED, apply cannot proceed; if ⚠️ CONDITIONAL, user must acknowledge; if ✅ PASS, proceed
+8. **Oracle invocation** (tasks, mandatory) — gap analysis on task list before generation; Oracle 按信源优先级（proposal.md > design.md > specs）分析冲突并给出修复建议，自动修复后循环调用直至仅剩用户判断项；同时校验 proposal 中的不确定点是否在 design 阶段有对应的 research/ 调研产出
+9. **Oracle invocation** (critic, mandatory) — spec validation fix guidance; 如果 Oracle 调用失败则由 AI 自行修复格式问题
 
 ## Language support
 
-Schema uses `__LANG_PLACEHOLDER__` markers in all 5 instructions. The `sync-schemas.sh` script replaces them:
+Schema uses `__LANG_PLACEHOLDER__` markers in all 5 artifact + 1 apply instructions (6 for spec-driven, 5 for constitution). The `sync-schemas.sh` script replaces them:
 
 ```bash
 scripts/sync-schemas.sh --lang zh    # 中文: "所有生成的文档必须使用中文"
@@ -63,9 +64,7 @@ Arithmetic uses `$((var + 1))` syntax (not `((var++))`) to avoid `set -e` exit o
 
 `apply.instruction` has a Task State Sync Protocol:
 
-- **EAGER SYNC**: checkbox changes in `tasks.md` immediately mirrored to plan file
-- **ON PAUSE / ON ALL_DONE**: `diff <(grep ... tasks.md) <(sed -n '/^## Tasks/,/^## /p' plan.md | grep ...)` verifies
-  consistency
+- **ON PAUSE / ON ALL_DONE**: After `/start-work` completes or pauses, copy checkbox states from `.sisyphus/plans/<change-name>.md` to `tasks.md`. Then run `diff <(grep '^- \[' tasks.md) <(sed -n '/^## Tasks/,/^## /p' plan.md | grep '^- \[')` to verify consistency.
 - `diff` is scoped to `## Tasks` section only (excludes FVW/Success Criteria checkboxes)
 
 ## Spec validation rules
@@ -89,11 +88,11 @@ A standalone `constitution` schema is available alongside the default `spec-driv
 scan → design → tasks → critic → apply
 ```
 
-- **scan**: Tech stack analysis with 4-phase process (config detection → user conversation → 3~5 parallel librarian agents → summary). Handles both existing projects (analyze current stack) and empty projects (recommend stack).
+- **scan**: Tech stack analysis with 3-phase process (config detection → user conversation → summary). Identifies uncertainties for design-phase research.
 - **design**: Multi-agent research for best practices per technology, `/summarize-research` to generate reference docs, optional code sync question.
 - **tasks**: Simple checkbox list (2 base tasks: update AGENTS.md + create skill files; 1 optional: fix violations).
-- **critic**: 5 parallel Momus reviews + quality gates (frontmatter, AGENTS.md section, references integrity). Reuses spec-driven's critic mechanism with adaptations.
-- **apply**: Writes AGENTS.md (`## Constitution` section) + `.opencode/skills/constitution/` (SKILL.md + references). Init/update/incomplete detection via fixed file paths.
+- **critic**: Multi-agent plan review (Oracle + Metis + Momus). Reuses spec-driven's critic mechanism with adaptations.
+- **apply**: Writes AGENTS.md (`## Constitution` section) + `.opencode/skills/constitution/` (SKILL.md + references). Init/update/incomplete detection via fixed file paths. Output quality validation: frontmatter, AGENTS.md section, references integrity.
 
 **Output**: `.opencode/skills/constitution/SKILL.md` with YAML frontmatter + references/ organized by domain.
 

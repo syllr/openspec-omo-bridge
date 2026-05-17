@@ -18,9 +18,13 @@
   <!-- Executable verification command -->
 
   **QA Scenarios**:
-  <!-- Scenario: name / Steps: / Expected: -->
+  <!-- Tool: / Preconditions: / Steps: / Expected: / Evidence path -->
 
   **Evidence**: .sisyphus/evidence/task-1.1-<!-- slug -->.<!-- ext -->
+
+  **Commit**: YES | NO
+  - Message: `type(scope): description`
+  - Files: `path/to/file`
 
 ### Wave 2: <!-- Task Group Name -->
 
@@ -40,9 +44,13 @@
   <!-- Executable verification command -->
 
   **QA Scenarios**:
-  <!-- Scenario: name / Steps: / Expected: -->
+  <!-- Tool: / Preconditions: / Steps: / Expected: / Evidence path -->
 
   **Evidence**: .sisyphus/evidence/task-2.1-<!-- slug -->.<!-- ext -->
+
+  **Commit**: YES | NO
+  - Message: `type(scope): description`
+  - Files: `path/to/file`
 
 - [ ] 2.2 <!-- Task title -->
       **What to do**:
@@ -60,6 +68,10 @@
   <!-- Executable verification command -->
 
   **QA Scenarios**:
-  <!-- Scenario: name / Steps: / Expected: -->
+  <!-- Tool: / Preconditions: / Steps: / Expected: / Evidence path -->
 
   **Evidence**: .sisyphus/evidence/task-2.2-<!-- slug -->.<!-- ext -->
+
+  **Commit**: YES | NO
+  - Message: `type(scope): description`
+  - Files: `path/to/file`

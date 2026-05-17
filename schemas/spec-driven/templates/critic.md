@@ -8,31 +8,74 @@
 
 ---
 
-## 1. Spec Compliance Review
+## 1. Oracle Review — Content Split & Coverage
 
-> From: Momus Review 1
+> From PHASE 4 tasks.md review + PHASE 7 plan review (Oracle)
 
-| #   | Requirement       | Plan Coverage     | Status  |
-| --- | ----------------- | ----------------- | ------- |
-| 1   | <!-- req name --> | <!-- task ref --> | ✅ / ❌ |
+### Content Atomicity
+
+| Task | Split Assessment              | Issue             |
+| ---- | ----------------------------- | ----------------- |
+| N.M  | ✅ 原子化 / ❌ 过粗 / ❌ 过细 | <!-- 具体问题 --> |
+
+### Wave Grouping
+
+<!-- Wave 分组合理性分析 -->
+
+### Coverage Gaps
+
+<!-- Spec requirement 是否有未覆盖的 task -->
 
 ### Issues Found
 
 - 🔴 / 🟡 / ⚪ <!-- issue description -->
-  - **Source**: <!-- spec file path -->
+  - **Source**: <!-- spec/task reference -->
   - **Suggestion**: <!-- fix suggestion -->
 
 ---
 
-## 2. Plan Quality Review
+## 2. Oracle Review — Optimization Suggestions
 
-> From: Momus Review 2
+> From PHASE 4 tasks.md review + PHASE 7 plan review (Oracle)
 
-### Per-Task Quality
+### Dependency Analysis
 
-| Task | What to do | Must NOT do | Agent Profile | Acceptance Criteria | QA Scenarios |
-| ---- | ---------- | ----------- | ------------- | ------------------- | ------------ |
-| N.M  | ✅ / ❌    | ✅ / ❌     | ✅ / ❌       | ✅ / ❌             | ✅ / ❌      |
+| Task | Blocked By | Is Dependency Real? | Suggestion    |
+| ---- | ---------- | ------------------- | ------------- |
+| N.M  | Task X     | ✅ 真实 / ❌ 虚假   | <!-- 建议 --> |
+
+### Wave Restructuring
+
+<!-- 如果调整 Wave 划分的建议 -->
+
+### Quality Impact
+
+<!-- 每项优化对质量的影响评估 -->
+
+### Issues Found
+
+- 🔴 / 🟡 / ⚪ <!-- issue description -->
+  - **Suggestion**: <!-- fix suggestion -->
+
+---
+
+## 3. Metis Review — OMO Format Compliance
+
+> From PHASE 4 tasks.md review + PHASE 7 plan review (Metis)
+
+### Per-Task Field Completeness
+
+| Task | What to do | Must NOT do | Agent Profile | References | Acceptance Criteria | QA Scenarios | Parallelization | Evidence |
+| ---- | ---------- | ----------- | ------------- | ---------- | ------------------- | ------------ | --------------- | -------- |
+| N.M  | ✅ / ❌    | ✅ / ❌     | ✅ / ❌       | ✅ / ❌    | ✅ / ❌             | ✅ / ❌      | ✅ / ❌         | ✅ / ❌  |
+
+### QA Scenarios Quality
+
+<!-- QA Scenarios 五要素完整性分析 -->
+
+### Agent Profile Appropriateness
+
+<!-- category 和 skills 匹配度分析 -->
 
 ### Issues Found
 
@@ -42,53 +85,106 @@
 
 ---
 
-## 3. Edge Cases & Risks Review
+## 4. Metis Review — Wave Structure & Optimization
 
-> From: Momus Review 3
+> From PHASE 4 tasks.md review + PHASE 7 plan review (Metis)
 
-### Scope Boundaries
+### Wave Balance
 
-<!-- Scope creep analysis -->
+| Wave | Task Count | Assessment | Suggestion        |
+| ---- | ---------- | ---------- | ----------------- |
+| 1    | N          | ✅/❌      | <!-- 调整建议 --> |
+| 2    | N          | ✅/❌      | <!-- 调整建议 --> |
 
-### Missing Scenarios
+### Dependency Correctness
 
-<!-- Missed edge cases -->
+<!-- 虚假依赖分析 -->
 
-### Dependency Analysis
+### Quality-Grounded Optimization
 
-<!-- Unstated dependencies -->
+<!-- 每项优化的质量影响标注 -->
 
 ### Issues Found
 
 - 🔴 / 🟡 / ⚪ <!-- issue description -->
-  - **Source**: <!-- file path -->
   - **Suggestion**: <!-- fix suggestion -->
 
 ---
 
-## 4. Execution Feasibility Review
+## 5. Oracle Plan Review — Design Alignment
 
-> From: Momus Review 4
+> From PHASE 7 plan review (Oracle)
 
-<!-- Task dependencies, acceptance criteria executability, ambiguity -->
+### Design Alignment
+
+<!-- 设计决策在 plan 中的反映情况 -->
+
+### Verification Strategy
+
+<!-- 验证策略覆盖度 -->
+
+### Success Criteria
+
+<!-- 成功标准的可衡量性 -->
+
+### Issues Found
+
+- 🔴 / 🟡 / ⚪ <!-- issue description -->
 
 ---
 
-## 5. Design Alignment Review
+## 6. Metis Plan Review — Structure & QA
 
-> From: Momus Review 5
+> From PHASE 7 plan review (Metis)
 
-<!-- Additional review perspectives -->
+### 9-Section Completeness
+
+<!-- 9 节结构完整性检查 -->
+
+### QA Scenarios Quality
+
+<!-- QA 五要素、快乐路径 + 失败路径 -->
+
+### Wave Concurrency
+
+<!-- Wave 依赖和并发合理性 -->
+
+### Issues Found
+
+- 🔴 / 🟡 / ⚪ <!-- issue description -->
 
 ---
 
-## 6. Consolidated Action Items
+## 7. Momus Plan Review — Executability Gate
+
+> From PHASE 7 plan review (Momus)
+
+### Execution Path
+
+<!-- Wave 依赖、Acceptance Criteria 可执行性、FVW 覆盖度 -->
+
+### Risk Matrix
+
+<!-- 遗漏场景、QA 覆盖、Success Criteria 可衡量性 -->
+
+### Verdict
+
+- ✅ **OKAY** — plan 可执行，无 blocking issues
+- ❌ **REJECT** — plan 不可执行，需要修复后重新评审
+
+### Issues Found
+
+- 🔴 / 🟡 / ⚪ <!-- issue description -->
+
+---
+
+## 8. Consolidated Action Items
 
 | Severity | ID  | Description          | Location           | Source             | Action                 |
 | -------- | --- | -------------------- | ------------------ | ------------------ | ---------------------- |
-| 🔴       | B-1 | <!-- description --> | <!-- file:line --> | <!-- spec/plan --> | <!-- required fix -->  |
-| 🟡       | W-1 | <!-- description --> | <!-- file:line --> | <!-- spec/plan --> | <!-- suggested fix --> |
-| ⚪       | I-1 | <!-- description --> | <!-- file:line --> | <!-- spec/plan --> | <!-- suggestion -->    |
+| 🔴       | B-1 | <!-- description --> | <!-- task:line --> | <!-- spec/plan --> | <!-- required fix -->  |
+| 🟡       | W-1 | <!-- description --> | <!-- task:line --> | <!-- spec/plan --> | <!-- suggested fix --> |
+| ⚪       | I-1 | <!-- description --> | <!-- task:line --> | <!-- spec/plan --> | <!-- suggestion -->    |
 
 ---
 

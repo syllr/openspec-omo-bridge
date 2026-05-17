@@ -32,19 +32,9 @@
 
 <!-- 讨论后否决的方案 -->
 
-## Research Results
+## Technology Uncertainties
 
-### Direction 1: <!-- 技术方向名称 -->
-
-<!-- librarian agent 的调研结果 -->
-
-### Direction 2: <!-- 技术方向名称 -->
-
-<!-- librarian agent 的调研结果 -->
-
-### Direction 3: <!-- 技术方向名称 -->
-
-<!-- ... -->
+<!-- scan 阶段识别到的需要设计阶段进一步调研的不确定点 -->
 
 ## Technology Stack Decision Log
 

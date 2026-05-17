@@ -8,42 +8,72 @@
 
 ---
 
-## 1. Constitution Output Review
+## 1. Oracle Review — tasks.md Content & Plan Design Alignment
 
-> From: Momus Review 1
+> From PHASE 3 tasks.md review + PHASE 6 plan review (Oracle)
 
-### Output Completeness
+### Content Completeness (tasks.md)
 
-| Output                              | Status  | Notes                                          |
-| ----------------------------------- | ------- | ---------------------------------------------- |
-| AGENTS.md `## Constitution` section | ✅ / ❌ |                                                |
-| SKILL.md frontmatter                | ✅ / ❌ | Must have `name: constitution` + `description` |
-| tech-stack.md                       | ✅ / ❌ |                                                |
-| architecture.md                     | ✅ / ❌ |                                                |
-| coding-standards/                   | ✅ / ❌ |                                                |
-| testing/                            | ✅ / ❌ |                                                |
-| gotchas.md                          | ✅ / ❌ |                                                |
+<!-- Task atomicity, task vs spec coverage -->
+
+### Design Alignment (plan)
+
+<!-- Plan's Execution Strategy matches constitution-design.md -->
+
+### Success Criteria (plan)
+
+<!-- Success Criteria measurability -->
 
 ### Issues Found
 
 - 🔴 / 🟡 / ⚪ <!-- issue description -->
+  - **Source**: <!-- file path -->
   - **Suggestion**: <!-- fix suggestion -->
 
 ---
 
-## 2. Reference Structure Review
+## 2. Metis Review — OMO Format & Plan Structure
 
-> From: Momus Review 2
+> From PHASE 3 tasks.md review + PHASE 6 plan review (Metis)
 
-### Single-Module Layout (flat)
+### OMO Format Compliance (tasks.md)
 
-<!-- Verify: references/ 下直接存放文件，无 module 子目录 -->
+| Task | What to do | Must NOT do | Agent Profile | References | Acceptance Criteria | QA Scenarios | Parallelization | Evidence |
+| ---- | ---------- | ----------- | ------------- | ---------- | ------------------- | ------------ | --------------- | -------- |
+| N.M  | ✅ / ❌    | ✅ / ❌     | ✅ / ❌       | ✅ / ❌    | ✅ / ❌             | ✅ / ❌      | ✅ / ❌         | ✅ / ❌  |
 
-### Multi-Module Layout
+### Section Structure (plan)
 
-| Module        | tech-stack | coding-standards | testing | gotchas |
-| ------------- | ---------- | ---------------- | ------- | ------- |
-| <!-- name --> | ✅ / ❌    | ✅ / ❌          | ✅ / ❌ | ✅ / ❌ |
+<!-- 7-section completeness (skipping Verification Strategy and Commit Strategy) -->
+
+### QA Scenarios Quality
+
+<!-- Five-element check: Tool/Preconditions/Steps/Expected/Evidence -->
+
+### Issues Found
+
+- 🔴 / 🟡 / ⚪ <!-- issue description -->
+  - **Location**: <!-- task reference -->
+  - **Suggestion**: <!-- fix suggestion -->
+
+---
+
+## 3. Momus Review — Executability Gate
+
+> From PHASE 6 plan review (Momus)
+
+### Execution Path
+
+<!-- Wave dependencies, Acceptance Criteria executability, FVW coverage -->
+
+### Risk Matrix
+
+<!-- Missing edge cases, QA scenario coverage, Success Criteria measurability -->
+
+### Verdict
+
+- ✅ **OKAY** — plan 可执行，无 blocking issues
+- ❌ **REJECT** — plan 不可执行，需要修复后重新评审
 
 ### Issues Found
 
@@ -51,9 +81,9 @@
 
 ---
 
-## 3. Edge Cases & Risks Review
+## 4. Edge Cases & Risks Review
 
-> From: Momus Review 3
+> Aggregated from all reviews
 
 ### Uncovered Scenarios
 
@@ -63,36 +93,19 @@
 
 <!-- Missing dependencies or configuration requirements -->
 
----
+### Issues Found
 
-## 4. Quality Gate Validation
-
-> From: Momus Review 4
-
-| Check                       | Level    | Result  |
-| --------------------------- | -------- | ------- |
-| SKILL.md frontmatter        | BLOCKING | ✅ / ❌ |
-| AGENTS.md `## Constitution` | BLOCKING | ✅ / ❌ |
-| Core references exist       | WARNING  | ✅ / ❌ |
-| Reference link integrity    | WARNING  | ✅ / ❌ |
+- 🔴 / 🟡 / ⚪ <!-- issue description -->
 
 ---
 
-## 5. Design Alignment Review
+## 5. Consolidated Action Items
 
-> From: Momus Review 5
-
-<!-- Check alignment with constitution-design.md -->
-
----
-
-## 6. Consolidated Action Items
-
-| Severity | ID  | Description          | Location      | Action              |
-| -------- | --- | -------------------- | ------------- | ------------------- |
-| 🔴       | B-1 | <!-- description --> | <!-- path --> | <!-- fix -->        |
-| 🟡       | W-1 | <!-- description --> | <!-- path --> | <!-- fix -->        |
-| ⚪       | I-1 | <!-- description --> | <!-- path --> | <!-- suggestion --> |
+| Severity | ID  | Description          | Location      | Source          | Action              |
+| -------- | --- | -------------------- | ------------- | --------------- | ------------------- |
+| 🔴       | B-1 | <!-- description --> | <!-- path --> | <!-- review --> | <!-- fix -->        |
+| 🟡       | W-1 | <!-- description --> | <!-- path --> | <!-- review --> | <!-- fix -->        |
+| ⚪       | I-1 | <!-- description --> | <!-- path --> | <!-- review --> | <!-- suggestion --> |
 
 ---
 
