@@ -10,14 +10,14 @@ files during the `critic` artifact phase.
 
 ## Key files
 
-| Path                               | Purpose                                                                              |
-| ---------------------------------- | ------------------------------------------------------------------------------------ |
-| `schemas/spec-driven/schema.yaml`  | Schema definition. 5 artifacts: proposal → specs → design → tasks → critic → apply   |
-| `schemas/spec-driven/templates/`   | 5 template files (proposal.md, spec.md, design.md, tasks.md, critic.md)              |
-| `schemas/constitution/schema.yaml` | Independent constitution schema. 5 artifacts: scan → design → tasks → critic → apply |
-| `schemas/constitution/templates/`  | 4 template files (scan.md, constitution-design.md, tasks.md, critic.md)              |
-| `scripts/sync-schemas.sh`          | Syncs repo schemas to `~/.local/share/openspec/schemas/`                             |
-| `.opencode/opencode.json`          | OpenCode project config — allows external directory access                           |
+| Path                               | Purpose                                                                                     |
+| ---------------------------------- | ------------------------------------------------------------------------------------------- |
+| `schemas/spec-driven/schema.yaml`  | Schema definition. 5 artifacts (proposal → specs → design → tasks → critic) + apply phase   |
+| `schemas/spec-driven/templates/`   | 5 template files (proposal.md, spec.md, design.md, tasks.md, critic.md)                     |
+| `schemas/constitution/schema.yaml` | Independent constitution schema. 4 artifacts (scan → design → tasks → critic) + apply phase |
+| `schemas/constitution/templates/`  | 4 template files (scan.md, constitution-design.md, tasks.md, critic.md)                     |
+| `scripts/sync-schemas.sh`          | Syncs repo schemas to `~/.local/share/openspec/schemas/`                                    |
+| `.opencode/opencode.json`          | OpenCode project config — allows external directory access                                  |
 
 ## Schema architecture
 

@@ -664,28 +664,30 @@ artifacts:
       输出格式：逐维度分析 + 问题汇总。"
 
       METIS_PLAN_REVIEW_PROMPT = "你正在评审 OMO plan 的结构和质量（Metis 评审）。
-      按严重程度输出发现（🔴阻塞 / 🟡警告 / ⚪建议）。
+       按严重程度输出发现（🔴阻塞 / 🟡警告 / ⚪建议）。
 
-      审查文件：
-      - plan: .sisyphus/plans/<change-name>.md
-      - tasks: openspec/changes/<change-name>/tasks.md
+       审查文件：
+       - plan: .sisyphus/plans/<change-name>.md
+       - tasks: openspec/changes/<change-name>/tasks.md
+       - research: openspec/changes/<change-name>/research/（如果存在）
 
-      请逐一检查以下 3 个维度：
+       请逐一检查以下 3 个维度：
 
-      维度 1 — 9 节结构完整性：
-      - 所有 9 个 section 是否都存在？
-      - 每个 section 是否使用 summary + link 模式？
-      - section 间是否有逻辑连贯性？
+       维度 1 — 9 节结构完整性：
+       - 所有 9 个 section 是否都存在？
+       - 每个 section 是否使用 summary + link 模式？
+       - section 间是否有逻辑连贯性？
 
-      维度 2 — QA Scenarios 质量：
-      - 每个 task 的 QA Scenarios 是否包含 Tool/Preconditions/Steps/Expected/Evidence 五要素？
-      - 是否至少有一个快乐路径 + 一个失败/边缘路径？
+       维度 2 — QA Scenarios 质量：
+       - 每个 task 的 QA Scenarios 是否包含 Tool/Preconditions/Steps/Expected/Evidence 五要素？
+       - 是否至少有一个快乐路径 + 一个失败/边缘路径？
 
-      维度 3 — Wave 结构与并发：
-      - Wave 分组是否合理？
-      - 同一 Wave 内的 task 是否确实可以并发执行？
-      - 不同 Wave 之间的依赖是否真实？
-      - 是否有虚假依赖可以拆掉以加快执行？
+       维度 3 — Wave 结构与并发：
+       - Wave 分组是否合理？
+       - 同一 Wave 内的 task 是否确实可以并发执行？
+       - 不同 Wave 之间的依赖是否真实？
+       - 是否有虚假依赖可以拆掉以加快执行？
+       - 如果 research/ 存在：调研发现是否在 plan 的 Work Objectives 或 Execution Strategy 中得到体现？
 
       输出格式：逐维度分析 + 问题汇总。"
 
@@ -696,16 +698,19 @@ artifacts:
       2. 每个 task 的 Acceptance Criteria 是否可执行？（必须是具体的命令，如 `bun test`、`curl`）
       3. 有无明显的执行顺序错误？
       4. FVW 是否覆盖了关键验证点？
+      5. 如果 research/ 存在：调研结论是否被 plan 正确引用？
 
       **Part B — 风险矩阵审查（遗漏覆盖）**：
       1. 是否有遗漏的边界场景（空值、错误路径、并发冲突、权限不足）？
       2. QA Scenarios 是否至少包含一个快乐路径 + 一个失败路径？
       3. Commit Strategy 是否合理？是否有多人协作的冲突风险？
       4. Success Criteria 是否真正可衡量？
+      5. 如果 research/ 存在：是否有 research 发现未被 plan 覆盖？
 
       审查文件：
       - plan:  .sisyphus/plans/<change-name>.md
       - tasks: openspec/changes/<change-name>/tasks.md
+      - research: openspec/changes/<change-name>/research/（如果存在）
 
       最终判定（二选一，综合 Part A 和 Part B）：
       - ✅ OKAY — plan 可执行，无 blocking issues

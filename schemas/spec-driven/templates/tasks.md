@@ -20,6 +20,8 @@
   **QA Scenarios**:
   <!-- Tool: / Preconditions: / Steps: / Expected: / Evidence path -->
 
+  **Parallelization**: Can Run In Parallel: YES | NO | Parallel Group: Wave N | Blocked By: <!-- task ref -->
+
   **Evidence**: .sisyphus/evidence/task-1.1-<!-- slug -->.<!-- ext -->
 
   **Commit**: YES | NO
@@ -46,6 +48,8 @@
   **QA Scenarios**:
   <!-- Tool: / Preconditions: / Steps: / Expected: / Evidence path -->
 
+  **Parallelization**: Can Run In Parallel: YES | NO | Parallel Group: Wave N | Blocked By: <!-- task ref -->
+
   **Evidence**: .sisyphus/evidence/task-2.1-<!-- slug -->.<!-- ext -->
 
   **Commit**: YES | NO
@@ -69,6 +73,8 @@
 
   **QA Scenarios**:
   <!-- Tool: / Preconditions: / Steps: / Expected: / Evidence path -->
+
+  **Parallelization**: Can Run In Parallel: YES | NO | Parallel Group: Wave N | Blocked By: <!-- task ref -->
 
   **Evidence**: .sisyphus/evidence/task-2.2-<!-- slug -->.<!-- ext -->
 

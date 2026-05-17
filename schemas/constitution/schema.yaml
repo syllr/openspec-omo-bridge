@@ -112,8 +112,9 @@ artifacts:
          Fire ALL deep agents in ONE message (Wave 2). If any topics need a new
          librarian, fire those first (Wave 1), then all deep agents.
 
-      3. **User confirmation**: Present summary of findings. After user confirms,
+      3. **User confirmation and finalize**: Present summary of findings. After user confirms,
          move `spectest/<topic>/` → `openspec/changes/<change-name>/research/<topic>/`.
+         Create `research/index.md` summarizing all topics, conclusions, and key findings.
 
       4. **Update constitution-design.md**: Reference research findings in relevant sections.
          Use links like `详见 research/<topic>/notes.md`.
@@ -372,7 +373,7 @@ artifacts:
       1. ## TL;DR
       2. ## Context
       3. ## Work Objectives
-      4. ## Execution Strategy
+      4. ## Execution Strategy — 引用 constitution-design.md 和 research/ 的关键发现
       5. ## Tasks — tasks.md 的 checkbox 展开为子字段格式
       6. ## Final Verification Wave — F1~F4
       7. ## Success Criteria
@@ -425,6 +426,7 @@ artifacts:
 
       维度 1 — Design Alignment：
       - plan 的 Execution Strategy 是否反映了 constitution-design.md 的决策？
+      - research/ 的调研发现是否在 Execution Strategy 中被引用？
 
       维度 2 — Verification Strategy：
       - FVW（Final Verification Wave）是否合理？
@@ -439,6 +441,7 @@ artifacts:
 
       审查文件：
       - plan: .sisyphus/plans/<change-name>.md
+      - research: openspec/changes/<change-name>/research/（如果存在）
 
       请逐一检查以下 3 个维度：
 
@@ -452,6 +455,7 @@ artifacts:
       维度 3 — Wave 结构与并发：
       - Wave 分组是否合理？
       - 同一 Wave 内的 task 是否确实可以并发执行？
+      - 如果 research/ 存在：调研发现是否在 plan 中得到体现？
 
       输出格式：逐维度分析 + 问题汇总。"
 
@@ -461,15 +465,18 @@ artifacts:
       1. Wave 依赖是否合理？同一 Wave 内的 task 是否真的可以并发？
       2. 每个 task 的 Acceptance Criteria 是否可执行？
       3. FVW 是否覆盖了关键验证点？
+      4. 如果 research/ 存在：调研结论是否被 plan 正确引用？
 
       **Part B — 风险矩阵审查**：
       1. 是否有遗漏的边界场景？
       2. QA Scenarios 是否至少包含一个快乐路径 + 一个失败路径？
       3. Success Criteria 是否真正可衡量？
+      4. 如果 research/ 存在：是否有 research 发现未被 plan 覆盖？
 
       审查文件：
       - plan:  .sisyphus/plans/<change-name>.md
       - tasks: openspec/changes/<change-name>/tasks.md
+      - research: openspec/changes/<change-name>/research/（如果存在）
 
       最终判定（综合 Part A 和 Part B）：
       - ✅ OKAY — plan 可执行
