@@ -11,38 +11,151 @@ artifacts:
 
       **SCOPE RESTRICTION: Do NOT modify any source code. Only generate proposal.md.**
 
-      Create the proposal document that establishes WHY this change is needed.
+      === PHASE 1: Context Extraction ===
 
+      Before writing the proposal, systematically review the current conversation
+      to extract all information relevant to this change.
 
-      Sections:
+      **If the conversation has more than 30 messages (user + assistant exchanges):**
+      1. Divide the conversation into thirds: early, middle, late exchanges
+      2. Extract key points from each segment separately (3-8 points per segment)
+      3. Merge all segments' points, deduplicate, and synthesize
+      4. Pay special attention to middle-segment points not revisited later
+      5. Flag any uncertainty signals found in any segment
 
-      - **Why**: 1-2 sentences on the problem or opportunity. What problem does
-      this solve? Why now?
+      **For shorter conversations:** extract directly from the full conversation.
 
-      - **What Changes**: Bullet list of changes. Be specific about new
-      capabilities, modifications, or removals. Mark breaking changes with
-      **BREAKING**.
+      Organize findings into 6 categories:
 
-      - **Capabilities**: Identify which specs will be created or modified:
-        - **New Capabilities**: List capabilities being introduced. Each becomes a new `specs/<capability>/spec.md`. Use kebab-case names (e.g., `user-auth`, `data-export`).
-        - **Modified Capabilities**: List existing capabilities whose REQUIREMENTS are changing. Only include if spec-level behavior changes (not just implementation details). Each needs a delta spec file. Check `openspec/specs/` for existing spec names. Leave empty if no requirement changes.
-      - **Impact**: Affected code, APIs, dependencies, or systems.
+      1. **Core Motivation**: What problem/opportunity drove this discussion?
+         What was the user's explicit pain point?
+      2. **Change Scope**: Every specific capability, modification, or removal
+         that was discussed. Include technical constraints mentioned.
+      3. **Explicit Constraints**: User-stated boundaries — "must use X",
+         "cannot use Y", compatibility requirements.
+      4. **Explicit Non-Goals**: What the user said is OUT of scope.
+         Decisions NOT to implement certain things.
+      5. **Uncertainty Signals**: Points where user said "needs investigation",
+         "not sure", "might need research". Each becomes `[NEEDS INVESTIGATION]`.
+      6. **Affected Systems**: User-mentioned code, APIs, dependencies, teams.
 
+      **This extraction is a thinking step only — do not write to a file.**
 
-      IMPORTANT: The Capabilities section is critical. It creates the contract
-      between proposal and specs phases. Research existing specs before filling
-      this in.
+      === PHASE 2: Generate ===
 
-      Each capability listed here will need a corresponding spec file.
+      Read the template file at `schemas/spec-driven/templates/proposal.md` to
+      understand the exact output structure.
 
+      Create the proposal document at
+      `openspec/changes/<change-name>/proposal.md`.
 
-      Keep it concise (1-2 pages). Focus on the "why" not the "how" -
-      implementation details belong in design.md.
+      Write all 4 sections from the template:
+      - **Why**: 1-2 sentences on the problem or opportunity.
+      - **What Changes**: Bullet list of specific changes. Mark breaking
+        changes with **BREAKING**.
+      - **Capabilities**:
+        - New Capabilities (kebab-case names, one per spec file)
+        - Modified Capabilities (check `openspec/specs/` for existing names)
+      - **Impact**: Affected code, APIs, dependencies, systems.
+
+      **Completeness First** — cover ALL points from Phase 1. Keep language
+      concise but do NOT sacrifice coverage for brevity.
+
       The proposal should be understandable by both technical and non-technical
       readers.
 
+      After writing, verify that the output follows the template structure exactly.
 
-      This is the foundation - specs, design, and tasks all build on this.
+      === PHASE 3: Self-Verification ===
+
+      Verify against this checklist before proceeding:
+      □ All Phase 1 motivation points reflected in Why?
+      □ Every discussed change item captured in What Changes?
+      □ User-stated constraints and Non-Goals documented?
+      □ Uncertainty signals marked with `[NEEDS INVESTIGATION]`?
+      □ Capabilities use correct kebab-case and cover all discussed scopes?
+      □ Generated proposal follows template structure (correct headings)?
+
+      If any check fails, revise before proceeding.
+
+      === PHASE 4: Oracle + Metis Parallel Review (Mandatory) ===
+
+      Launch 1 Oracle + 1 Metis agent IN PARALLEL to review the generated proposal.
+      Replace each placeholder with the actual content before invoking.
+
+      **Oracle prompt:**
+      task(subagent_type="oracle", run_in_background=false, prompt="
+      You are reviewing an OpenSpec change proposal for completeness.
+
+      Phase 1 extraction findings:
+      [PASTE Phase 1 extraction output here, replacing this line]
+
+      Generated proposal.md content:
+      [PASTE full text of openspec/changes/<change-name>/proposal.md here, replacing this line]
+
+      Check:
+      1. Missing items — Phase 1 points not reflected in proposal
+      2. Scope creep — items in proposal not discussed in conversation
+      3. Ambiguity — fuzzy language where specific constraints exist
+      4. Uncertainty signals — properly marked with [NEEDS INVESTIGATION]
+
+      Severity: 🔴 missing critical item / 🟡 minor omission / ⚪ suggestion
+
+      Output format:
+      - List findings by severity
+      - For each 🔴/🟡, provide specific fix suggestion
+      ")
+
+      **Metis prompt:**
+      task(subagent_type="metis", run_in_background=false, prompt="
+      You are reviewing an OpenSpec change proposal for structure and quality.
+
+      Generated proposal.md content:
+      [PASTE full text of openspec/changes/<change-name>/proposal.md here, replacing this line]
+
+      Check:
+      1. Structure — all required sections present and well-formed
+      2. Capabilities naming — kebab-case, compatible with existing specs
+      3. Scope boundary — What Changes vs Capabilities vs Impact not conflated
+      4. Actionability — proposal is specific enough to derive specs from
+
+      Severity: 🔴 structural issue / 🟡 minor issue / ⚪ suggestion
+
+      Output format:
+      - List findings by severity
+      - For each 🔴/🟡, provide specific fix suggestion
+      ")
+
+      **Collect review results:**
+      1. Read Oracle output → list all 🔴/🟡/⚪ findings
+      2. Read Metis output → list all 🔴/🟡/⚪ findings
+      3. **自检**: confirm both agents' results were successfully read.
+         If any agent result is missing, go back to step 1 and re-read.
+      4. Merge findings: same issue from multiple agents → take higher severity
+      5. Classification:
+         - Any 🔴 → BLOCKED, fix proposal.md then re-run PHASE 4 (max 3 rounds)
+         - Only 🟡/⚪ → assess and fix if needed, then proceed
+
+      **Fast fail:** If either agent call fails (timeout, unavailable, error):
+      - Immediately stop the workflow
+      - Report to user: "❌ proposal 审查中断：[agent name] 调用失败。[error message]"
+      - Do NOT degrade, do NOT attempt self-fix, do NOT skip review
+      - Wait for user intervention
+
+      === PHASE 5: Format Integrity Check ===
+
+      After all reviews pass, scan the generated proposal.md for:
+      - Empty sections (section header with no content below)
+      - Unreplaced placeholders (text like `<name>`, `<description>`)
+      - `[TODO]` or `[TBD]` markers
+
+      If any found: fix directly (format-only changes, no re-review needed).
+
+      === PHASE 6: Loop & Proceed ===
+
+      - If 🔴 found in PHASE 4: fix proposal.md, re-run from PHASE 4
+      - Max 3 rounds. After 3 rounds still🔴: show remaining issues to user
+      - If all clear: proposal is complete, proceed to next artifact
     requires: []
   - id: specs
     generates: specs/**/*.md
@@ -344,6 +457,11 @@ artifacts:
       Invoke Oracle before writing tasks.md. Oracle 会按信源优先级分析冲突并给出修复建议。
       在调用 Oracle 前，先读取所有 artifacts，然后在 prompt 中附上关键内容的原文（而非仅摘要），确保 Oracle 有足够上下文做出准确判断。
 
+      **Fast fail 保护**: 如果 Oracle task() 调用失败（超时、不可用、出错），立即停止工作流（**fast fail，不得降级**）：
+      - 向用户报告：「❌ 差距分析中断：Oracle 调用失败。[错误信息]」
+      - 不得自行分析 gap，不得自行生成 tasks.md
+      - 等待用户介入
+
       task(subagent_type="oracle", run_in_background=false, prompt="我准备为此变更生成 tasks.md（任务清单）。
 
       已完成的产物原文（关键段落）：
@@ -381,6 +499,9 @@ artifacts:
       - 明确可自动修复的 → 标注「🔧 可自动修复：...」并说明修改内容
       - 需要用户判断的 → 标注「👤 需用户确认：...」并提供选项
       - 模糊不清的 → 标注「❓ 需追问：...」并说明需要什么信息")
+
+      **说明**: 此循环是内容质量改进机制（Oracle 已成功完成 gap 分析 → AI 修复 → 重新调用），
+      不是 agent 调用失败的降级处理。如 Oracle 调用本身失败 → 按 fast fail 规则立即停住报错。
 
       应用 Oracle 的分析结果，循环执行以下冲突修复流程（**最多循环 3 轮**）：
 
@@ -441,7 +562,10 @@ artifacts:
 
       If validation ERRORS → Invoke Oracle for fix guidance:
       （格式修复通常不涉及内容冲突，信源优先级规则在此作为兜底保障。）
-      如果 Oracle 调用失败，则由 AI 自行分析验证错误并修复格式问题。
+      如果 Oracle task() 调用失败（超时、不可用、出错），立即停止工作流（**fast fail，不得降级**）：
+      - 向用户报告：「❌ Spec 格式验证中断：Oracle 调用失败。[错误信息]」
+      - 不得自行分析验证错误，不得自行修复，不得跳过验证
+      - 等待用户介入决定如何继续
       ```
       task(subagent_type="oracle", run_in_background=false, prompt="openspec validate 报告了以下格式错误：
       [复制验证错误信息]
@@ -574,6 +698,8 @@ artifacts:
       3. **合并去重**：按 severity 合并，标注来源（Oracle / Metis）。同一问题两个 agent 都发现时取更高 severity。
       4. **分类判定**：
          - 任一 agent 有 🔴 → BLOCKED，修复源文件后重新运行 PHASE 4（**最多 3 轮**，超限后汇总 🔴 问题给用户）
+          **说明**: 此循环是内容质量改进机制（审查 agent 已成功完成分析 → AI 修复 → 重新审查），
+          不是 agent 调用失败的降级处理。如审查 agent 调用本身失败 → 按 fast fail 规则立即停住报错。
          - 仅 🟡/⚪ → 评估后决定是否修复
       5. **产出合并清单**：将合并后的发现清单写入输出，供后续 PHASE 引用。
 
@@ -613,10 +739,10 @@ artifacts:
       - Acceptance Criteria 必须是可执行的命令")
       ```
 
-      If Prometheus is unavailable (task call fails), fall back to:
-      ```
-      task(category="deep", run_in_background=false, prompt="基于 OpenSpec change 生成 9-section OMO 计划...（同上）")
-      ```
+      如果 Prometheus task() 调用失败（超时、不可用、出错），立即停止工作流（**fast fail，不得降级**）：
+      - 向用户报告：「❌ Plan 生成中断：Prometheus 调用失败。[错误信息]」
+      - 不得降级到 category="deep" 或其他 agent
+      - 等待用户介入（用户可选择手动指定替代 agent 或重试 Prometheus）
 
       === PHASE 6: Plan Structure Validation ===
 
@@ -736,8 +862,10 @@ artifacts:
       2. **自检**：确认所有 3 个 agent 结果都已读完。如有遗漏，回到 Step 1 重新读取。
       3. **合并去重**：按 severity 合并，标注来源（Oracle / Metis / Momus）。同一问题多个 agent 都发现时取更高 severity。
       4. **分类判定**：
-         - Momus ❌ REJECT → 修复 plan 后重新运行 PHASE 7（**最多 3 轮**，超限后汇总给用户）
-         - Oracle/Metis 有 🔴 → BLOCKED，修复 plan 后重新运行 PHASE 7（**最多 3 轮**，超限后汇总给用户）
+- Momus ❌ REJECT → 修复 plan 后重新运行 PHASE 7（**最多 3 轮**，超限后汇总给用户）
+          - Oracle/Metis 有 🔴 → BLOCKED，修复 plan 后重新运行 PHASE 7（**最多 3 轮**，超限后汇总给用户）
+          **说明**: 此循环是内容质量改进机制（审查 agent 已成功完成分析 → AI 修复 → 重新审查），
+          不是 agent 调用失败的降级处理。如审查 agent 调用本身失败 → 按 fast fail 规则立即停住报错。
          - 仅 🟡/⚪ → 评估后决定是否修复
       5. **产出合并清单**：将合并后的发现清单写入输出，供后续 PHASE 引用。
 
@@ -793,8 +921,10 @@ apply:
     This tells Oracle which files were created or modified by this change.
     Then run Oracle verification with a loop of up to 3 rounds.
 
-    如果 Oracle task() 调用失败，AI 自行分析 git diff 和 artifacts 并生成 verify.md，
-    然后继续判定流程（参照 critic PHASE 3 的 fallback 模式）。
+     如果 Oracle task() 调用失败（超时、不可用、出错），立即停止工作流（**fast fail，不得降级**）：
+     - 向用户报告：「❌ 实现验证中断：Oracle 调用失败。[错误信息]」
+     - 不得自行分析 git diff，不得自行生成 verify.md，不得自行判定
+     - 等待用户介入
 
     ```
     task(subagent_type="oracle", run_in_background=false, prompt="你正在验证实现产出与 OpenSpec change artifacts 的一致性。
@@ -845,7 +975,9 @@ apply:
     读取 `openspec/changes/<change-name>/verify-round-{N}.md` 中的最终判定：
     1. 如果 ✅ PASS → 通过，继续
     2. 如果 🔴 BLOCKED → 修复问题后重新运行 Oracle 验证（**最多 3 轮**，超限后汇总给用户）
-       **修复策略**：
+          **说明**: 此循环是内容质量改进机制（Oracle 已成功完成验证 → AI 修复 → 重新验证），
+          不是 agent 调用失败的降级处理。如 Oracle 调用本身失败 → 按 fast fail 规则立即停住报错。
+        **修复策略**：
        - 只修复 🔴 问题，不要修改 🟡/⚪（那些在 CONDITIONAL 路径处理）
        - 每轮最多修复 3 个 🔴 问题，防止一次改动过大引入新问题
        - 修复前记录当前状态（git stash），以便失败后回滚

@@ -182,6 +182,11 @@ artifacts:
       Invoke Oracle before writing tasks.md. Oracle 会按信源优先级分析冲突并给出修复建议。
       在调用 Oracle 前，先读取所有 artifacts，然后在 prompt 中附上关键内容的原文。
 
+      **Fast fail 保护**: 如果 Oracle task() 调用失败（超时、不可用、出错），立即停止工作流（**fast fail，不得降级**）：
+      - 向用户报告：「❌ 差距分析中断：Oracle 调用失败。[错误信息]」
+      - 不得自行分析 gap，不得自行生成 tasks.md
+      - 等待用户介入
+
       task(subagent_type="oracle", run_in_background=false, prompt="我准备为此变更生成 tasks.md。
 
       已完成的产物原文（关键段落）：
@@ -208,6 +213,9 @@ artifacts:
       - 明确可自动修复的 → 标注「🔧 可自动修复：...」并说明修改内容
       - 需要用户判断的 → 标注「👤 需用户确认：...」并提供选项
       - 模糊不清的 → 标注「❓ 需追问：...」并说明需要什么信息")
+
+      **说明**: 此循环是内容质量改进机制（Oracle 已成功完成 gap 分析 → AI 修复 → 重新调用），
+      不是 agent 调用失败的降级处理。如 Oracle 调用本身失败 → 按 fast fail 规则立即停住报错。
 
       应用 Oracle 的分析结果，循环执行以下冲突修复流程（**最多循环 3 轮**）：
 
@@ -356,6 +364,8 @@ artifacts:
       3. **合并去重**：按 severity 合并，标注来源（Oracle / Metis）。同一问题两个 agent 都发现时取更高 severity。
       4. **分类判定**：
          - 任一 agent 有 🔴 → BLOCKED，修复源文件后重新运行 PHASE 3（**最多 3 轮**，超限后汇总 🔴 问题给用户）
+          **说明**: 此循环是内容质量改进机制（审查 agent 已成功完成分析 → AI 修复 → 重新审查），
+          不是 agent 调用失败的降级处理。如审查 agent 调用本身失败 → 按 fast fail 规则立即停住报错。
          - 仅 🟡/⚪ → 评估后决定是否修复
       5. **产出合并清单**：将合并后的发现清单写入输出，供后续 PHASE 引用。
 
@@ -392,10 +402,10 @@ artifacts:
       - Acceptance Criteria 必须是可执行的命令")
       ```
 
-      If Prometheus is unavailable (task call fails), fall back to:
-      ```
-      task(category="deep", run_in_background=false, prompt="基于 OpenSpec change 生成执行计划...（同上）")
-      ```
+      如果 Prometheus task() 调用失败（超时、不可用、出错），立即停止工作流（**fast fail，不得降级**）：
+      - 向用户报告：「❌ Plan 生成中断：Prometheus 调用失败。[错误信息]」
+      - 不得降级到 category="deep" 或其他 agent
+      - 等待用户介入（用户可选择手动指定替代 agent 或重试 Prometheus）
 
       === PHASE 5: Plan Structure Validation ===
 
@@ -501,6 +511,8 @@ artifacts:
       4. **分类判定**：
          - Momus ❌ REJECT → 修复 plan 后重新运行 PHASE 6（**最多 3 轮**，超限后汇总给用户）
           - Oracle/Metis 有 🔴 → BLOCKED，修复 plan 后重新运行 PHASE 6（**最多 3 轮**，超限后汇总给用户）
+          **说明**: 此循环是内容质量改进机制（审查 agent 已成功完成分析 → AI 修复 → 重新审查），
+          不是 agent 调用失败的降级处理。如审查 agent 调用本身失败 → 按 fast fail 规则立即停住报错。
          - 仅 🟡/⚪ → 评估后决定是否修复
       5. **产出合并清单**：将合并后的发现清单写入输出，供后续 PHASE 引用。
 
@@ -556,8 +568,10 @@ apply:
     This tells Oracle which files were created or modified by this change.
     Then run Oracle verification with a loop of up to 3 rounds.
 
-    如果 Oracle task() 调用失败，AI 自行分析 git diff 和 artifacts 并生成 verify.md，
-    然后继续判定流程（参照 critic 的 fallback 模式）。
+     如果 Oracle task() 调用失败（超时、不可用、出错），立即停止工作流（**fast fail，不得降级**）：
+     - 向用户报告：「❌ 实现验证中断：Oracle 调用失败。[错误信息]」
+     - 不得自行分析 git diff，不得自行生成 verify.md，不得自行判定
+     - 等待用户介入
 
     ```
     task(subagent_type="oracle", run_in_background=false, prompt="你正在验证实现产出与 OpenSpec change artifacts 的一致性。
@@ -602,8 +616,10 @@ apply:
 
     读取 `openspec/changes/<change-name>/verify-round-{N}.md` 中的最终判定：
     1. 如果 ✅ PASS → 通过，继续
-    2. 如果 🔴 BLOCKED → 修复问题后重新运行 Oracle 验证（**最多 3 轮**，超限后汇总给用户）
-       **修复策略**：
+2. 如果 🔴 BLOCKED → 修复问题后重新运行 Oracle 验证（**最多 3 轮**，超限后汇总给用户）
+          **说明**: 此循环是内容质量改进机制（Oracle 已成功完成验证 → AI 修复 → 重新验证），
+          不是 agent 调用失败的降级处理。如 Oracle 调用本身失败 → 按 fast fail 规则立即停住报错。
+        **修复策略**：
        - 只修复 🔴 问题，不要修改 🟡/⚪（那些在 CONDITIONAL 路径处理）
        - 每轮最多修复 3 个 🔴 问题，防止一次改动过大引入新问题
        - 修复前记录当前状态（git stash），以便失败后回滚
