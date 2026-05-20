@@ -862,7 +862,7 @@ artifacts:
       2. **自检**：确认所有 3 个 agent 结果都已读完。如有遗漏，回到 Step 1 重新读取。
       3. **合并去重**：按 severity 合并，标注来源（Oracle / Metis / Momus）。同一问题多个 agent 都发现时取更高 severity。
       4. **分类判定**：
-- Momus ❌ REJECT → 修复 plan 后重新运行 PHASE 7（**最多 3 轮**，超限后汇总给用户）
+          - Momus ❌ REJECT → 修复 plan 后重新运行 PHASE 7（**最多 3 轮**，超限后汇总给用户）
           - Oracle/Metis 有 🔴 → BLOCKED，修复 plan 后重新运行 PHASE 7（**最多 3 轮**，超限后汇总给用户）
           **说明**: 此循环是内容质量改进机制（审查 agent 已成功完成分析 → AI 修复 → 重新审查），
           不是 agent 调用失败的降级处理。如审查 agent 调用本身失败 → 按 fast fail 规则立即停住报错。

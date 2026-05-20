@@ -616,8 +616,8 @@ apply:
 
     读取 `openspec/changes/<change-name>/verify-round-{N}.md` 中的最终判定：
     1. 如果 ✅ PASS → 通过，继续
-2. 如果 🔴 BLOCKED → 修复问题后重新运行 Oracle 验证（**最多 3 轮**，超限后汇总给用户）
-          **说明**: 此循环是内容质量改进机制（Oracle 已成功完成验证 → AI 修复 → 重新验证），
+     2. 如果 🔴 BLOCKED → 修复问题后重新运行 Oracle 验证（**最多 3 轮**，超限后汇总给用户）
+           **说明**: 此循环是内容质量改进机制（Oracle 已成功完成验证 → AI 修复 → 重新验证），
           不是 agent 调用失败的降级处理。如 Oracle 调用本身失败 → 按 fast fail 规则立即停住报错。
         **修复策略**：
        - 只修复 🔴 问题，不要修改 🟡/⚪（那些在 CONDITIONAL 路径处理）
