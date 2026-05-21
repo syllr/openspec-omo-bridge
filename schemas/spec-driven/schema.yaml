@@ -171,19 +171,19 @@ artifacts:
 
       5. Each scenario body MUST contain WHEN / THEN keywords.
 
-      After writing ALL spec files, run:
+      编写完所有 spec 文件后，运行：
       `openspec validate <change-name>`
       Fix any ERROR before proceeding.
 
 
-      Create specification files that define WHAT the system should do.
+      创建定义系统应做什么的规范文件（spec 文件）。
 
 
-      Create one spec file per capability listed in the proposal's Capabilities
+      为 proposal 的 Capabilities 部分列出的每个能力创建一个 spec 文件。
       section.
 
       If the proposal lists no capabilities (both New and Modified sections are
-      empty), skip spec file generation. Create an empty `specs/` directory and
+      为空），跳过 spec 文件生成。创建一个空的 `specs/` 目录并
       proceed to the next artifact.
 
       - New capabilities: use the exact kebab-case name from the proposal
@@ -296,59 +296,52 @@ artifacts:
       comprehensive prompt. Then delegate generation to a focused agent:
 
       task(category="deep", load_skills=[], run_in_background=false,
-           prompt="Generate a technical design document (design.md) for the following change.
+           prompt="为以下变更生成技术设计文档（design.md）。
 
-           Input context:
-           - Proposal (动机和变更范围): [将 proposal.md 的核心内容填入此处]
-           - Spec requirements (关键需求): [将各 spec 的 requirement 和 scenario 填入此处]
-           - Research findings (调研结论): [将 research/ 中的关键发现填入此处，如果没有则填"无"]
+           输入上下文：
+           - Proposal（动机和变更范围）: [将 proposal.md 的核心内容填入此处]
+            - Spec requirements（关键需求）：[将各 spec 的 requirement 和 scenario 填入此处]
+            - Research findings（调研结论）：[将 research/ 中的关键发现填入此处，如果没有则填"无"]
 
-           The design document MUST include these sections:
+           设计文档必须包含以下部分：
 
-           1. **Context**: Background, current state, constraints, stakeholders
-           2. **Goals / Non-Goals**: What this design achieves and explicitly excludes
-           3. **Decisions**: Key technical choices with rationale (why X over Y?).
-              Include alternatives considered for each decision.
-           4. **Risks / Trade-offs**: Known limitations, things that could go wrong.
-              Format: [Risk] → Mitigation
-           5. **Migration Plan**: Steps to deploy, rollback strategy (if applicable)
-           6. **Open Questions**: Outstanding decisions or unknowns to resolve
+           1. **Context**（上下文）：背景、当前状态、约束、干系人
+           2. **Goals / Non-Goals**（目标/非目标）：设计要实现的和明确排除的
+           3. **Decisions**（决策）：关键技术选择及理由（为什么选 X 不选 Y？）。包含考虑过的替代方案
+           4. **Risks / Trade-offs**（风险/权衡）：已知限制和可能出错的地方。格式：[风险] → 缓解措施
+           5. **Migration Plan**（迁移计划）：部署步骤、回滚策略（如适用）
+           6. **Open Questions**（未决问题）：尚未解决的决策或未知事项
 
-           Key requirements:
-           - Focus on architecture and approach, not line-by-line implementation
-           - Each design decision must map to at least one spec requirement
-           - The chosen approach must address the relevant requirement's scenario
-           - If research findings exist, reference them with `详见 research/<topic>/notes.md`
-           - Explain the 'why' behind each technical decision
-           - Keep it focused and actionable")
+           关键要求：
+           - 关注架构和方法，而非逐行实现
+           - 每个设计决策必须对应至少一个 spec requirement
+           - 选择的方法必须解决对应 requirement 的 scenario
+           - 如果存在 research findings，用 `详见 research/<topic>/notes.md` 引用
+           - 解释每个技术决策背后的"为什么"
+           - 保持聚焦和可执行")
 
-      After deep agent returns, verify the generated design.md covers all
-      required sections at `openspec/changes/<change-name>/design.md`.
-      If any section is missing, fix directly (minor edits only).
+      deep agent 返回后，验证生成的 design.md 是否位于 `openspec/changes/<change-name>/design.md` 且覆盖了所有必需部分。
+      如果有部分缺失，直接修复（仅小改动）。
 
 
-      === Technical Research (Optional) ===
+      === 技术调研（可选） ===
 
-      When reading the proposal, watch out for **uncertainty signals** such as:
+      阅读 proposal 时，注意以下**不确定性信号**：
 
-      - Words like "可能", "maybe", "might", "needs investigation"
-      - References to undocumented APIs or protocols
-      - Questions about API fields, signatures, or authentication methods
-      - Unclear library behavior or compatibility concerns
+      - "可能"、"maybe"、"might"、"needs investigation" 等词语
+      - 引用未文档化的 API 或协议
+      - 关于 API 字段、签名或认证方式的问题
+      - 不明确的库行为或兼容性问题
 
-      对于每个这样的不确定点，按以下流程处理：
+      对于每个不确定点，按以下流程处理：
 
-       1. **Identify research topics**: Extract each uncertain point from proposal.md
-          into a named research topic (kebab-case). Example: `api-signature-format`, `plugin-config-schema`.
+       1. **识别调研主题**：从 proposal.md 中提取每个不确定点，命名成 kebab-case 的调研主题。例如：`api-signature-format`、`plugin-config-schema`
 
-       2. **Two-Wave Concurrent Research**:
+       2. **两波并发调研**：
 
-          All research artifacts (scripts, docs, API responses) are saved to the temporary
-          directory `$project/spectest/<topic>/`. After user confirmation, they are moved to
-          `openspec/changes/<change-name>/research/<topic>/`.
+          所有调研产物（脚本、文档、API 响应）保存到临时目录 `$project/spectest/<topic>/`。用户确认后移动到 `openspec/changes/<change-name>/research/<topic>/`
 
-          **Wave 1 — All librarians concurrently**: Fire ALL topics' librarian tasks in ONE
-          message. Each librarian researches documentation or source code for its topic.
+          **第一波 — 所有 librarian 并发**：在同一条消息中发起所有主题的 librarian 任务。每个 librarian 调研其主题的文档或源代码。
 
           ```
           task(subagent_type="librarian", run_in_background=false, prompt="调研 plugin.xml 配置声明格式...")
@@ -356,11 +349,9 @@ artifacts:
           # ...N 个 topic，全部并发
           ```
 
-          Wait for ALL librarians to complete. Save each result to `spectest/<topic>/notes.md`.
+          等待所有 librarian 完成后，将每个结果保存到 `spectest/<topic>/notes.md`
 
-          **Wave 2 — All Sisyphus-Junior (deep) concurrently**: After all librarians are done,
-          fire ALL topics' analysis tasks in ONE message. Each deep agent reads the librarian's
-          findings and writes validation scripts with real API/interface calls.
+          **第二波 — 所有 deep agent 并发**：所有 librarian 完成后，在同一条消息中发起所有主题的分析任务。每个 deep agent 阅读 librarian 的调研结果，编写使用真实 API/接口调用的验证脚本。
 
           ```
           task(category="deep", load_skills=[], run_in_background=false, prompt="基于 spectest/plugin-config/notes.md 的调研结果，
@@ -371,13 +362,11 @@ artifacts:
           # ...N 个 topic，全部并发
           ```
 
-          Wait for ALL deep agents to complete. Save each result to `spectest/<topic>/`.
+          等待所有 deep agent 完成后，将每个结果保存到 `spectest/<topic>/`
 
-       3. **User confirmation**: Present a summary of all research findings to the user.
-          After user confirms, move each `spectest/<topic>/` directory to
-          `openspec/changes/<change-name>/research/<topic>/`.
+       3. **用户确认**：向用户展示所有调研结果的摘要。用户确认后，将每个 `spectest/<topic>/` 目录移动到 `openspec/changes/<change-name>/research/<topic>/`
 
-          Final structure after confirmation:
+          确认后的最终结构：
 
           ```
           openspec/changes/<change-name>/research/
@@ -391,10 +380,9 @@ artifacts:
               └── ...
           ```
 
-       4. **Update design.md**: Reference research findings in the relevant Decisions
-          sections. Use links like `详见 research/<topic>/notes.md`.
+       4. **更新 design.md**：在相关的 Decisions 部分引用调研发现。使用 `详见 research/<topic>/notes.md` 格式
 
-       **Important**:
+       **重要**：
        - research/ 目录是**可选的** — 只有 proposal 中存在不确定点时才创建
        - research/ 是工作过程产物（side effect），不被 OpenSpec generations 跟踪
        - 验证脚本必须是**实际可运行的**（不是伪代码）
@@ -411,7 +399,7 @@ artifacts:
 
       **范围限制：不要修改任何源代码。仅生成 tasks.md。**
 
-      Create the task list (tasks.md).
+      创建任务列表（tasks.md）。
 
 
       **You MUST create ONE file:**
@@ -422,9 +410,9 @@ artifacts:
       === PHASE 1：理解上下文 ===
 
 
-      **Step 0: Read and Understand All OpenSpec Artifacts**
+      **Step 0：读取并理解所有 OpenSpec 产物**
 
-      Read every artifact file. Each has a specific role:
+      读取每个 artifact 文件。每个文件有特定角色：
 
       | File | Role |
       |------|------|
@@ -434,15 +422,15 @@ artifacts:
       | `tasks.md` | DO — checkbox task list |
 
 
-      How to use each artifact:
+      如何利用每个 artifact：
       - **proposal.md** → list Capabilities to determine task groupings
       - **specs/<capability>/spec.md** → extract Requirements to define task scope
       - **design.md** → extract Decisions to plan execution approach
 
 
-      **Step 1: Quick Artifact Review**
+      **Step 1：快速 artifact 审查**
 
-      Before generating, quickly check:
+      生成前，快速检查：
       1. Does every proposal Capability have a corresponding spec?
       2. Do the tasks cover all specs' key Requirements?
       3. Any contradictions?
@@ -450,7 +438,7 @@ artifacts:
       → If all clean: Proceed.
 
 
-      **Step 2: Invoke Oracle for Gap Analysis (MANDATORY)**
+      **Step 2：调用 Oracle 进行差距分析（强制）**
 
       Invoke Oracle before writing tasks.md. Oracle 会按信源优先级分析冲突并给出修复建议。
       在调用 Oracle 前，先读取所有 artifacts，然后在 prompt 中附上关键内容的原文（而非仅摘要），确保 Oracle 有足够上下文做出准确判断。
@@ -557,7 +545,7 @@ artifacts:
 
       === PHASE 1：读取上下文 ===
 
-      Read these files:
+      读取以下文件：
       - `openspec/changes/<change-name>/tasks.md` — checkbox task list
       - `openspec/changes/<change-name>/specs/` — all spec files
       - `openspec/changes/<change-name>/design.md` — technical design
@@ -613,7 +601,7 @@ artifacts:
 
       === PHASE 4：Oracle + Metis 并行审查 tasks.md ===
 
-      Launch 1 Oracle + 1 Metis agent IN PARALLEL to review tasks.md.
+      同时启动 1 个 Oracle + 1 个 Metis agent 并行审查 tasks.md。
       Oracle 专注于内容拆分合理性，Metis 专注于 OMO 格式合规性。
       注意：Oracle 和 Metis 在「优化建议」上各有侧重——Oracle 从内容必要性出发，Metis 从格式规则出发，两者互补而非重叠。
 
@@ -725,21 +713,21 @@ artifacts:
 
       === PHASE 5：生成计划 ===
 
-      Generate `.sisyphus/plans/<change-name>.md` — the OMO-compatible plan with 9 sections.
+      生成 `.sisyphus/plans/<change-name>.md` — 包含 9 个部分的 OMO 兼容执行计划。
 
       Delegate plan generation via category="deep":
 
       task(category="deep", load_skills=[], run_in_background=false,
-           prompt="Generate the OMO-compatible plan at .sisyphus/plans/<change-name>.md.
+           prompt="为以下变更生成 OMO 兼容的执行计划，保存到 .sisyphus/plans/<change-name>.md。
 
            输入文件摘要（已读取）：
-           - Proposal: [将 proposal.md 的核心内容填入此处]
-           - Spec requirements: [将各 spec 的关键 requirement 填入此处]
-           - Design decisions: [将 design.md 的关键决策填入此处]
-           - Task list: [将 tasks.md 的完整 task 列表填入此处]
-           - Research: [将 research/ 的关键发现填入此处，没有则填无]
+           - Proposal（动机和能力）：[将 proposal.md 的核心内容填入此处]
+           - Spec requirements（关键需求）：[将各 spec 的关键 requirement 填入此处]
+           - Design decisions（设计决策）：[将 design.md 的关键决策填入此处]
+           - Task list（任务列表）：[将 tasks.md 的完整 task 列表填入此处]
+           - Research（调研结果）：[将 research/ 的关键发现填入此处，没有则填无]
 
-           The plan MUST include 9 sections using summary + link format:
+           计划必须包含以下 9 个部分，使用 summary + link 格式：
            1. ## TL;DR — 1-2句概述（引用 proposal.md）
            2. ## Context — 2-3句背景（引用 proposal.md）
            3. ## Work Objectives — 每个 capability 及关键 requirement（引用 specs/）
@@ -750,24 +738,24 @@ artifacts:
            8. ## Commit Strategy
            9. ## Success Criteria
 
-           Key rules:
-           - Task numbers must match tasks.md (N.M format)
-           - Do NOT copy artifact verbatim (except Tasks' What to do)
-           - Acceptance Criteria must be executable commands")
+           关键规则：
+           - Task 编号必须与 tasks.md 一致（N.M 格式）
+           - 不要复制 artifact 原文（Tasks 的 What to do 部分除外）
+           - Acceptance Criteria 必须是可执行的命令")
 
       === PHASE 6：Plan 结构验证 ===
 
-      After writing the plan, validate:
-      1. `grep -c '^## ' .sisyphus/plans/<change-name>.md` → must be at least 9
-      2. `grep -q '## Tasks' .sisyphus/plans/<change-name>.md` → Tasks section exists
-      3. `grep -q '## Final Verification Wave' .sisyphus/plans/<change-name>.md` → FVW exists
-      4. `sed -n '/^## Tasks/,/^## /p' .sisyphus/plans/<change-name>.md | grep -c '^- \['` should equal `grep -c '^- \[' openspec/changes/<change-name>/tasks.md`
+      编写 plan 后，执行以下验证：
+      1. `grep -c '^## ' .sisyphus/plans/<change-name>.md` → 必须至少 9 个
+      2. `grep -q '## Tasks' .sisyphus/plans/<change-name>.md` → Tasks 部分存在
+      3. `grep -q '## Final Verification Wave' .sisyphus/plans/<change-name>.md` → FVW 存在
+      4. `sed -n '/^## Tasks/,/^## /p' .sisyphus/plans/<change-name>.md | grep -c '^- \['` 应等于 `grep -c '^- \[' openspec/changes/<change-name>/tasks.md`
 
-      If ANY check fails: STOP, fix the plan, re-validate（**最多 3 轮**，超限后汇总给用户）。
+      如果任何检查不通过：停止，修复 plan，重新验证（**最多 3 轮**，超限后汇总给用户）。
 
       === PHASE 7：Oracle + Metis + Momus 并行审查 Plan ===
 
-      Launch 1 Oracle + 1 Metis + 1 Momus agent ALL IN PARALLEL to review the generated plan.
+      同时启动 1 个 Oracle + 1 个 Metis + 1 个 Momus agent 并行审查生成的 plan。
       Oracle 专注于 content 层面：design alignment、Verification Strategy、Success Criteria。
       Metis 专注于 quality 层面：9 节结构、QA Scenarios、Wave 结构。
       Momus 专注于最终可执行性判定：执行路径审查 + 风险矩阵审查。
@@ -919,32 +907,30 @@ apply:
   instruction: |
     __LANG_PLACEHOLDER__
 
-    **IMPORTANT: This instruction overrides the skill/command's execution logic.
-    Ignore any external "step 6" that says to manually execute tasks one by one.
-    Follow ONLY this instruction's flow: verdict check → `/start-work` → Oracle verify → sync.**
+    **重要：本指令覆盖 skill/command 的执行逻辑。
+    忽略任何外部的"步骤 6"要求逐一手动执行任务。
+    仅遵循本指令的流程：verdict 检查 → `/start-work` → Oracle 验证 → 同步。**
 
-    Read `openspec/changes/<change-name>/critic.md` first and check the VERDICT:
+    先读取 `openspec/changes/<change-name>/critic.md`，检查 VERDICT：
 
-    1. Read the `## Verdict` section and find `**VERDICT**: ...`
-    2. If `🔴 BLOCKED`: STOP. Print "🛑 Critic BLOCKED this change. Fix issues and re-run critic." Do NOT proceed.
-    3. If `⚠️ CONDITIONAL`: List the 🟡 items. Ask user to confirm before proceeding.
-    4. If `✅ PASS`: Continue.
+    1. 读取 `## Verdict` 部分，找到 `**VERDICT**: ...`
+    2. 如果 `🔴 BLOCKED`：停止。输出"🛑 Critic 阻塞了此变更。修复问题后重新运行 critic。"不要继续
+    3. 如果 `⚠️ CONDITIONAL`：列出 🟡 项。要求用户确认后再继续
+    4. 如果 `✅ PASS`：继续
 
-    After VERDICT is clear, call:
+    VERDICT 确认后，调用：
     ```
     /start-work .sisyphus/plans/<change-name>.md
     ```
 
-    This invokes OMO's built-in plan executor (Atlas) which reads the plan
-    file and executes tasks with proper delegation, verification, and session
-    continuity.
+    这会调用 OMO 内置的计划执行器（Atlas），读取计划文件并执行任务，包含委托、验证和会话连续性。
 
-    After `/start-work` completes, capture the list of changed files:
+    `/start-work` 完成后，捕获变更文件列表：
     ```
     git diff --name-only HEAD
     ```
-    This tells Oracle which files were created or modified by this change.
-    Then run Oracle verification with a loop of up to 3 rounds.
+    这告诉 Oracle 哪些文件被此变更创建或修改。
+    然后运行 Oracle 验证，最多 3 轮。
 
      如果 Oracle task() 调用失败（超时、不可用、出错），立即停止工作流（**fast fail，不得降级**）：
      - 向用户报告：「❌ 实现验证中断：Oracle 调用失败。[错误信息]」
@@ -1016,11 +1002,10 @@ apply:
            不是 agent 调用失败的降级处理。如 Oracle 调用本身失败 → 按 fast fail 规则立即停住报错。
     3. 如果 ⚠️ CONDITIONAL → 汇总 🟡/⚪ 问题展示给用户，让用户决定是接受继续还是修复后再重新运行 Oracle 验证
 
-    **Sync Protocol**:
-    - The plan file's `## Tasks` section tracks checkbox states for `/start-work`
-    - `openspec/changes/<change-name>/tasks.md` is the OpenSpec source of truth
-    - After `/start-work` completes or pauses, copy checkbox states from
-      `.sisyphus/plans/<change-name>.md` to
-      `openspec/changes/<change-name>/tasks.md` to keep them in sync
-    - Run: diff <(grep '^- \[' openspec/changes/<change-name>/tasks.md) <(sed -n '/^## Tasks/,/^## /p' .sisyphus/plans/<change-name>.md | grep '^- \[')
-      to verify consistency on pause/all_done
+    **同步协议**：
+    - plan 文件的 `## Tasks` 部分跟踪 `/start-work` 的 checkbox 状态
+    - `openspec/changes/<change-name>/tasks.md` 是 OpenSpec 的真实来源
+    - `/start-work` 完成或暂停后，将 `.sisyphus/plans/<change-name>.md` 的 checkbox 状态复制到
+      `openspec/changes/<change-name>/tasks.md` 保持同步
+    - 运行以下命令验证暂停/完成时的状态一致性：
+      diff <(grep '^- \[' openspec/changes/<change-name>/tasks.md) <(sed -n '/^## Tasks/,/^## /p' .sisyphus/plans/<change-name>.md | grep '^- \[')

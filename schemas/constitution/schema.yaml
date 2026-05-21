@@ -12,16 +12,16 @@ artifacts:
       **范围限制：不要修改任何源代码。仅生成 scan.md。**
 
 
-      Analyze the project's technology stack through a structured 3-phase process:
+      通过结构化的 3 阶段流程分析项目的技术栈：
 
 
-      **Phase 1: Project Detection & Config Parsing**
+      **Phase 1：项目检测与配置解析**
 
       - Read configuration files: package.json, go.mod, pyproject.toml, Cargo.toml, etc.
       - Use Glob and Grep to analyze project structure, build tools, test frameworks
       - Distinguish between existing project (has code) and empty project
 
-      **Phase 2: User Conversation (/openspec-explore)**
+      **Phase 2：用户对话（/openspec-explore）**
 
       - Present current tech stack analysis results
       - Discuss whether to introduce new technologies or upgrade dependencies
@@ -74,7 +74,7 @@ artifacts:
       Based on the confirmed tech stack from scan.md, design the constitution structure.
 
 
-      **Step 1: Multi-Agent Best Practice Research**
+      **Step 1：多 Agent 最佳实践调研**
 
       - Launch multiple librarian agents in parallel, each focused on one technology from the scan results
       - Research official documentation, community standards, and common pitfalls
@@ -83,12 +83,12 @@ artifacts:
         researched topics and their key findings. This file is later used by Technical Research
         to determine which topics already have coverage.
 
-      **Step 2: User Review**
+      **Step 2：用户审核**
 
       - Present each technology's research results to the user for confirmation
       - User can approve, request changes, or reject specific recommendations
 
-      **Step 3: Generate Reference Documents**
+      **Step 3：生成参考文档**
 
       - Call /summarize-research to produce structured reference files:
         - coding-standards/naming.md
@@ -145,14 +145,14 @@ artifacts:
       - spectest/ 是临时目录，用户确认后数据才会移到 research/
 
 
-      **Step 4 (Optional): Ask About Code Sync**
+      **Step 4（可选）：询问代码同步**
 
       - Use question tool to ask the user: "Do you want to scan existing code for constitution violations?"
       - If user confirms: add code sync logic to this design, and the tasks phase will include
         an additional task for fixing violations
       - If user declines: skip, proceed with standard constitution creation only
 
-      **Step 5: 生成设计文档**
+      **Step 5：生成设计文档**
 
       将所有调研结果和设计决策打包，委托 category="deep" 生成 constitution-design.md：
 
@@ -320,7 +320,7 @@ artifacts:
 
       === PHASE 1：读取上下文 ===
 
-      Read these files:
+      读取以下文件：
       - `openspec/changes/<change-name>/tasks.md` — checkbox task list
       - `openspec/changes/<change-name>/scan.md` — tech stack analysis
       - `openspec/changes/<change-name>/constitution-design.md` — constitution design
@@ -339,7 +339,7 @@ artifacts:
 
       === PHASE 3：Oracle + Metis 并行审查 tasks.md ===
 
-      Launch 1 Oracle + 1 Metis agent IN PARALLEL to review tasks.md.
+      同时启动 1 个 Oracle + 1 个 Metis agent 并行审查 tasks.md。
       Oracle 专注于内容拆分合理性，Metis 专注于 OMO 格式合规性。
 
       ```
@@ -435,48 +435,48 @@ artifacts:
 
       === PHASE 4：生成计划 ===
 
-      Generate `.sisyphus/plans/<change-name>.md` — the OMO-compatible plan.
+      生成 `.sisyphus/plans/<change-name>.md` — OMO 兼容执行计划。
 
       Delegate plan generation via category="deep":
 
       task(category="deep", load_skills=[], run_in_background=false,
-           prompt="Generate the OMO-compatible plan at .sisyphus/plans/<change-name>.md.
+           prompt="为以下变更生成 OMO 兼容的执行计划，保存到 .sisyphus/plans/<change-name>.md。
 
            输入文件摘要（已读取）：
-           - Scan（技术栈分析）: [将 scan.md 的核心技术决策填入此处]
-           - Design（参考结构设计）: [将 constitution-design.md 的关键设计决策填入此处]
-           - Task list: [将 tasks.md 的完整 task 列表填入此处]
-           - Research: [将 research/ 的关键发现填入此处，没有则填无]
+           - Scan（技术栈分析）：[将 scan.md 的核心技术决策填入此处]
+           - Design（参考结构设计）：[将 constitution-design.md 的关键设计决策填入此处]
+           - Task list（任务列表）：[将 tasks.md 的完整 task 列表填入此处]
+           - Research（调研结果）：[将 research/ 的关键发现填入此处，没有则填无]
 
-           The plan MUST include 7 sections using summary + link format:
-           1. ## TL;DR
-           2. ## Context
-           3. ## Work Objectives
-           4. ## Execution Strategy — 引用 constitution-design.md 和 research/
-           5. ## Tasks — tasks.md 的 checkbox 展开，每个 task 含 What to do / Must NOT do / Agent Profile / References / Acceptance Criteria / QA Scenarios / Parallelization / Evidence / Commit
-           6. ## Final Verification Wave — F1~F4
-           7. ## Success Criteria
+           计划必须包含以下 7 个部分，使用 summary + link 格式：
+           1. ## TL;DR（摘要）
+           2. ## Context（上下文）
+           3. ## Work Objectives（工作目标）
+           4. ## Execution Strategy（执行策略）— 引用 constitution-design.md 和 research/
+           5. ## Tasks（任务）— tasks.md 的 checkbox 展开，每个 task 含 What to do / Must NOT do / Agent Profile / References / Acceptance Criteria / QA Scenarios / Parallelization / Evidence / Commit
+           6. ## Final Verification Wave（最终验证波）— F1~F4
+           7. ## Success Criteria（成功标准）
 
-           Note: Verification Strategy and Commit Strategy sections are skipped per Design Decision 6.
+           注意：根据 Design Decision 6，跳过 Verification Strategy 和 Commit Strategy 部分。
 
-           Key rules:
-           - Task numbers must match tasks.md
-           - Do NOT copy artifact verbatim (except Tasks' What to do)
-           - Acceptance Criteria must be executable commands")
+           关键规则：
+           - Task 编号必须与 tasks.md 一致
+           - 不要复制 artifact 原文（Tasks 的 What to do 部分除外）
+           - Acceptance Criteria 必须是可执行的命令")
 
       === PHASE 5：Plan 结构验证 ===
 
-      After writing the plan, validate:
-      1. `grep -c '^## ' .sisyphus/plans/<change-name>.md` → must be at least 7 (skipping Verification Strategy and Commit Strategy)
-      2. `grep -q '## Tasks' .sisyphus/plans/<change-name>.md` → Tasks section exists
-      3. `grep -q '## Final Verification Wave' .sisyphus/plans/<change-name>.md` → FVW exists
-      4. `sed -n '/^## Tasks/,/^## /p' .sisyphus/plans/<change-name>.md | grep -c '^- \['` should equal `grep -c '^- \[' openspec/changes/<change-name>/tasks.md`
+      编写 plan 后，执行以下验证：
+      1. `grep -c '^## ' .sisyphus/plans/<change-name>.md` → 必须至少 7 个（跳过 Verification Strategy 和 Commit Strategy）
+      2. `grep -q '## Tasks' .sisyphus/plans/<change-name>.md` → Tasks 部分存在
+      3. `grep -q '## Final Verification Wave' .sisyphus/plans/<change-name>.md` → FVW 存在
+      4. `sed -n '/^## Tasks/,/^## /p' .sisyphus/plans/<change-name>.md | grep -c '^- \['` 应等于 `grep -c '^- \[' openspec/changes/<change-name>/tasks.md`
 
-      If ANY check fails: STOP, fix the plan, re-validate（**最多 3 轮**，超限后汇总给用户）。
+      如果任何检查不通过：停止，修复 plan，重新验证（**最多 3 轮**，超限后汇总给用户）。
 
       === PHASE 6：Oracle + Metis + Momus 并行审查 Plan ===
 
-      Launch 1 Oracle + 1 Metis + 1 Momus agent ALL IN PARALLEL to review the generated plan.
+      同时启动 1 个 Oracle + 1 个 Metis + 1 个 Momus agent 并行审查生成的 plan。
       Oracle 专注于 content 层面：设计对齐、成功标准。
       Metis 专注于 quality 层面：结构、QA Scenarios、Wave 并发。
       Momus 专注于最终可执行性判定：执行路径审查 + 风险矩阵审查。
@@ -612,32 +612,30 @@ apply:
   instruction: |
     __LANG_PLACEHOLDER__
 
-    **IMPORTANT: This instruction overrides the skill/command's execution logic.
-    Ignore any external "step 6" that says to manually execute tasks one by one.
-    Follow ONLY this instruction's flow: verdict check → `/start-work` → Oracle verify → sync.**
+    **重要：本指令覆盖 skill/command 的执行逻辑。
+    忽略任何外部的"步骤 6"要求逐一手动执行任务。
+    仅遵循本指令的流程：verdict 检查 → `/start-work` → Oracle 验证 → 同步。**
 
-    Read `openspec/changes/<change-name>/critic.md` first and check the VERDICT:
+    先读取 `openspec/changes/<change-name>/critic.md`，检查 VERDICT：
 
-    1. Read the `## Verdict` section and find `**VERDICT**: ...`
-    2. If `🔴 BLOCKED`: STOP. Print "🛑 Critic BLOCKED this change. Fix issues and re-run critic." Do NOT proceed.
-    3. If `⚠️ CONDITIONAL`: List the 🟡 items. Ask user to confirm before proceeding.
-    4. If `✅ PASS`: Continue.
+    1. 读取 `## Verdict` 部分，找到 `**VERDICT**: ...`
+    2. 如果 `🔴 BLOCKED`：停止。输出"🛑 Critic 阻塞了此变更。修复问题后重新运行 critic。"不要继续
+    3. 如果 `⚠️ CONDITIONAL`：列出 🟡 项。要求用户确认后再继续
+    4. 如果 `✅ PASS`：继续
 
-    After VERDICT is clear, call:
+    VERDICT 确认后，调用：
     ```
     /start-work .sisyphus/plans/<change-name>.md
     ```
 
-    This invokes OMO's built-in plan executor (Atlas) which reads the plan
-    file and executes tasks with proper delegation, verification, and session
-    continuity.
+    这会调用 OMO 内置的计划执行器（Atlas），读取计划文件并执行任务，包含委托、验证和会话连续性。
 
-    After `/start-work` completes, capture the list of changed files:
+    `/start-work` 完成后，捕获变更文件列表：
     ```
     git diff --name-only HEAD
     ```
-    This tells Oracle which files were created or modified by this change.
-    Then run Oracle verification with a loop of up to 3 rounds.
+    这告诉 Oracle 哪些文件被此变更创建或修改。
+    然后运行 Oracle 验证，最多 3 轮。
 
      如果 Oracle task() 调用失败（超时、不可用、出错），立即停止工作流（**fast fail，不得降级**）：
      - 向用户报告：「❌ 实现验证中断：Oracle 调用失败。[错误信息]」
@@ -704,26 +702,25 @@ apply:
            不是 agent 调用失败的降级处理。如 Oracle 调用本身失败 → 按 fast fail 规则立即停住报错。
     3. 如果 ⚠️ CONDITIONAL → 汇总 🟡/⚪ 问题展示给用户，让用户决定是接受继续还是修复后再重新运行 Oracle 验证
 
-    **Init/Update Detection**:
-    - Before executing, check if `.opencode/skills/constitution/SKILL.md` and `AGENTS.md`'s `## Constitution` section exist
-    - Both exist → **Update mode**: diff existing content, prompt user for confirmation
-    - Both missing → **Init mode**: create all files fresh
-    - Partial → **Incomplete mode**: warn user, offer options (overwrite/complete/abort)
+    **初始化/更新检测**：
+    - 执行前，检查 `.opencode/skills/constitution/SKILL.md` 和 `AGENTS.md` 的 `## Constitution` 部分是否存在
+    - 两者都存在 → **更新模式**：diff 现有内容，要求用户确认
+    - 两者都缺失 → **初始化模式**：从头创建所有文件
+    - 部分存在 → **不完整模式**：警告用户，提供选项（覆盖/补全/中止）
 
-    **Output Quality Validation**:
-    After `/start-work` completes, validate the created output files:
-    1. **SKILL.md frontmatter**: Check that `.opencode/skills/constitution/SKILL.md` has valid YAML frontmatter with `name: constitution` and non-empty `description`. Grep for `^---` boundaries.
-    2. **AGENTS.md constitution section**: Check that `AGENTS.md` contains `## Constitution`.
-    3. **Core reference files**: Check that essential reference files exist（tech-stack.md, architecture.md 等）
-    4. **Reference link integrity**: Check that SKILL.md's reference links point to existing files under `.opencode/skills/constitution/references/`.
+    **输出质量验证**：
+    `/start-work` 完成后，验证创建的输出文件：
+    1. **SKILL.md frontmatter**：检查 `.opencode/skills/constitution/SKILL.md` 是否有有效的 YAML frontmatter，包含 `name: constitution` 和非空的 `description`。用 grep 查找 `^---` 边界
+    2. **AGENTS.md constitution 部分**：检查 `AGENTS.md` 是否包含 `## Constitution`
+    3. **核心参考文件**：检查必要的参考文件是否存在（tech-stack.md、architecture.md 等）
+    4. **参考链接完整性**：检查 SKILL.md 的参考链接是否指向 `.opencode/skills/constitution/references/` 下的现有文件
 
-    If any validation fails: warn user and offer to fix.
+    如果任何验证失败：警告用户并提供修复选项。
 
-    **Sync Protocol**:
-    - The plan file's `## Tasks` section tracks checkbox states for `/start-work`
-    - `openspec/changes/<change-name>/tasks.md` is the OpenSpec source of truth
-    - After `/start-work` completes or pauses, copy checkbox states from
-      `.sisyphus/plans/<change-name>.md` to
-      `openspec/changes/<change-name>/tasks.md` to keep them in sync
-    - Run: diff <(grep '^- \[' openspec/changes/<change-name>/tasks.md) <(sed -n '/^## Tasks/,/^## /p' .sisyphus/plans/<change-name>.md | grep '^- \[')
-      to verify consistency on pause/all_done
+    **同步协议**：
+    - plan 文件的 `## Tasks` 部分跟踪 `/start-work` 的 checkbox 状态
+    - `openspec/changes/<change-name>/tasks.md` 是 OpenSpec 的真实来源
+    - `/start-work` 完成或暂停后，将 `.sisyphus/plans/<change-name>.md` 的 checkbox 状态复制到
+      `openspec/changes/<change-name>/tasks.md` 保持同步
+    - 运行以下命令验证暂停/完成时的状态一致性：
+      diff <(grep '^- \[' openspec/changes/<change-name>/tasks.md) <(sed -n '/^## Tasks/,/^## /p' .sisyphus/plans/<change-name>.md | grep '^- \[')
