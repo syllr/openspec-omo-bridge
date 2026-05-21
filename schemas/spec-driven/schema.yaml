@@ -56,65 +56,55 @@ artifacts:
 
       编写后验证输出是否完全遵循模板结构。
 
-      === PHASE 3：自检 ===
-
-      在最终确定前，对照以下清单自查：
-      □ PHASE 1 中的所有动机点是否反映在 Why 部分？
-      □ 每个讨论到的变更项是否在 What Changes 中体现？
-      □ 用户提到的约束和非目标是否已记录？
-      □ 不确定信号是否已用 `[NEEDS INVESTIGATION]` 标记？
-      □ Capabilities 是否使用正确的 kebab-case 命名并覆盖所有讨论范围？
-      □ 生成的 proposal 是否遵循模板结构（正确的标题层级）？
-
-      如果有任何检查不通过，修改后再继续。
-
-      === PHASE 4：Oracle + Metis 并行审查（强制） ===
+      === PHASE 3：Oracle + Metis 并行审查（强制） ===
 
       同时启动 1 个 Oracle + 1 个 Metis agent 审查生成的 proposal。
       调用前将占位符替换为实际内容。
 
-      **Oracle prompt：**
-      task(subagent_type="oracle", run_in_background=false, prompt="
-      你正在审查一个 OpenSpec 变更提案的完整性。
+       **Oracle prompt 和 Metis prompt 使用相同内容：**
+       task(subagent_type="oracle", run_in_background=false, prompt="
+       你正在审查一个 OpenSpec 变更提案。请逐一检查以下所有检查项：
 
-      PHASE 1 的上下文提取结果：
-      [将 PHASE 1 的提取输出粘贴此处，替换本行]
+       PHASE 1 的上下文提取结果：
+       [将 PHASE 1 的提取输出粘贴此处]
 
-      生成的 proposal.md 内容：
-      [将 openspec/changes/<change-name>/proposal.md 全文粘贴此处，替换本行]
+       生成的 proposal.md 路径：openspec/changes/<change-name>/proposal.md
 
-      检查：
-      1. 遗漏项——PHASE 1 的要点未在 proposal 中体现
-      2. 范围蔓延——proposal 中出现了对话中未讨论的内容
-      3. 模糊性——用户有明确约束的地方使用了模糊语言
-      4. 不确定信号——是否正确标记了 [NEEDS INVESTIGATION]
+       □ 内容完整性——PHASE 1 提取的所有要点是否在 proposal 中体现？
+       □ 范围控制——提案中是否有对话中未讨论的内容（范围蔓延）？
+       □ 结构完整性——所有必需的部分是否存在且格式正确？
+       □ 格式卫生——有无空部分、未替换占位符、[TODO]/[TBD] 标记？
+       □ 命名规范——Capabilities 是否使用 kebab-case？
+       □ 边界清晰——What Changes / Capabilities / Impact 是否没有混淆？
+       □ 可操作性——Capabilities 是否具体到可以衍生 specs？Impact 是否明确？
+       □ 模糊性——表达是否清晰？有无 AI-slop（模糊空洞的表述）？
+       □ 不确定信号——需要调研的点是否已用 [NEEDS INVESTIGATION] 标记？
 
-      严重程度：🔴 遗漏关键项 / 🟡 轻微遗漏 / ⚪ 建议
+       严重程度：🔴 阻塞 / 🟡 警告 / ⚪ 建议
+       输出格式：按严重程度列出发现，对每个 🔴/🟡 给出具体修改建议
+       ")
 
-      输出格式：
-      - 按严重程度列出发现
-      - 对每个 🔴/🟡，给出具体的修改建议
-      ")
+       task(subagent_type="metis", run_in_background=false, prompt="
+        你正在审查一个 OpenSpec 变更提案。请逐一检查以下所有检查项：
 
-      **Metis prompt：**
-      task(subagent_type="metis", run_in_background=false, prompt="
-      你正在审查一个 OpenSpec 变更提案的结构和质量。
+        PHASE 1 的上下文提取结果：
+        [将 PHASE 1 的提取输出粘贴此处]
 
-      生成的 proposal.md 内容：
-      [将 openspec/changes/<change-name>/proposal.md 全文粘贴此处，替换本行]
+        生成的 proposal.md 路径：openspec/changes/<change-name>/proposal.md
 
-      检查：
-      1. 结构——所有必需的部分是否都存在且格式正确
-      2. Capabilities 命名——kebab-case，与已有 specs 兼容
-      3. 范围边界——What Changes / Capabilities / Impact 没有混淆
-      4. 可操作性——proposal 足够具体，可以从中衍生 specs
+        □ 内容完整性——PHASE 1 提取的所有要点是否在 proposal 中体现？
+        □ 范围控制——提案中是否有对话中未讨论的内容（范围蔓延）？
+        □ 结构完整性——所有必需的部分是否存在且格式正确？
+        □ 格式卫生——有无空部分、未替换占位符、[TODO]/[TBD] 标记？
+        □ 命名规范——Capabilities 是否使用 kebab-case？
+        □ 边界清晰——What Changes / Capabilities / Impact 是否没有混淆？
+        □ 可操作性——Capabilities 是否具体到可以衍生 specs？Impact 是否明确？
+        □ 模糊性——表达是否清晰？有无 AI-slop（模糊空洞的表述）？
+        □ 不确定信号——需要调研的点是否已用 [NEEDS INVESTIGATION] 标记？
 
-      严重程度：🔴 结构问题 / 🟡 小问题 / ⚪ 建议
-
-      输出格式：
-      - 按严重程度列出发现
-      - 对每个 🔴/🟡，给出具体的修改建议
-      ")
+        严重程度：🔴 阻塞 / 🟡 警告 / ⚪ 建议
+        输出格式：按严重程度列出发现，对每个 🔴/🟡 给出具体修改建议
+        ")
 
       **收集评审结果：**
       1. 读取 Oracle 输出 → 列出所有 🔴/🟡/⚪ 发现
@@ -122,7 +112,7 @@ artifacts:
       3. **自检**：确认两个 agent 的结果都已成功读取。如有遗漏，回到步骤 1 重新读取
       4. 合并发现：同一问题多个 agent 都发现时取更高严重程度
       5. 分类判定：
-         - 有任何 🔴 → BLOCKED，修复 proposal.md 后重新运行 PHASE 4（最多 3 轮）
+         - 有任何 🔴 → BLOCKED，修复 proposal.md 后重新运行 PHASE 3（最多 3 轮）
          - 仅 🟡/⚪ → 评估后决定是否修复，然后继续
 
       **Fast fail：** 如果任一 agent 调用失败（超时、不可用、出错）：
@@ -131,20 +121,11 @@ artifacts:
       - 不得降级，不得自行修复，不得跳过审查
       - 等待用户介入
 
-      === PHASE 5：格式完整性检查 ===
+       === PHASE 4：循环与继续 ===
 
-      所有审查通过后，扫描生成的 proposal.md 中是否存在：
-      - 空部分（有标题但无内容）
-      - 未替换的占位符（如 `<name>`、`<description>`）
-      - `[TODO]` 或 `[TBD]` 标记
-
-      如果发现：直接修复（仅格式修改，无需重新审查）。
-
-      === PHASE 6：循环与继续 ===
-
-      - 如果在 PHASE 4 中发现 🔴：修复 proposal.md，从 PHASE 4 重新运行
-      - 最多 3 轮。3 轮后仍有 🔴：将剩余问题展示给用户
-      - 全部清除：proposal 完成，进入下一个 artifact
+       - 如果在 PHASE 3 中发现 🔴：修复 proposal.md，从 PHASE 3 重新运行
+       - 最多 3 轮。3 轮后仍有 🔴：将剩余问题展示给用户
+       - 全部清除：proposal 完成，进入下一个 artifact
     requires: []
   - id: specs
     generates: specs/**/*.md
@@ -157,23 +138,23 @@ artifacts:
 
       **VALIDATION RULES (MUST follow — `openspec validate` enforces these):**
 
-      1. Each requirement MUST start with `### Requirement: <name>`
+      1. 每个 requirement 必须以 `### Requirement: <name>` 开头
 
-      2. **Requirement description MUST contain uppercase MUST or SHALL.**
-         Do NOT use Chinese "必须" — it fails validation.
-         - Affirmative: "The system MUST ..."
-         - Negative: "The system MUST NOT ..."
+      2. **Requirement 描述中必须包含大写 MUST 或 SHALL。**
+         不要使用中文"必须"— 会验证失败。
+         - 肯定式："The system MUST ..."
+         - 否定式："The system MUST NOT ..."
 
-      3. Each requirement MUST have at least one scenario.
+      3. 每个 requirement 必须至少有一个 scenario。
 
-      4. Each scenario MUST start with `#### Scenario: <name>` — exactly 4 `#`.
-         Using 3 `#` or bullet points fails silently.
+      4. **每个 scenario 必须以 `#### Scenario: <name>` 开头 — 恰好 4 个 `#`。**
+         使用 3 个 `#` 或项目符号会静默失败。
 
-      5. Each scenario body MUST contain WHEN / THEN keywords.
+      5. 每个 scenario 正文必须包含 WHEN / THEN 关键词。
 
       编写完所有 spec 文件后，运行：
       `openspec validate <change-name>`
-      Fix any ERROR before proceeding.
+      修复所有 ERROR 后再继续。
 
 
       创建定义系统应做什么的规范文件（spec 文件）。
@@ -182,62 +163,54 @@ artifacts:
       为 proposal 的 Capabilities 部分列出的每个能力创建一个 spec 文件。
       section.
 
-      If the proposal lists no capabilities (both New and Modified sections are
+      如果 proposal 没有列出任何 Capabilities（New 和 Modified 部分都为
       为空），跳过 spec 文件生成。创建一个空的 `specs/` 目录并
-      proceed to the next artifact.
+      然后继续下一个 artifact。
 
-      - New capabilities: use the exact kebab-case name from the proposal
+      - 新能力：使用 proposal 中确切的 kebab-case 名称
       (specs/<capability>/spec.md).
 
-      - Modified capabilities: use the existing spec folder name from
-      openspec/specs/<capability> when creating the delta spec at
+      - 修改的能力：使用 openspec/specs/<capability> 中已有的 spec 文件夹名称
       specs/<capability>/spec.md.
 
 
-      Delta operations (use ## headers):
+      Delta 操作（使用 ## 标题）：
 
-      - **ADDED Requirements**: New capabilities
+      - **ADDED Requirements**（新增需求）：新能力
 
-      - **MODIFIED Requirements**: Changed behavior - MUST include full updated
-      content
+      - **MODIFIED Requirements**（修改的需求）：行为变更 — 必须包含完整的更新内容
 
-      - **REMOVED Requirements**: Deprecated features - MUST include **Reason**
-      and **Migration**
+      - **REMOVED Requirements**（移除的需求）：已废弃功能 — 必须包含**原因**和**迁移方案**
 
-      - **RENAMED Requirements**: Name changes only - use FROM:/TO: format
+      - **RENAMED Requirements**（重命名的需求）：仅名称变更 — 使用 FROM:/TO: 格式
 
+      格式要求：
 
-      Format requirements:
+      - 每个 requirement：`### Requirement: <name>` 后跟描述
 
-      - Each requirement: `### Requirement: <name>` followed by description
+      - 使用 SHALL/MUST 表示规范性需求（避免 should/may）
 
-      - Use SHALL/MUST for normative requirements (avoid should/may)
+      - 每个 scenario：`#### Scenario: <name>` 使用 WHEN/THEN 格式
 
-      - Each scenario: `#### Scenario: <name>` with WHEN/THEN format
+      - **关键**：Scenarios 必须使用恰好 4 个 `#`（`####`）。使用 3 个 `#`
+        或项目符号会静默失败。
 
-      - **CRITICAL**: Scenarios MUST use exactly 4 hashtags (`####`). Using 3
-      hashtags or bullets will fail silently.
-
-      - Every requirement MUST have at least one scenario.
+      - 每个 requirement 必须至少有一个 scenario。
 
 
-      MODIFIED requirements workflow:
+      MODIFIED requirements 工作流：
 
-      1. Locate the existing requirement in openspec/specs/<capability>/spec.md
+      1. 在 openspec/specs/<capability>/spec.md 中找到现有 requirement
 
-      2. Copy the ENTIRE requirement block (from `### Requirement:` through all
-      scenarios)
+      2. 复制完整的 requirement 块（从 `### Requirement:` 到所有 scenarios）
 
-      3. Paste under `## MODIFIED Requirements` and edit to reflect new behavior
+      3. 粘贴到 `## MODIFIED Requirements` 下，编辑以反映新行为
 
-      4. Ensure header text matches exactly (whitespace-insensitive)
+      4. 确保标题文本精确匹配（不区分空白字符）
 
+      常见陷阱：使用 MODIFIED 但内容部分丢失，会在归档时丢失细节。
 
-      Common pitfall: Using MODIFIED with partial content loses detail at
-      archive time.
-
-      If adding new concerns without changing existing behavior, use ADDED
-      instead.
+      如果添加不改变现有行为的新关注点，请使用 ADDED。
 
 
       Example:
@@ -271,7 +244,7 @@ artifacts:
       ```
 
 
-      Specs should be testable - each scenario is a potential test case.
+      Spec 应该是可测试的 —— 每个 scenario 都是一个潜在的测试用例。
     requires:
       - proposal
   - id: design
@@ -298,10 +271,10 @@ artifacts:
       task(category="deep", load_skills=[], run_in_background=false,
            prompt="为以下变更生成技术设计文档（design.md）。
 
-           输入上下文：
-           - Proposal（动机和变更范围）: [将 proposal.md 的核心内容填入此处]
-            - Spec requirements（关键需求）：[将各 spec 的 requirement 和 scenario 填入此处]
-            - Research findings（调研结论）：[将 research/ 中的关键发现填入此处，如果没有则填"无"]
+           输入文件（请直接读取以下文件获取完整内容）：
+           - proposal.md：openspec/changes/<change-name>/proposal.md
+           - specs/：openspec/changes/<change-name>/specs/
+           - research/：openspec/changes/<change-name>/research/（如果存在）
 
            设计文档必须包含以下部分：
 
@@ -402,9 +375,9 @@ artifacts:
       创建任务列表（tasks.md）。
 
 
-      **You MUST create ONE file:**
+      **你必须创建一个文件：**
 
-      `openspec/changes/<change-name>/tasks.md` — Standard checkbox task list
+      `openspec/changes/<change-name>/tasks.md` — 标准 checkbox 任务清单
 
 
       === PHASE 1：理解上下文 ===
@@ -416,31 +389,31 @@ artifacts:
 
       | File | Role |
       |------|------|
-      | `proposal.md` | WHY — why this change, what capabilities |
-      | `specs/<capability>/spec.md` | WHAT — requirements, acceptance scenarios |
-      | `design.md` | HOW — technical approach, decisions, risks |
-      | `tasks.md` | DO — checkbox task list |
+      | `proposal.md` | WHY — 为什么做、有哪些能力 |
+      | `specs/<capability>/spec.md` | WHAT — 需求、验收场景 |
+      | `design.md` | HOW — 技术方案、决策、风险 |
+      | `tasks.md` | DO — checkbox 任务清单 |
 
 
       如何利用每个 artifact：
-      - **proposal.md** → list Capabilities to determine task groupings
-      - **specs/<capability>/spec.md** → extract Requirements to define task scope
-      - **design.md** → extract Decisions to plan execution approach
+      - **proposal.md** → 列出 Capabilities 以确定 task 分组
+      - **specs/<capability>/spec.md** → 提取 Requirements 以确定 task 范围
+      - **design.md** → 提取 Decisions 以规划执行方案
 
 
       **Step 1：快速 artifact 审查**
 
       生成前，快速检查：
-      1. Does every proposal Capability have a corresponding spec?
-      2. Do the tasks cover all specs' key Requirements?
-      3. Any contradictions?
-      → If issues found: STOP, list specifics, wait for user.
-      → If all clean: Proceed.
+      1. 每个 proposal 的 Capability 是否都有对应的 spec？
+      2. task 是否覆盖了所有 spec 的关键 Requirement？
+      3. 有无矛盾？
+      → 如果发现问题：停止，列出具体问题，等待用户处理。
+      → 如果全部正常：继续。
 
 
       **Step 2：调用 Oracle 进行差距分析（强制）**
 
-      Invoke Oracle before writing tasks.md. Oracle 会按信源优先级分析冲突并给出修复建议。
+      编写 tasks.md 前调用 Oracle。Oracle 会按信源优先级分析冲突并给出修复建议。
       在调用 Oracle 前，先读取所有 artifacts，然后在 prompt 中附上关键内容的原文（而非仅摘要），确保 Oracle 有足够上下文做出准确判断。
 
       **Fast fail 保护**: 如果 Oracle task() 调用失败（超时、不可用、出错），立即停止工作流（**fast fail，不得降级**）：
@@ -497,8 +470,8 @@ artifacts:
                prompt="根据以下 Oracle 差距分析结果修复对应的源文件或 artifact。
                只修复标注为 🔧 可自动修复的问题，不要修改其他内容。
 
-               Oracle 修复建议：
-               [将 Oracle 输出的 🔧 项及对应修改建议填入此处]")
+               Oracle 修复建议（直接传入）：
+               [将 Oracle 输出的 🔧 项及对应修改建议以文本形式填入此处]")
           全部修复完成后，重新调用 Oracle 验证（回到本步骤）
       2. 如果只剩「👤 需用户确认」和/或「❓ 需追问」→ 停止循环
          - 需用户确认 → 提供方案让用户选择
@@ -509,25 +482,24 @@ artifacts:
 
        === PHASE 2：通过 Deep Agent 生成 ===
 
-       Package all artifacts content and Oracle gap analysis results into a
-       comprehensive prompt. Then delegate generation to a focused agent:
+       将产物的所有内容以及 Oracle 差距分析结果打包成完整 prompt，委托给专注 agent 生成：
 
        task(category="deep", load_skills=[], run_in_background=false,
-            prompt="Generate a task list (tasks.md) for the following change.
+            prompt="为以下变更生成任务清单（tasks.md）。
 
-            Input context:
-            - Proposal (动机和能力): [将 proposal.md 的核心内容填入此处]
-            - Spec requirements: [将各 spec 的 key requirement 和 scenario 填入此处]
-            - Design decisions: [将 design.md 的关键决策填入此处]
-            - Oracle gap analysis results: [将 Oracle 的输出和冲突修复结果填入此处]
+            输入文件：
+            - Proposal：openspec/changes/<change-name>/proposal.md
+            - Specs：openspec/changes/<change-name>/specs/
+            - Design：openspec/changes/<change-name>/design.md
+            - Oracle gap analysis results（直接传入）：[将 Oracle 的输出和冲突修复结果以文本形式填入此处]
 
-            The task list MUST:
-            - Use `## Tasks` as section header
-            - Use `### Wave N: Group Name` for sub-groupings
-            - Each task starts with `- [ ] N.M Description`
-            - Cover all spec requirements and design decisions
-            - Reflect gap analysis results from Oracle
-            - Be organized into logical waves of parallel-executable tasks")
+            任务清单必须：
+            - 使用 `## Tasks` 作为部分标题
+            - 使用 `### Wave N: Group Name` 子分组
+            - 每个 task 以 `- [ ] N.M Description` 开头
+            - 覆盖所有 spec requirement 和 design decisions
+            - 反映 Oracle 差距分析的结果
+            - 组织成逻辑的、可并行执行的 wave")
     requires:
       - specs
       - design
@@ -602,99 +574,39 @@ artifacts:
       === PHASE 4：Oracle + Metis 并行审查 tasks.md ===
 
       同时启动 1 个 Oracle + 1 个 Metis agent 并行审查 tasks.md。
-      Oracle 专注于内容拆分合理性，Metis 专注于 OMO 格式合规性。
-      注意：Oracle 和 Metis 在「优化建议」上各有侧重——Oracle 从内容必要性出发，Metis 从格式规则出发，两者互补而非重叠。
+      Oracle 和 Metis 均从以下 4 个维度进行全面审查，各自独立输出发现。
 
       ```
-      ORACLE_REVIEW_PROMPT = "你正在对一个 OpenSpec change 的任务清单（tasks.md）进行 Oracle 评审。
-      评审目标：评估任务拆分的合理性（内容导向），并在保证质量的前提下给出优化建议。
-      按严重程度输出发现（🔴阻塞 / 🟡警告 / ⚪建议）。
+       TASKS_REVIEW_PROMPT = "你正在审查一个 OpenSpec change 的任务清单（tasks.md）。请逐一检查以下所有检查项：
 
-      审查文件：
-      - tasks:    openspec/changes/<change-name>/tasks.md
-      - proposal: openspec/changes/<change-name>/proposal.md
-      - specs:    openspec/changes/<change-name>/specs/
-      - design:   openspec/changes/<change-name>/design.md（如果存在）
+        审查文件：
+        - tasks:    openspec/changes/<change-name>/tasks.md
+        - proposal: openspec/changes/<change-name>/proposal.md
+        - specs:    openspec/changes/<change-name>/specs/
+        - design:   openspec/changes/<change-name>/design.md（如果存在）
 
-      **信源优先级（冲突处理依据）**：
-      1. proposal.md（最高）— WHY 和核心变更
-      2. design.md — 技术决策
-      3. specs — 详细需求
+        □ 内容完整性——所有 spec requirement 和 design 决策是否都有对应的 task 覆盖？
+        □ 边界控制——是否有多余的 task（超出 proposal/specs scope）？有无遗漏？
+        □ 原子性——每个 task 是否足够原子化？有无拆分过粗或过细？
+        □ 9 字段齐全——每个 task 是否包含 What to do / Must NOT do / Agent Profile /
+          References / Acceptance Criteria / QA Scenarios / Parallelization / Evidence / Commit？
+        □ QA Scenarios 质量——是否包含五要素（Tool/Preconditions/Steps/Expected/Evidence）？
+        □ 可执行性——Acceptance Criteria 是否是具体可执行的命令？
+          Agent Profile 的 category 是否匹配任务类型？
+          Must NOT do 是否明确指出了边界？
+        □ Wave 结构——Wave 分组是否合理？命名清晰？数量合理（5-8 个，不少于 3）？
+        □ 并发——同 Wave 内 task 是否互不依赖？不同 Wave 依赖是否真实？
+          有无虚假依赖？
+        □ AI-slop——是否有模糊、空洞、歧义的描述？
+          QA Scenarios 是否至少覆盖 1 个快乐路径 + 1 个失败路径？
 
-      请逐一检查以下 3 个维度：
+        严重程度：🔴 阻塞 / 🟡 警告 / ⚪ 建议
+        输出格式：逐项检查，然后汇总问题清单，每个问题标注 severity。"
 
-      维度 1 — 内容拆分合理性：
-      - 每个 task 是否足够原子化？（一个 task 只做一件事）
-      - 有没有 task 拆分过粗（一个 task 包含多个独立功能）？
-      - 有没有 task 拆分过细（多个 task 可以合并为一个）？
-      - Wave 分组是否合理？同一 Wave 内的 task 是否互不依赖？
-      - 不同 Wave 之间的依赖关系是否真实存在？
+      ORACLE_REVIEW_PROMPT = TASKS_REVIEW_PROMPT
+      METIS_REVIEW_PROMPT = TASKS_REVIEW_PROMPT
 
-      维度 2 — 优化建议（从内容必要性出发）：
-      - 哪些 task 之间的依赖是虚假的？（没有文件读写关系就不应该阻塞）
-      - 哪些 task 可以提前到更早的 Wave 执行？
-      - 当前的 Wave 划分是否可以减少 Wave 数量？
-      - 每个 Wave 是否有足够的并发度？
-      - 如果调整并发/顺序，是否会影响质量？
-
-      维度 3 — 完整性与覆盖度：
-      - 所有 spec requirement 是否都有对应的 task 覆盖？
-      - design.md 的技术决策是否在 task 中体现？
-      - 有无遗漏的边界场景（错误处理、并发、权限等）？
-
-      输出格式：先逐维度分析，然后汇总问题清单，每个问题标注 severity。"
-
-      METIS_REVIEW_PROMPT = "你正在对一个 OpenSpec change 的任务清单（tasks.md）进行 Metis 评审。
-      评审目标：评估 OMO 格式合规性（格式规则驱动），并在保证质量的前提下给出优化建议。
-      按严重程度输出发现（🔴阻塞 / 🟡警告 / ⚪建议）。
-
-      审查文件：
-      - tasks: openspec/changes/<change-name>/tasks.md
-      - 如果需了解 context，可阅读 proposal.md、specs/、design.md
-
-      OMO Task 标准子字段（共 9 个）：
-      1. **What to do** — 可执行的实施步骤
-      2. **Must NOT do** — 明确的排除项/守卫栏
-      3. **Recommended Agent Profile** — category + skills
-      4. **References** — 代码模式参考（文件路径+行号）
-      5. **Acceptance Criteria** — 可执行的验证命令（如 `bun test`、`curl`）
-      6. **QA Scenarios** — 强制：至少 1 个快乐路径 + 1 个失败/边缘路径
-      7. **Parallelization** — 并行组、阻塞关系
-      8. **Evidence** — 验证证据路径（.sisyphus/evidence/）
-      9. **Commit** — 是否提交及信息
-
-      OMO Wave 规则：
-      - Wave = 一组可并发执行的任务，同一 Wave 内默认并发
-      - 不同 Wave 之间串行（前一个 Wave 全部完成后才开始下一个）
-      - 每个 Wave 目标 5-8 个任务，少于 3 个 = under-splitting
-      - 只有两种情况下任务需要串行：
-        1. Input dependency：Task B 读取 Task A 的输出文件
-        2. File conflict：Task A 和 Task B 修改同一文件
-      - 没有文件读写关系的 task 不应有依赖关系
-
-      请逐一检查以下 3 个维度：
-
-      维度 1 — OMO 格式合规性（逐 task 表格检查）：
-      | Task | What to do | Must NOT do | Agent Profile | References | Acceptance Criteria | QA Scenarios | Parallelization | Evidence |
-      |------|-----------|-------------|---------------|------------|-------------------|--------------|-----------------|----------|
-      | N.M  | ✅/❌      | ✅/❌        | ✅/❌          | ✅/❌       | ✅/❌              | ✅/❌         | ✅/❌            | ✅/❌     |
-      - QA Scenarios 是否包含 Tool/Preconditions/Steps/Expected/Evidence 五要素？
-      - Acceptance Criteria 是否是具体可执行的命令？
-      - Recommended Agent Profile 的 category 是否匹配任务类型？
-
-      维度 2 — Wave 结构合规性：
-      - Wave 命名是否清晰？（Wave N: Group Name）
-      - Wave 内任务数量是否合理？（5-8 个目标，不少于 3 个）
-      - Wave 间的依赖关系是否反映在任务描述中？
-      - 是否有 Wave 中混入了有依赖关系的 task？
-
-      维度 3 — 优化建议（从格式规则出发）：
-      - 哪些 task 的 QA Scenarios 不足？（最少 1 快乐路径 + 1 失败路径）
-      - 哪些 task 的 Must NOT do 缺失？
-      - 是否有更好的 Wave 划分可以减少总执行时间？
-      - 所有优化建议必须明确标注「质量影响：无/低/中/高」"
-
-      # Oracle（内容评审）+ Metis（格式评审）
+      # Oracle + Metis 并行审查
       task(subagent_type="oracle", run_in_background=false, prompt=ORACLE_REVIEW_PROMPT)
       task(subagent_type="metis", run_in_background=false, prompt=METIS_REVIEW_PROMPT)
       ```
@@ -705,7 +617,7 @@ artifacts:
       2. **自检**：确认两个 agent 结果都已读完。如有遗漏，回到 Step 1 重新读取。
       3. **合并去重**：按 severity 合并，标注来源（Oracle / Metis）。同一问题两个 agent 都发现时取更高 severity。
       4. **分类判定**：
-          - 任一 agent 有 🔴 → BLOCKED，修复源文件后重新运行 PHASE 4（**最多 3 轮**，超限后汇总 🔴 问题给用户）
+          - 任一 agent 有 🔴 → BLOCKED，修复源文件后重新运行 PHASE 3（**最多 3 轮**，超限后汇总 🔴 问题给用户）
            **说明**: 此循环是内容质量改进机制（审查 agent 已成功完成分析 → subagent 修复 → 重新审查），
            不是 agent 调用失败的降级处理。如审查 agent 调用本身失败 → 按 fast fail 规则立即停住报错。
           - 仅 🟡/⚪ → 评估后决定是否修复
@@ -721,11 +633,11 @@ artifacts:
            prompt="为以下变更生成 OMO 兼容的执行计划，保存到 .sisyphus/plans/<change-name>.md。
 
            输入文件摘要（已读取）：
-           - Proposal（动机和能力）：[将 proposal.md 的核心内容填入此处]
-           - Spec requirements（关键需求）：[将各 spec 的关键 requirement 填入此处]
-           - Design decisions（设计决策）：[将 design.md 的关键决策填入此处]
-           - Task list（任务列表）：[将 tasks.md 的完整 task 列表填入此处]
-           - Research（调研结果）：[将 research/ 的关键发现填入此处，没有则填无]
+           - Proposal: openspec/changes/<change-name>/proposal.md
+           - Specs: openspec/changes/<change-name>/specs/
+           - Design: openspec/changes/<change-name>/design.md
+           - Tasks: openspec/changes/<change-name>/tasks.md
+           - Research: openspec/changes/<change-name>/research/（如果存在）
 
            计划必须包含以下 9 个部分，使用 summary + link 格式：
            1. ## TL;DR — 1-2句概述（引用 proposal.md）
@@ -756,71 +668,36 @@ artifacts:
       === PHASE 7：Oracle + Metis + Momus 并行审查 Plan ===
 
       同时启动 1 个 Oracle + 1 个 Metis + 1 个 Momus agent 并行审查生成的 plan。
-      Oracle 专注于 content 层面：design alignment、Verification Strategy、Success Criteria。
-      Metis 专注于 quality 层面：9 节结构、QA Scenarios、Wave 结构。
-      Momus 专注于最终可执行性判定：执行路径审查 + 风险矩阵审查。
+      三个 agent 各自从内容完整性、结构格式、可执行性、潜在问题 4 个维度进行全面审查。
+      Momus 额外负责最终门禁判定（OKAY/REJECT）。
 
       ```
-      ORACLE_PLAN_REVIEW_PROMPT = "你正在评审 OMO plan 的内容准确性（Oracle 评审）。
-      按严重程度输出发现（🔴阻塞 / 🟡警告 / ⚪建议）。
+       PLAN_REVIEW_PROMPT = "你正在审查 OMO plan。请逐一检查以下所有检查项：
 
-      审查文件：
-      - plan:  .sisyphus/plans/<change-name>.md
-      - specs: openspec/changes/<change-name>/specs/
-      - design: openspec/changes/<change-name>/design.md（如果存在）
-      - tasks: openspec/changes/<change-name>/tasks.md
-      - research: openspec/changes/<change-name>/research/（如果存在）
+        审查文件：
+        - plan:  .sisyphus/plans/<change-name>.md
+        - specs: openspec/changes/<change-name>/specs/
+        - design: openspec/changes/<change-name>/design.md（如果存在）
+        - tasks: openspec/changes/<change-name>/tasks.md
+        - research: openspec/changes/<change-name>/research/（如果存在）
 
-      信源优先级（冲突处理依据）：
-      1. proposal.md（最高）— WHY 和核心变更
-      2. design.md — 技术决策
-      3. specs — 详细需求
+        □ 内容完整性——Execution Strategy 是否准确反映了 design 的决策？
+          Verification Strategy 是否覆盖了所有 spec scenarios？
+          Success Criteria 是否可衡量且覆盖所有 capability？
+          research/ 的调研发现是否被正确引用？
+        □ 结构格式——所有 9 个 section 是否存在？是否使用 summary + link 模式？
+          section 间是否有逻辑连贯性？
+          每个 task 的子字段是否齐全？QA Scenarios 是否有五要素？
+        □ 可执行性——FVW 是否合理？每个 scenario 是否有明确验证方式？
+          执行策略是否可行？Wave 分组合理？同 Wave 可并发？依赖真实？
+        □ AI-slop——是否有遗漏的边界场景？逻辑漏洞？矛盾？
+          QA Scenarios 是否至少覆盖 1 个快乐路径 + 1 个失败路径？
 
-      请逐一检查以下 3 个维度：
+        严重程度：🔴 阻塞 / 🟡 警告 / ⚪ 建议
+        输出格式：逐项检查，然后汇总问题清单，每个问题标注 severity。"
 
-      维度 1 — Design Alignment：
-      - plan 的 Execution Strategy 是否准确反映了 design 的技术决策？
-      - design 中的风险和缓解措施是否在 plan 中体现？
-      - research/ 的调研发现是否被引用？
-
-      维度 2 — Verification Strategy：
-      - Verification Strategy 是否覆盖了所有 spec scenarios？
-      - 每个 scenario 是否有明确的验证方式？
-      - FVW（Final Verification Wave）是否合理？
-
-      维度 3 — Success Criteria：
-      - Success Criteria 是否可衡量？（不是模糊描述）
-      - 是否覆盖了所有 capability 的验收标准？
-
-      输出格式：逐维度分析 + 问题汇总。"
-
-      METIS_PLAN_REVIEW_PROMPT = "你正在评审 OMO plan 的结构和质量（Metis 评审）。
-       按严重程度输出发现（🔴阻塞 / 🟡警告 / ⚪建议）。
-
-       审查文件：
-       - plan: .sisyphus/plans/<change-name>.md
-       - tasks: openspec/changes/<change-name>/tasks.md
-       - research: openspec/changes/<change-name>/research/（如果存在）
-
-       请逐一检查以下 3 个维度：
-
-       维度 1 — 9 节结构完整性：
-       - 所有 9 个 section 是否都存在？
-       - 每个 section 是否使用 summary + link 模式？
-       - section 间是否有逻辑连贯性？
-
-       维度 2 — QA Scenarios 质量：
-       - 每个 task 的 QA Scenarios 是否包含 Tool/Preconditions/Steps/Expected/Evidence 五要素？
-       - 是否至少有一个快乐路径 + 一个失败/边缘路径？
-
-       维度 3 — Wave 结构与并发：
-       - Wave 分组是否合理？
-       - 同一 Wave 内的 task 是否确实可以并发执行？
-       - 不同 Wave 之间的依赖是否真实？
-       - 是否有虚假依赖可以拆掉以加快执行？
-       - 如果 research/ 存在：调研发现是否在 plan 的 Work Objectives 或 Execution Strategy 中得到体现？
-
-      输出格式：逐维度分析 + 问题汇总。"
+      ORACLE_PLAN_REVIEW_PROMPT = PLAN_REVIEW_PROMPT
+      METIS_PLAN_REVIEW_PROMPT = PLAN_REVIEW_PROMPT
 
       MOMUS_PLAN_REVIEW_PROMPT = "你正在对 OMO plan 执行双重门禁审查（Momus 评审）。
 

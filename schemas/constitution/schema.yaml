@@ -46,13 +46,13 @@ artifacts:
       task(category="deep", load_skills=[], run_in_background=false,
            prompt="Generate the scan.md file for a project constitution initialization.
 
-           Tech stack analysis findings:
-           [将 Phase 1 的项目检测结果（配置文件、构建工具、测试框架等）填入此处]
+           输入文件（请直接读取以下文件获取完整内容）：
+           - scan.md：openspec/changes/<change-name>/scan.md（如果已存在）
 
-           User decisions and preferences:
-           [将 Phase 2 的用户技术栈讨论和确认结果填入此处]
-
-           Project type: [现有项目 / 空项目]
+           此外直接传入以下上下文：
+           - Phase 1 项目检测结果：[将项目配置文件解析结果以文本形式填入此处]
+           - Phase 2 用户确认结果：[将用户技术栈讨论的结论以文本形式填入此处]
+           - Project type：[现有项目 / 空项目]
 
            The scan.md MUST:
            - Include the structured tech stack analysis report with decision log
@@ -159,16 +159,13 @@ artifacts:
       task(category="deep", load_skills=[], run_in_background=false,
            prompt="根据以下输入生成 constitution-design.md。
 
-           技术栈分析结论：
-           [将 scan.md 的核心技术决策填入此处]
+           输入文件（请直接读取以下文件获取完整内容）：
+           - Scan：openspec/changes/<change-name>/scan.md
+           - Research：openspec/changes/<change-name>/research/（如果存在）
 
-           最佳实践调研结果：
-           [将各技术的调研要点填入此处]
-
-           用户确认的选项：
-           [将用户批准/拒绝/修改的具体内容填入此处]
-
-           代码同步模式：[用户是否选择了代码同步检测]
+           直接传入的上下文：
+           - 用户确认选项：[将用户批准/拒绝/修改的具体内容以文本形式填入此处]
+           - 代码同步模式：[用户是否选择了代码同步检测]
 
            生成的 constitution-design.md 必须包含：
            - 完整的章程结构设计，包括章节组织和模块布局
@@ -282,11 +279,11 @@ artifacts:
        task(category="deep", load_skills=[], run_in_background=false,
             prompt="Generate a task list (tasks.md) for the following change.
 
-            Input context:
-            - Scan (技术栈分析): [将 scan.md 的核心技术决策填入此处]
-            - Design (参考结构设计): [将 constitution-design.md 的关键设计决策填入此处]
-            - Oracle gap analysis results: [将 Oracle 的输出和冲突修复结果填入此处]
-            - Code sync mode: [如果用户选择了代码同步则填 true，否则 false]
+            输入文件（请直接读取以下文件获取完整内容）：
+            - Scan：openspec/changes/<change-name>/scan.md
+            - Design：openspec/changes/<change-name>/constitution-design.md
+            - Oracle gap analysis results（直接传入）：[将 Oracle 的输出和冲突修复结果以文本形式填入此处]
+            - Code sync mode：[如果用户选择了代码同步则填 true，否则 false]
 
             The task list MUST contain:
 
@@ -343,79 +340,32 @@ artifacts:
       Oracle 专注于内容拆分合理性，Metis 专注于 OMO 格式合规性。
 
       ```
-      ORACLE_REVIEW_PROMPT = "你正在对一个 OpenSpec change 的任务清单（tasks.md）进行 Oracle 评审。
-      评审目标：评估任务拆分的合理性（内容导向）。
-      按严重程度输出发现（🔴阻塞 / 🟡警告 / ⚪建议）。
+       CONST_TASKS_REVIEW_PROMPT = "你正在审查一个 OpenSpec change 的任务清单（tasks.md）。请逐一检查以下所有检查项：
 
-      审查文件：
-      - tasks:    openspec/changes/<change-name>/tasks.md
-      - scan:     openspec/changes/<change-name>/scan.md
-      - design:   openspec/changes/<change-name>/constitution-design.md
+        审查文件：
+        - tasks:    openspec/changes/<change-name>/tasks.md
+        - scan:     openspec/changes/<change-name>/scan.md
+        - design:   openspec/changes/<change-name>/constitution-design.md
 
-      信源优先级（冲突处理依据）：
-      1. scan.md（最高）— 技术栈分析和决策
-      2. constitution-design.md — 参考结构设计
+        □ 内容完整性——scan.md 和 constitution-design.md 的要求是否都有对应 task 覆盖？
+        □ 边界控制——是否有多余的 task（超出 scope）？有无遗漏？
+        □ 原子性——每个 task 是否足够原子化？有无拆分过粗或过细？
+        □ 9 字段齐全——每个 task 是否包含 What to do / Must NOT do / Agent Profile /
+          References / Acceptance Criteria / QA Scenarios / Parallelization / Evidence / Commit？
+        □ QA Scenarios 质量——是否包含五要素（Tool/Preconditions/Steps/Expected/Evidence）？
+        □ 可执行性——Acceptance Criteria 是否是具体可执行的命令？
+          Agent Profile 的 category 是否匹配任务类型？
+          Must NOT do 是否明确指出了边界？
+        □ Wave 结构——Wave 分组是否合理？命名清晰？数量合理？
+        □ 并发——同 Wave 内 task 是否互不依赖？不同 Wave 依赖是否真实？有无虚假依赖？
+        □ AI-slop——是否有模糊、空洞、歧义的描述？
+          QA Scenarios 是否至少覆盖 1 个快乐路径 + 1 个失败路径？
 
-      请逐一检查以下 3 个维度：
+        严重程度：🔴 阻塞 / 🟡 警告 / ⚪ 建议
+        输出格式：逐项检查，然后汇总问题清单，每个问题标注 severity。"
 
-      维度 1 — 内容拆分合理性：
-      - 每个 task 是否足够原子化？
-      - Wave 分组是否合理？同一 Wave 内的 task 是否互不依赖？
-
-      维度 2 — 优化建议（从内容必要性出发）：
-      - 哪些 task 之间的依赖是虚假的？
-      - 每个 Wave 是否有足够的并发度？
-      - 如果调整并发/顺序，是否会影响质量？
-
-      维度 3 — 完整性与覆盖度：
-      - scan.md 和 constitution-design.md 的要求是否都有对应 task？
-      - 有无遗漏的边界场景？
-
-      输出格式：先逐维度分析，然后汇总问题清单，每个问题标注 severity。"
-
-      METIS_REVIEW_PROMPT = "你正在对一个 OpenSpec change 的任务清单（tasks.md）进行 Metis 评审。
-      评审目标：评估 OMO 格式合规性（格式规则驱动）。
-      按严重程度输出发现（🔴阻塞 / 🟡警告 / ⚪建议）。
-
-      审查文件：
-      - tasks: openspec/changes/<change-name>/tasks.md
-
-      OMO Task 标准子字段（共 9 个）：
-      1. **What to do** — 可执行的实施步骤
-      2. **Must NOT do** — 明确的排除项
-      3. **Recommended Agent Profile** — category + skills
-      4. **References** — 代码模式参考
-      5. **Acceptance Criteria** — 可执行的验证命令
-      6. **QA Scenarios** — 强制：快乐路径 + 失败路径
-      7. **Parallelization** — 并行组、阻塞关系
-      8. **Evidence** — 验证证据路径
-      9. **Commit** — 是否提交及信息
-
-      OMO Wave 规则：
-      - Wave = 一组可并发执行的任务，同一 Wave 内默认并发
-      - 不同 Wave 之间串行
-      - 只有 Input dependency 和 File conflict 需要串行
-
-      请逐一检查以下 3 个维度：
-
-       维度 1 — OMO 格式合规性（逐 task 表格检查）：
-       | Task | What to do | Must NOT do | Agent Profile | References | Acceptance Criteria | QA Scenarios | Parallelization | Evidence |
-       |------|-----------|-------------|---------------|------------|-------------------|--------------|-----------------|----------|
-       - QA Scenarios 是否包含 Tool/Preconditions/Steps/Expected/Evidence 五要素？
-         1. **Tool**: 验证工具（如 Playwright / Bash / curl）
-         2. **Preconditions**: 前置条件（如"用户已登录"、"数据库包含测试数据"）
-         3. **Steps**: 具体操作步骤（如"点击按钮"、"发送 GET 请求到 /api/user"）
-         4. **Expected**: 预期结果（具体可观测的值，如"状态码 200"、"元素可见"）
-         5. **Evidence**: 证据路径（如 .sisyphus/evidence/task-N.M-xxx.png）
-
-      维度 2 — Wave 结构合规性：
-      - Wave 命名是否清晰？
-      - Wave 内任务数量是否合理？
-      - 是否有 Wave 中混入了有依赖关系的 task？
-
-      维度 3 — 优化建议（从格式规则出发）：
-      - 哪些 task 的 QA Scenarios 不足？
-      - 所有优化建议必须标注「质量影响：无/低/中/高」"
+      ORACLE_REVIEW_PROMPT = CONST_TASKS_REVIEW_PROMPT
+      METIS_REVIEW_PROMPT = CONST_TASKS_REVIEW_PROMPT
 
       task(subagent_type="oracle", run_in_background=false, prompt=ORACLE_REVIEW_PROMPT)
       task(subagent_type="metis", run_in_background=false, prompt=METIS_REVIEW_PROMPT)
@@ -442,11 +392,11 @@ artifacts:
       task(category="deep", load_skills=[], run_in_background=false,
            prompt="为以下变更生成 OMO 兼容的执行计划，保存到 .sisyphus/plans/<change-name>.md。
 
-           输入文件摘要（已读取）：
-           - Scan（技术栈分析）：[将 scan.md 的核心技术决策填入此处]
-           - Design（参考结构设计）：[将 constitution-design.md 的关键设计决策填入此处]
-           - Task list（任务列表）：[将 tasks.md 的完整 task 列表填入此处]
-           - Research（调研结果）：[将 research/ 的关键发现填入此处，没有则填无]
+           输入文件（请直接读取以下文件获取完整内容）：
+           - Scan：openspec/changes/<change-name>/scan.md
+           - Design：openspec/changes/<change-name>/constitution-design.md
+           - Tasks：openspec/changes/<change-name>/tasks.md
+           - Research：openspec/changes/<change-name>/research/（如果存在）
 
            计划必须包含以下 7 个部分，使用 summary + link 格式：
            1. ## TL;DR（摘要）
@@ -477,60 +427,33 @@ artifacts:
       === PHASE 6：Oracle + Metis + Momus 并行审查 Plan ===
 
       同时启动 1 个 Oracle + 1 个 Metis + 1 个 Momus agent 并行审查生成的 plan。
-      Oracle 专注于 content 层面：设计对齐、成功标准。
-      Metis 专注于 quality 层面：结构、QA Scenarios、Wave 并发。
-      Momus 专注于最终可执行性判定：执行路径审查 + 风险矩阵审查。
+      三个 agent 各自从内容完整性、结构格式、可执行性、潜在问题 4 个维度进行全面审查。
+      Momus 额外负责最终门禁判定（OKAY/REJECT）。
 
       ```
-      ORACLE_PLAN_REVIEW_PROMPT = "你正在评审 OMO plan 的内容准确性（Oracle 评审）。
-      按严重程度输出发现（🔴阻塞 / 🟡警告 / ⚪建议）。
+       CONST_PLAN_REVIEW_PROMPT = "你正在审查 OMO plan。请逐一检查以下所有检查项：
 
-      审查文件：
-      - plan:  .sisyphus/plans/<change-name>.md
-      - design: openspec/changes/<change-name>/constitution-design.md
-      - tasks: openspec/changes/<change-name>/tasks.md
-      - research: openspec/changes/<change-name>/research/（如果存在）
+        审查文件：
+        - plan:  .sisyphus/plans/<change-name>.md
+        - design: openspec/changes/<change-name>/constitution-design.md
+        - tasks: openspec/changes/<change-name>/tasks.md
+        - research: openspec/changes/<change-name>/research/（如果存在）
 
-      信源优先级（冲突处理依据）：
-      1. scan.md（最高）— 技术栈分析和决策
-      2. constitution-design.md — 参考结构设计
+        □ 内容完整性——Execution Strategy 是否反映了 design 的决策？
+          Success Criteria 是否可衡量？
+          research/ 的调研发现是否被正确引用？
+        □ 结构格式——所有 section 是否存在？每个 section 使用 summary + link 模式？
+          每个 task 的子字段是否齐全？QA Scenarios 是否有五要素？
+        □ 可执行性——FVW 是否合理？执行策略是否可行？
+          Wave 分组合理？同 Wave 可并发？依赖真实？
+        □ AI-slop——是否有遗漏的边界场景？逻辑漏洞？矛盾？
+          QA Scenarios 是否至少覆盖 1 个快乐路径 + 1 个失败路径？
 
-      请逐一检查以下 3 个维度：
+        严重程度：🔴 阻塞 / 🟡 警告 / ⚪ 建议
+        输出格式：逐项检查，然后汇总问题清单，每个问题标注 severity。"
 
-      维度 1 — Design Alignment：
-      - plan 的 Execution Strategy 是否反映了 constitution-design.md 的决策？
-      - research/ 的调研发现是否在 Execution Strategy 中被引用？
-
-      维度 2 — Verification Strategy：
-      - FVW（Final Verification Wave）是否合理？
-
-      维度 3 — Success Criteria：
-      - Success Criteria 是否可衡量？
-
-      输出格式：逐维度分析 + 问题汇总。"
-
-      METIS_PLAN_REVIEW_PROMPT = "你正在评审 OMO plan 的结构和质量（Metis 评审）。
-      按严重程度输出发现（🔴阻塞 / 🟡警告 / ⚪建议）。
-
-      审查文件：
-      - plan: .sisyphus/plans/<change-name>.md
-      - research: openspec/changes/<change-name>/research/（如果存在）
-
-      请逐一检查以下 3 个维度：
-
-      维度 1 — 结构完整性：
-      - 所有 7 个 section 是否都存在？
-      - 每个 section 是否使用 summary + link 模式？
-
-      维度 2 — QA Scenarios 质量：
-      - 每个 task 的 QA Scenarios 是否包含五要素？
-
-      维度 3 — Wave 结构与并发：
-      - Wave 分组是否合理？
-      - 同一 Wave 内的 task 是否确实可以并发执行？
-      - 如果 research/ 存在：调研发现是否在 plan 中得到体现？
-
-      输出格式：逐维度分析 + 问题汇总。"
+      ORACLE_PLAN_REVIEW_PROMPT = CONST_PLAN_REVIEW_PROMPT
+      METIS_PLAN_REVIEW_PROMPT = CONST_PLAN_REVIEW_PROMPT
 
       MOMUS_PLAN_REVIEW_PROMPT = "你正在对 OMO plan 执行双重门禁审查（Momus 评审）。
 
