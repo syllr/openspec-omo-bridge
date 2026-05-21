@@ -20,7 +20,7 @@
       <!-- Tool: / Preconditions: / Steps: / Expected: / Evidence path -->
 
       **Parallelization**: Can Run In Parallel: YES | Parallel Group: Wave 1
-      **Evidence**: .sisyphus/evidence/task-1.1-update-agents.snap
+      **Evidence**: .omo/evidence/task-1.1-update-agents.snap
       **Commit**: YES
       - Message: `docs(constitution): update AGENTS.md with constitution section`
 
@@ -43,7 +43,7 @@
       <!-- Tool: / Preconditions: / Steps: / Expected: / Evidence path -->
 
       **Parallelization**: Can Run In Parallel: YES | Parallel Group: Wave 1
-      **Evidence**: .sisyphus/evidence/task-1.2-create-structure.snap
+      **Evidence**: .omo/evidence/task-1.2-create-structure.snap
       **Commit**: YES
       - Message: `feat(constitution): initialize constitution skill structure`
 
@@ -67,6 +67,6 @@
       <!-- Tool: / Preconditions: / Steps: / Expected: / Evidence path -->
 
       **Parallelization**: Can Run In Parallel: NO | Blocked By: 1.1, 1.2
-      **Evidence**: .sisyphus/evidence/task-2.1-fix-violations.log
+      **Evidence**: .omo/evidence/task-2.1-fix-violations.log
       **Commit**: YES
       - Message: `refactor(constitution): fix code violations per constitution rules`

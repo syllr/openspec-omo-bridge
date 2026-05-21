@@ -428,7 +428,7 @@ artifacts:
             - **Acceptance Criteria**（验收标准）：可执行的验证命令（如 `bun test`、`curl`）
             - **QA Scenarios**（QA 场景）：至少 1 个成功场景（happy path）+ 1 个异常场景，每个场景包含五要素（Tool / Preconditions / Steps / Expected / Evidence）
             - **Parallelization**（并行）：并行组、阻塞关系
-            - **Evidence**（证据）：验证证据路径（.sisyphus/evidence/）
+            - **Evidence**（证据）：验证证据路径（.omo/evidence/）
             - **Commit**（提交）：是否提交及提交信息
 
             Wave 规则：
@@ -444,13 +444,13 @@ artifacts:
     generates: critic.md
     description: >
       Plan generation and multi-agent review. Generates
-      .sisyphus/plans/<change-name>.md (OMO plan) and critic.md
+      .omo/plans/<change-name>.md (OMO plan) and critic.md
       (review report with verdict).
     template: critic.md
     instruction: |
       __LANG_PLACEHOLDER__
 
-      **范围限制：不要修改任何源代码。仅生成 critic.md 和 .sisyphus/plans/<change-name>.md。**
+      **范围限制：不要修改任何源代码。仅生成 critic.md 和 .omo/plans/<change-name>.md。**
 
       === PHASE 1：读取上下文 ===
 
@@ -531,12 +531,12 @@ artifacts:
 
       === PHASE 4：生成计划 ===
 
-      生成 `.sisyphus/plans/<change-name>.md` — 包含 9 个部分的 OMO 兼容执行计划。
+      生成 `.omo/plans/<change-name>.md` — 包含 9 个部分的 OMO 兼容执行计划。
 
       Delegate plan generation via category="deep":
 
       task(category="deep", load_skills=[], run_in_background=false,
-           prompt="为以下变更生成 OMO 兼容的执行计划，保存到 .sisyphus/plans/<change-name>.md。
+           prompt="为以下变更生成 OMO 兼容的执行计划，保存到 .omo/plans/<change-name>.md。
 
            输入文件摘要（已读取）：
            - `openspec/changes/<change-name>/proposal.md` — 动机和能力
@@ -564,9 +564,9 @@ artifacts:
       === PHASE 5：Oracle + Metis + Momus 并行审查 Plan ===
 
       审查前先验证 plan 结构：
-      - `grep -c '^## ' .sisyphus/plans/<change-name>.md` → 必须至少 9 个
-      - `grep -q '## Tasks' .sisyphus/plans/<change-name>.md` → Tasks 部分存在
-      - `grep -q '## Final Verification Wave' .sisyphus/plans/<change-name>.md` → FVW 存在
+      - `grep -c '^## ' .omo/plans/<change-name>.md` → 必须至少 9 个
+      - `grep -q '## Tasks' .omo/plans/<change-name>.md` → Tasks 部分存在
+      - `grep -q '## Final Verification Wave' .omo/plans/<change-name>.md` → FVW 存在
       - checkbox 数量应与 tasks.md 一致
 
       如果结构检查不通过：停止，修复 plan 后重新验证。
@@ -585,7 +585,7 @@ artifacts:
        PLAN_REVIEW_PROMPT = "你正在审查 OMO plan。请逐一检查以下所有检查项：
 
         审查文件：
-        - plan:  .sisyphus/plans/<change-name>.md
+        - plan:  .omo/plans/<change-name>.md
         - `openspec/changes/<change-name>/specs/` — 需求和验收场景
         - `openspec/changes/<change-name>/design.md` — 技术方案、决策、风险
         - `openspec/changes/<change-name>/tasks.md` — checkbox 任务清单
@@ -624,7 +624,7 @@ artifacts:
       5. 如果 research/ 存在：是否有 research 发现未被 plan 覆盖？
 
       审查文件：
-      - plan:  .sisyphus/plans/<change-name>.md
+      - plan:  .omo/plans/<change-name>.md
       - `openspec/changes/<change-name>/tasks.md` — checkbox 任务清单
       - `openspec/changes/<change-name>/research/` — 技术调研（如果存在）
 
@@ -711,7 +711,7 @@ apply:
 
     VERDICT 确认后，调用：
     ```
-    /start-work .sisyphus/plans/<change-name>.md
+    /start-work .omo/plans/<change-name>.md
     ```
 
     这会调用 OMO 内置的计划执行器（Atlas），读取计划文件并执行任务，包含委托、验证和会话连续性。
@@ -738,7 +738,7 @@ apply:
     - `openspec/changes/<change-name>/specs/` — 需求和验收场景
     - `openspec/changes/<change-name>/design.md` — 技术方案、决策、风险
     - `openspec/changes/<change-name>/tasks.md` — checkbox 任务清单
-    - `.sisyphus/plans/<change-name>.md` — OMO 执行计划
+    - `.omo/plans/<change-name>.md` — OMO 执行计划
     - `openspec/changes/<change-name>/research/` — 技术调研（如果存在）
 
     变更文件清单（来自 git diff --name-only HEAD）：
@@ -793,7 +793,7 @@ apply:
     **同步协议**：
     - plan 文件的 `## Tasks` 部分跟踪 `/start-work` 的 checkbox 状态
     - `openspec/changes/<change-name>/tasks.md` 是 OpenSpec 的真实来源
-    - `/start-work` 完成或暂停后，将 `.sisyphus/plans/<change-name>.md` 的 checkbox 状态复制到
+    - `/start-work` 完成或暂停后，将 `.omo/plans/<change-name>.md` 的 checkbox 状态复制到
       `openspec/changes/<change-name>/tasks.md` 保持同步
     - 运行以下命令验证暂停/完成时的状态一致性：
-      diff <(grep '^- \[' openspec/changes/<change-name>/tasks.md) <(sed -n '/^## Tasks/,/^## /p' .sisyphus/plans/<change-name>.md | grep '^- \[')
+      diff <(grep '^- \[' openspec/changes/<change-name>/tasks.md) <(sed -n '/^## Tasks/,/^## /p' .omo/plans/<change-name>.md | grep '^- \[')

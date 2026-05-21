@@ -5,7 +5,7 @@ Custom OpenSpec `spec-driven` schema that bridges OpenSpec workflows with oh-my-
 ## Repository purpose
 
 This is a **configuration repository** — not a code project. It houses a customized OpenSpec schema at
-`schemas/spec-driven/` that extends the standard spec-driven workflow to generate OMO-compatible `.sisyphus/plans/` plan
+`schemas/spec-driven/` that extends the standard spec-driven workflow to generate OMO-compatible `.omo/plans/` plan
 files during the `critic` artifact phase.
 
 ## Key files
@@ -28,8 +28,8 @@ proposal ──┬──► specs ──┐
 ```
 
 - `tasks.instruction` generates `tasks.md` (simple checkbox list)
-- `critic.instruction` generates `.sisyphus/plans/<name>.md` (OMO plan with rich sub-fields) + `critic.md` (review report)
-- `.sisyphus/plans/<name>.md` uses **9 sections** in spec-driven: TL;DR, Context, Work Objectives, Verification Strategy, Execution Strategy, Tasks, Final Verification Wave, Commit Strategy, Success Criteria (7 sections in constitution, skipping Verification Strategy and Commit Strategy per Design Decision 6)
+- `critic.instruction` generates `.omo/plans/<name>.md` (OMO plan with rich sub-fields) + `critic.md` (review report)
+- `.omo/plans/<name>.md` uses **9 sections** in spec-driven: TL;DR, Context, Work Objectives, Verification Strategy, Execution Strategy, Tasks, Final Verification Wave, Commit Strategy, Success Criteria (7 sections in constitution, skipping Verification Strategy and Commit Strategy per Design Decision 6)
 - Non-Tasks sections use "summary + link" pattern (references `openspec/changes/<name>/` artifacts)
 - The plan is parsed by `/start-work` (OMO's Atlas agent)
 
@@ -40,7 +40,7 @@ The following gates apply to the **spec-driven** schema. Constitution schema has
 1. **Basic structure check** (critic, mandatory) — checks spec dir, tasks.md, and task count (removed, no longer needed)
 2. **Spec validation** (critic, mandatory) — runs `openspec validate`, if errors show to user and let user decide how to fix
 3. **1 parallel Oracle + 1 parallel Metis review** (critic, after spec validation) — concurrent review of tasks.md: Oracle covers content split reasonableness & optimization; Metis covers OMO format compliance & wave structure optimization
-4. **Plan generation** (critic, mandatory) — generate .sisyphus/plans/<name>.md via category="deep"
+4. **Plan generation** (critic, mandatory) — generate .omo/plans/<name>.md via category="deep"
 5. **Plan structure validation** (critic, mandatory) — 4 grep checks verify sections exist and checkbox counts match
 6. **1 parallel Oracle + 1 parallel Metis + 1 parallel Momus review** (critic, mandatory) — concurrent review of plan: Oracle covers design alignment & success criteria; Metis covers structure & QA scenarios; Momus gives final OKAY/REJECT verdict
 7. **Critic verdict** (critic, hard block) — if 🔴 BLOCKED, apply cannot proceed; if ⚠️ CONDITIONAL, user must acknowledge; if ✅ PASS, proceed
@@ -64,7 +64,7 @@ Arithmetic uses `$((var + 1))` syntax (not `((var++))`) to avoid `set -e` exit o
 
 `apply.instruction` has a Task State Sync Protocol:
 
-- **ON PAUSE / ON ALL_DONE**: After `/start-work` completes or pauses, copy checkbox states from `.sisyphus/plans/<change-name>.md` to `tasks.md`. Then run `diff <(grep '^- \[' tasks.md) <(sed -n '/^## Tasks/,/^## /p' plan.md | grep '^- \[')` to verify consistency.
+- **ON PAUSE / ON ALL_DONE**: After `/start-work` completes or pauses, copy checkbox states from `.omo/plans/<change-name>.md` to `tasks.md`. Then run `diff <(grep '^- \[' tasks.md) <(sed -n '/^## Tasks/,/^## /p' plan.md | grep '^- \[')` to verify consistency.
 - `diff` is scoped to `## Tasks` section only (excludes FVW/Success Criteria checkboxes)
 
 ## Spec validation rules

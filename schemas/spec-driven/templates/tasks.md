@@ -22,7 +22,7 @@
 
   **Parallelization**: Can Run In Parallel: YES | NO | Parallel Group: Wave N | Blocked By: <!-- task ref -->
 
-  **Evidence**: .sisyphus/evidence/task-1.1-<!-- slug -->.<!-- ext -->
+  **Evidence**: .omo/evidence/task-1.1-<!-- slug -->.<!-- ext -->
 
   **Commit**: YES | NO
   - Message: `type(scope): description`
@@ -50,7 +50,7 @@
 
   **Parallelization**: Can Run In Parallel: YES | NO | Parallel Group: Wave N | Blocked By: <!-- task ref -->
 
-  **Evidence**: .sisyphus/evidence/task-2.1-<!-- slug -->.<!-- ext -->
+  **Evidence**: .omo/evidence/task-2.1-<!-- slug -->.<!-- ext -->
 
   **Commit**: YES | NO
   - Message: `type(scope): description`
@@ -76,7 +76,7 @@
 
   **Parallelization**: Can Run In Parallel: YES | NO | Parallel Group: Wave N | Blocked By: <!-- task ref -->
 
-  **Evidence**: .sisyphus/evidence/task-2.2-<!-- slug -->.<!-- ext -->
+  **Evidence**: .omo/evidence/task-2.2-<!-- slug -->.<!-- ext -->
 
   **Commit**: YES | NO
   - Message: `type(scope): description`
