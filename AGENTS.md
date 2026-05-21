@@ -40,12 +40,12 @@ The following gates apply to the **spec-driven** schema. Constitution schema has
 1. **Basic structure check** (critic, mandatory) — checks spec dir, tasks.md, and task count
 2. **Spec validation** (critic, after structure check passes) — runs `openspec validate`, if errors consult Oracle for fix guidance
 3. **1 parallel Oracle + 1 parallel Metis review** (critic, after spec validation) — concurrent review of tasks.md: Oracle covers content split reasonableness & optimization; Metis covers OMO format compliance & wave structure optimization
-4. **Plan generation** (critic, mandatory) — generate .sisyphus/plans/<name>.md via Prometheus (fallback: category="deep")
+4. **Plan generation** (critic, mandatory) — generate .sisyphus/plans/<name>.md via category="deep"
 5. **Plan structure validation** (critic, mandatory) — 4 grep checks verify sections exist and checkbox counts match
 6. **1 parallel Oracle + 1 parallel Metis + 1 parallel Momus review** (critic, mandatory) — concurrent review of plan: Oracle covers design alignment & success criteria; Metis covers structure & QA scenarios; Momus gives final OKAY/REJECT verdict
 7. **Critic verdict** (critic, hard block) — if 🔴 BLOCKED, apply cannot proceed; if ⚠️ CONDITIONAL, user must acknowledge; if ✅ PASS, proceed
 8. **Oracle invocation** (tasks, mandatory) — gap analysis on task list before generation; Oracle 按信源优先级（proposal.md > design.md > specs）分析冲突并给出修复建议，自动修复后循环调用直至仅剩用户判断项；同时校验 proposal 中的不确定点是否在 design 阶段有对应的 research/ 调研产出
-9. **Oracle invocation** (critic, mandatory) — spec validation fix guidance; 如果 Oracle 调用失败则由 AI 自行修复格式问题
+9. **Oracle invocation** (critic, mandatory) — spec validation fix guidance; 如果 Oracle 调用失败则按 fast fail 规则立即停住报错
 
 ## Language support
 

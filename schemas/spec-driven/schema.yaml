@@ -6,165 +6,154 @@ artifacts:
     generates: proposal.md
     description: Initial proposal document outlining the change
     template: proposal.md
-    instruction: >
+    instruction: |
       __LANG_PLACEHOLDER__
 
-      **SCOPE RESTRICTION: Do NOT modify any source code. Only generate proposal.md.**
+      **范围限制：不要修改任何源代码。仅生成 proposal.md。**
 
-      === PHASE 1: Context Extraction ===
+      === PHASE 1：上下文提取 ===
 
-      Before writing the proposal, systematically review the current conversation
-      to extract all information relevant to this change.
+      在编写 proposal 之前，系统性地回顾当前对话，提取所有与本变更相关的信息。
 
-      **If the conversation has more than 30 messages (user + assistant exchanges):**
-      1. Divide the conversation into thirds: early, middle, late exchanges
-      2. Extract key points from each segment separately (3-8 points per segment)
-      3. Merge all segments' points, deduplicate, and synthesize
-      4. Pay special attention to middle-segment points not revisited later
-      5. Flag any uncertainty signals found in any segment
+      **如果对话超过 30 条消息（用户 + AI 的交流）：**
+      1. 将对话分为三段：前期、中期、后期
+      2. 从每段中分别提取关键点（每段 3-8 条）
+      3. 合并所有段落的要点，去重并综合
+      4. 特别注意中期段落中出现但后续未被重提的点
+      5. 标记在任何段落中发现的不确定信号
 
-      **For shorter conversations:** extract directly from the full conversation.
+      **对于较短的对话：** 直接从完整对话中提取。
 
-      Organize findings into 6 categories:
+      将发现组织为 6 个类别：
 
-      1. **Core Motivation**: What problem/opportunity drove this discussion?
-         What was the user's explicit pain point?
-      2. **Change Scope**: Every specific capability, modification, or removal
-         that was discussed. Include technical constraints mentioned.
-      3. **Explicit Constraints**: User-stated boundaries — "must use X",
-         "cannot use Y", compatibility requirements.
-      4. **Explicit Non-Goals**: What the user said is OUT of scope.
-         Decisions NOT to implement certain things.
-      5. **Uncertainty Signals**: Points where user said "needs investigation",
-         "not sure", "might need research". Each becomes `[NEEDS INVESTIGATION]`.
-      6. **Affected Systems**: User-mentioned code, APIs, dependencies, teams.
+      1. **核心动机**：什么驱动了这次讨论？用户的明确痛点是什么？
+      2. **变更范围**：讨论到的每个具体能力、修改或移除项，包括提到的技术约束
+      3. **显式约束**：用户明确的边界——"必须用 X"、"不能用 Y"、兼容性要求
+      4. **显式非目标**：用户明确说不在范围内的事项
+      5. **不确定信号**：用户说"需要调研"、"不确定"、"可能需要研究"的点，
+         每个标记为 `[NEEDS INVESTIGATION]`
+      6. **影响系统**：用户提到的代码、API、依赖、团队
 
-      **This extraction is a thinking step only — do not write to a file.**
+      **这是思考步骤——不写入文件。**
 
-      === PHASE 2: Generate ===
+      === PHASE 2：生成 ===
 
-      Read the template file at `schemas/spec-driven/templates/proposal.md` to
-      understand the exact output structure.
+      读取模板文件 `schemas/spec-driven/templates/proposal.md`，了解确切的输出结构。
 
-      Create the proposal document at
-      `openspec/changes/<change-name>/proposal.md`.
+      在 `openspec/changes/<change-name>/proposal.md` 创建提案文档。
 
-      Write all 4 sections from the template:
-      - **Why**: 1-2 sentences on the problem or opportunity.
-      - **What Changes**: Bullet list of specific changes. Mark breaking
-        changes with **BREAKING**.
-      - **Capabilities**:
-        - New Capabilities (kebab-case names, one per spec file)
-        - Modified Capabilities (check `openspec/specs/` for existing names)
-      - **Impact**: Affected code, APIs, dependencies, systems.
+      按模板结构编写全部 4 个部分：
+      - **Why**（动机）：1-2 句话说明问题或机会
+      - **What Changes**（变更内容）：具体的变更项列表，不兼容变更标记 **BREAKING**
+      - **Capabilities**（能力清单）：
+        - New Capabilities（新能力）：kebab-case 命名，每个对应一个 spec 文件
+        - Modified Capabilities（修改的能力）：检查 `openspec/specs/` 中已有的名称
+      - **Impact**（影响）：受影响的代码、API、依赖、系统
 
-      **Completeness First** — cover ALL points from Phase 1. Keep language
-      concise but do NOT sacrifice coverage for brevity.
+      **完整性优先**——覆盖 PHASE 1 中的所有要点。保持语言简洁，但不以覆盖度为代价。
 
-      The proposal should be understandable by both technical and non-technical
-      readers.
+      提案应让技术和非技术读者都能理解。
 
-      After writing, verify that the output follows the template structure exactly.
+      编写后验证输出是否完全遵循模板结构。
 
-      === PHASE 3: Self-Verification ===
+      === PHASE 3：自检 ===
 
-      Verify against this checklist before proceeding:
-      □ All Phase 1 motivation points reflected in Why?
-      □ Every discussed change item captured in What Changes?
-      □ User-stated constraints and Non-Goals documented?
-      □ Uncertainty signals marked with `[NEEDS INVESTIGATION]`?
-      □ Capabilities use correct kebab-case and cover all discussed scopes?
-      □ Generated proposal follows template structure (correct headings)?
+      在最终确定前，对照以下清单自查：
+      □ PHASE 1 中的所有动机点是否反映在 Why 部分？
+      □ 每个讨论到的变更项是否在 What Changes 中体现？
+      □ 用户提到的约束和非目标是否已记录？
+      □ 不确定信号是否已用 `[NEEDS INVESTIGATION]` 标记？
+      □ Capabilities 是否使用正确的 kebab-case 命名并覆盖所有讨论范围？
+      □ 生成的 proposal 是否遵循模板结构（正确的标题层级）？
 
-      If any check fails, revise before proceeding.
+      如果有任何检查不通过，修改后再继续。
 
-      === PHASE 4: Oracle + Metis Parallel Review (Mandatory) ===
+      === PHASE 4：Oracle + Metis 并行审查（强制） ===
 
-      Launch 1 Oracle + 1 Metis agent IN PARALLEL to review the generated proposal.
-      Replace each placeholder with the actual content before invoking.
+      同时启动 1 个 Oracle + 1 个 Metis agent 审查生成的 proposal。
+      调用前将占位符替换为实际内容。
 
-      **Oracle prompt:**
+      **Oracle prompt：**
       task(subagent_type="oracle", run_in_background=false, prompt="
-      You are reviewing an OpenSpec change proposal for completeness.
+      你正在审查一个 OpenSpec 变更提案的完整性。
 
-      Phase 1 extraction findings:
-      [PASTE Phase 1 extraction output here, replacing this line]
+      PHASE 1 的上下文提取结果：
+      [将 PHASE 1 的提取输出粘贴此处，替换本行]
 
-      Generated proposal.md content:
-      [PASTE full text of openspec/changes/<change-name>/proposal.md here, replacing this line]
+      生成的 proposal.md 内容：
+      [将 openspec/changes/<change-name>/proposal.md 全文粘贴此处，替换本行]
 
-      Check:
-      1. Missing items — Phase 1 points not reflected in proposal
-      2. Scope creep — items in proposal not discussed in conversation
-      3. Ambiguity — fuzzy language where specific constraints exist
-      4. Uncertainty signals — properly marked with [NEEDS INVESTIGATION]
+      检查：
+      1. 遗漏项——PHASE 1 的要点未在 proposal 中体现
+      2. 范围蔓延——proposal 中出现了对话中未讨论的内容
+      3. 模糊性——用户有明确约束的地方使用了模糊语言
+      4. 不确定信号——是否正确标记了 [NEEDS INVESTIGATION]
 
-      Severity: 🔴 missing critical item / 🟡 minor omission / ⚪ suggestion
+      严重程度：🔴 遗漏关键项 / 🟡 轻微遗漏 / ⚪ 建议
 
-      Output format:
-      - List findings by severity
-      - For each 🔴/🟡, provide specific fix suggestion
+      输出格式：
+      - 按严重程度列出发现
+      - 对每个 🔴/🟡，给出具体的修改建议
       ")
 
-      **Metis prompt:**
+      **Metis prompt：**
       task(subagent_type="metis", run_in_background=false, prompt="
-      You are reviewing an OpenSpec change proposal for structure and quality.
+      你正在审查一个 OpenSpec 变更提案的结构和质量。
 
-      Generated proposal.md content:
-      [PASTE full text of openspec/changes/<change-name>/proposal.md here, replacing this line]
+      生成的 proposal.md 内容：
+      [将 openspec/changes/<change-name>/proposal.md 全文粘贴此处，替换本行]
 
-      Check:
-      1. Structure — all required sections present and well-formed
-      2. Capabilities naming — kebab-case, compatible with existing specs
-      3. Scope boundary — What Changes vs Capabilities vs Impact not conflated
-      4. Actionability — proposal is specific enough to derive specs from
+      检查：
+      1. 结构——所有必需的部分是否都存在且格式正确
+      2. Capabilities 命名——kebab-case，与已有 specs 兼容
+      3. 范围边界——What Changes / Capabilities / Impact 没有混淆
+      4. 可操作性——proposal 足够具体，可以从中衍生 specs
 
-      Severity: 🔴 structural issue / 🟡 minor issue / ⚪ suggestion
+      严重程度：🔴 结构问题 / 🟡 小问题 / ⚪ 建议
 
-      Output format:
-      - List findings by severity
-      - For each 🔴/🟡, provide specific fix suggestion
+      输出格式：
+      - 按严重程度列出发现
+      - 对每个 🔴/🟡，给出具体的修改建议
       ")
 
-      **Collect review results:**
-      1. Read Oracle output → list all 🔴/🟡/⚪ findings
-      2. Read Metis output → list all 🔴/🟡/⚪ findings
-      3. **自检**: confirm both agents' results were successfully read.
-         If any agent result is missing, go back to step 1 and re-read.
-      4. Merge findings: same issue from multiple agents → take higher severity
-      5. Classification:
-         - Any 🔴 → BLOCKED, fix proposal.md then re-run PHASE 4 (max 3 rounds)
-         - Only 🟡/⚪ → assess and fix if needed, then proceed
+      **收集评审结果：**
+      1. 读取 Oracle 输出 → 列出所有 🔴/🟡/⚪ 发现
+      2. 读取 Metis 输出 → 列出所有 🔴/🟡/⚪ 发现
+      3. **自检**：确认两个 agent 的结果都已成功读取。如有遗漏，回到步骤 1 重新读取
+      4. 合并发现：同一问题多个 agent 都发现时取更高严重程度
+      5. 分类判定：
+         - 有任何 🔴 → BLOCKED，修复 proposal.md 后重新运行 PHASE 4（最多 3 轮）
+         - 仅 🟡/⚪ → 评估后决定是否修复，然后继续
 
-      **Fast fail:** If either agent call fails (timeout, unavailable, error):
-      - Immediately stop the workflow
-      - Report to user: "❌ proposal 审查中断：[agent name] 调用失败。[error message]"
-      - Do NOT degrade, do NOT attempt self-fix, do NOT skip review
-      - Wait for user intervention
+      **Fast fail：** 如果任一 agent 调用失败（超时、不可用、出错）：
+      - 立即停止工作流
+      - 向用户报告：「❌ proposal 审查中断：[agent name] 调用失败。[error message]」
+      - 不得降级，不得自行修复，不得跳过审查
+      - 等待用户介入
 
-      === PHASE 5: Format Integrity Check ===
+      === PHASE 5：格式完整性检查 ===
 
-      After all reviews pass, scan the generated proposal.md for:
-      - Empty sections (section header with no content below)
-      - Unreplaced placeholders (text like `<name>`, `<description>`)
-      - `[TODO]` or `[TBD]` markers
+      所有审查通过后，扫描生成的 proposal.md 中是否存在：
+      - 空部分（有标题但无内容）
+      - 未替换的占位符（如 `<name>`、`<description>`）
+      - `[TODO]` 或 `[TBD]` 标记
 
-      If any found: fix directly (format-only changes, no re-review needed).
+      如果发现：直接修复（仅格式修改，无需重新审查）。
 
-      === PHASE 6: Loop & Proceed ===
+      === PHASE 6：循环与继续 ===
 
-      - If 🔴 found in PHASE 4: fix proposal.md, re-run from PHASE 4
-      - Max 3 rounds. After 3 rounds still🔴: show remaining issues to user
-      - If all clear: proposal is complete, proceed to next artifact
+      - 如果在 PHASE 4 中发现 🔴：修复 proposal.md，从 PHASE 4 重新运行
+      - 最多 3 轮。3 轮后仍有 🔴：将剩余问题展示给用户
+      - 全部清除：proposal 完成，进入下一个 artifact
     requires: []
   - id: specs
     generates: specs/**/*.md
     description: Detailed specifications for the change
     template: spec.md
-    instruction: >
+    instruction: |
       __LANG_PLACEHOLDER__
 
-      **SCOPE RESTRICTION: Do NOT modify any source code. Only generate spec files.**
+      **范围限制：不要修改任何源代码。仅生成 spec 文件。**
 
       **VALIDATION RULES (MUST follow — `openspec validate` enforces these):**
 
@@ -289,44 +278,53 @@ artifacts:
     generates: design.md
     description: Technical design document with implementation details
     template: design.md
-    instruction: >
+    instruction: |
       __LANG_PLACEHOLDER__
 
-      **SCOPE RESTRICTION: Do NOT modify any source code. Only generate design.md.**
+      **范围限制：不要修改任何源代码。仅生成 design.md。**
 
-      Create the design document that explains HOW to implement the change.
+      === PHASE 1：读取输入 ===
 
+      Read the following files and extract key information for the design:
+      - `openspec/changes/<change-name>/proposal.md` — WHY and capabilities
+      - `openspec/changes/<change-name>/specs/` — WHAT, requirements and scenarios
+      - `openspec/changes/<change-name>/research/` — technical research findings (if exists)
 
-      Always create design.md with at least Context and Decisions sections.
-      Expand to include Migration Plan and Open Questions when needed.
+      === PHASE 2：通过 Deep Agent 生成 ===
 
-      Sections:
+      Package all extracted context, requirements, and research findings into a
+      comprehensive prompt. Then delegate generation to a focused agent:
 
-      - **Context**: Background, current state, constraints, stakeholders
+      task(category="deep", load_skills=[], run_in_background=false,
+           prompt="Generate a technical design document (design.md) for the following change.
 
-      - **Goals / Non-Goals**: What this design achieves and explicitly excludes
+           Input context:
+           - Proposal (动机和变更范围): [将 proposal.md 的核心内容填入此处]
+           - Spec requirements (关键需求): [将各 spec 的 requirement 和 scenario 填入此处]
+           - Research findings (调研结论): [将 research/ 中的关键发现填入此处，如果没有则填"无"]
 
-      - **Decisions**: Key technical choices with rationale (why X over Y?).
-      Include alternatives considered for each decision.
+           The design document MUST include these sections:
 
-      - **Risks / Trade-offs**: Known limitations, things that could go wrong.
-      Format: [Risk] → Mitigation
+           1. **Context**: Background, current state, constraints, stakeholders
+           2. **Goals / Non-Goals**: What this design achieves and explicitly excludes
+           3. **Decisions**: Key technical choices with rationale (why X over Y?).
+              Include alternatives considered for each decision.
+           4. **Risks / Trade-offs**: Known limitations, things that could go wrong.
+              Format: [Risk] → Mitigation
+           5. **Migration Plan**: Steps to deploy, rollback strategy (if applicable)
+           6. **Open Questions**: Outstanding decisions or unknowns to resolve
 
-      - **Migration Plan**: Steps to deploy, rollback strategy (if applicable)
+           Key requirements:
+           - Focus on architecture and approach, not line-by-line implementation
+           - Each design decision must map to at least one spec requirement
+           - The chosen approach must address the relevant requirement's scenario
+           - If research findings exist, reference them with `详见 research/<topic>/notes.md`
+           - Explain the 'why' behind each technical decision
+           - Keep it focused and actionable")
 
-      - **Open Questions**: Outstanding decisions or unknowns to resolve
-
-
-      Focus on architecture and approach, not line-by-line implementation.
-
-      Reference the proposal for motivation and specs for requirements.
-
-
-      Good design docs explain the "why" behind technical decisions.
-
-      After writing, verify that each design decision maps to at least one
-      spec requirement. Check that the chosen approach addresses the relevant
-      requirement's scenario.
+      After deep agent returns, verify the generated design.md covers all
+      required sections at `openspec/changes/<change-name>/design.md`.
+      If any section is missing, fix directly (minor edits only).
 
 
       === Technical Research (Optional) ===
@@ -365,10 +363,10 @@ artifacts:
           findings and writes validation scripts with real API/interface calls.
 
           ```
-          task(category="deep", run_in_background=false, prompt="基于 spectest/plugin-config/notes.md 的调研结果，
+          task(category="deep", load_skills=[], run_in_background=false, prompt="基于 spectest/plugin-config/notes.md 的调研结果，
           写一个脚本来实际测试 plugin.xml 配置声明格式。调用真实接口验证签名方式，
           给出完整的代码示例和调用方式。将脚本和结果保存到 spectest/plugin-config/。")
-          task(category="deep", run_in_background=false, prompt="基于 spectest/pkce-flow/notes.md 的调研结果，
+          task(category="deep", load_skills=[], run_in_background=false, prompt="基于 spectest/pkce-flow/notes.md 的调研结果，
           写一个脚本来验证 PKCE code_challenge 生成流程...")
           # ...N 个 topic，全部并发
           ```
@@ -408,10 +406,10 @@ artifacts:
     generates: tasks.md
     description: Implementation checklist with trackable tasks
     template: tasks.md
-    instruction: >
+    instruction: |
       __LANG_PLACEHOLDER__
 
-      **SCOPE RESTRICTION: Do NOT modify any source code. Only generate tasks.md.**
+      **范围限制：不要修改任何源代码。仅生成 tasks.md。**
 
       Create the task list (tasks.md).
 
@@ -421,7 +419,7 @@ artifacts:
       `openspec/changes/<change-name>/tasks.md` — Standard checkbox task list
 
 
-      === PHASE 1: Understand the Context ===
+      === PHASE 1：理解上下文 ===
 
 
       **Step 0: Read and Understand All OpenSpec Artifacts**
@@ -500,12 +498,20 @@ artifacts:
       - 需要用户判断的 → 标注「👤 需用户确认：...」并提供选项
       - 模糊不清的 → 标注「❓ 需追问：...」并说明需要什么信息")
 
-      **说明**: 此循环是内容质量改进机制（Oracle 已成功完成 gap 分析 → AI 修复 → 重新调用），
-      不是 agent 调用失败的降级处理。如 Oracle 调用本身失败 → 按 fast fail 规则立即停住报错。
+       **说明**: 此循环是内容质量改进机制（Oracle 已成功完成 gap 分析 → subagent 修复 → 重新调用），
+       不是 agent 调用失败的降级处理。如 Oracle 调用本身失败 → 按 fast fail 规则立即停住报错。
 
-      应用 Oracle 的分析结果，循环执行以下冲突修复流程（**最多循环 3 轮**）：
+       应用 Oracle 的分析结果，循环执行以下冲突修复流程（**最多循环 3 轮**）：
 
-      1. 如果有「🔧 可自动修复」项 → 按建议修改对应文件，然后重新调用 Oracle（回到本步骤）
+       1. 如果有「🔧 可自动修复」项：
+          对每个 🔧 项，读取 Oracle 指出的具体问题和修改建议，调用执行型 subagent 修复：
+          task(category="unspecified-high", load_skills=[], run_in_background=false,
+               prompt="根据以下 Oracle 差距分析结果修复对应的源文件或 artifact。
+               只修复标注为 🔧 可自动修复的问题，不要修改其他内容。
+
+               Oracle 修复建议：
+               [将 Oracle 输出的 🔧 项及对应修改建议填入此处]")
+          全部修复完成后，重新调用 Oracle 验证（回到本步骤）
       2. 如果只剩「👤 需用户确认」和/或「❓ 需追问」→ 停止循环
          - 需用户确认 → 提供方案让用户选择
          - 需追问 → 直接提问让用户回答
@@ -513,13 +519,27 @@ artifacts:
       4. **达到 3 轮上限时**：即使仍有「🔧 可自动修复」项，也停止循环，将所有未解决项（🔧/👤/❓）汇总展示给用户
 
 
-      === GENERATE tasks.md ===
+       === PHASE 2：通过 Deep Agent 生成 ===
 
+       Package all artifacts content and Oracle gap analysis results into a
+       comprehensive prompt. Then delegate generation to a focused agent:
 
-      Write to `openspec/changes/<change-name>/tasks.md`.
+       task(category="deep", load_skills=[], run_in_background=false,
+            prompt="Generate a task list (tasks.md) for the following change.
 
-      Use `## Tasks` as section header, `### Wave N: Group Name` for
-      sub-groupings. Each task MUST start with `- [ ] N.M Description`.
+            Input context:
+            - Proposal (动机和能力): [将 proposal.md 的核心内容填入此处]
+            - Spec requirements: [将各 spec 的 key requirement 和 scenario 填入此处]
+            - Design decisions: [将 design.md 的关键决策填入此处]
+            - Oracle gap analysis results: [将 Oracle 的输出和冲突修复结果填入此处]
+
+            The task list MUST:
+            - Use `## Tasks` as section header
+            - Use `### Wave N: Group Name` for sub-groupings
+            - Each task starts with `- [ ] N.M Description`
+            - Cover all spec requirements and design decisions
+            - Reflect gap analysis results from Oracle
+            - Be organized into logical waves of parallel-executable tasks")
     requires:
       - specs
       - design
@@ -533,9 +553,9 @@ artifacts:
     instruction: |
       __LANG_PLACEHOLDER__
 
-      **SCOPE RESTRICTION: Do NOT modify any source code. Only generate critic.md and .sisyphus/plans/<change-name>.md.**
+      **范围限制：不要修改任何源代码。仅生成 critic.md 和 .sisyphus/plans/<change-name>.md。**
 
-      === PHASE 1: Read Context ===
+      === PHASE 1：读取上下文 ===
 
       Read these files:
       - `openspec/changes/<change-name>/tasks.md` — checkbox task list
@@ -544,7 +564,7 @@ artifacts:
       - `openspec/changes/<change-name>/proposal.md` — proposal
       - `openspec/changes/<change-name>/research/` — technical research (if exists)
 
-      === PHASE 2: Basic Structure Check ===
+      === PHASE 2：基础结构检查 ===
 
       Check the basic structure of the change:
       1. `ls openspec/changes/<change-name>/specs/` — spec 目录存在且有文件（如果 proposal 无 Capabilities 则跳过此项）
@@ -554,7 +574,7 @@ artifacts:
       If ANY check fails: STOP, list what's missing, wait for user.
       If all pass: Proceed.
 
-      === PHASE 3: Spec Validation (MANDATORY) ===
+      === PHASE 3：Spec 验证（强制） ===
 
       Run `openspec validate <change-name>` to check spec format.
 
@@ -591,7 +611,7 @@ artifacts:
       Apply Oracle's fix suggestions. Re-run `openspec validate`.
       Repeat until validation passes（**最多 3 轮**）。如果 3 轮后仍未通过，汇总所有剩余错误展示给用户。
 
-      === PHASE 4: Oracle + Metis Concurrent Review of tasks.md ===
+      === PHASE 4：Oracle + Metis 并行审查 tasks.md ===
 
       Launch 1 Oracle + 1 Metis agent IN PARALLEL to review tasks.md.
       Oracle 专注于内容拆分合理性，Metis 专注于 OMO 格式合规性。
@@ -697,54 +717,45 @@ artifacts:
       2. **自检**：确认两个 agent 结果都已读完。如有遗漏，回到 Step 1 重新读取。
       3. **合并去重**：按 severity 合并，标注来源（Oracle / Metis）。同一问题两个 agent 都发现时取更高 severity。
       4. **分类判定**：
-         - 任一 agent 有 🔴 → BLOCKED，修复源文件后重新运行 PHASE 4（**最多 3 轮**，超限后汇总 🔴 问题给用户）
-          **说明**: 此循环是内容质量改进机制（审查 agent 已成功完成分析 → AI 修复 → 重新审查），
-          不是 agent 调用失败的降级处理。如审查 agent 调用本身失败 → 按 fast fail 规则立即停住报错。
-         - 仅 🟡/⚪ → 评估后决定是否修复
-      5. **产出合并清单**：将合并后的发现清单写入输出，供后续 PHASE 引用。
+          - 任一 agent 有 🔴 → BLOCKED，修复源文件后重新运行 PHASE 4（**最多 3 轮**，超限后汇总 🔴 问题给用户）
+           **说明**: 此循环是内容质量改进机制（审查 agent 已成功完成分析 → subagent 修复 → 重新审查），
+           不是 agent 调用失败的降级处理。如审查 agent 调用本身失败 → 按 fast fail 规则立即停住报错。
+          - 仅 🟡/⚪ → 评估后决定是否修复
+       5. **产出合并清单**：将合并后的发现清单写入输出，供后续 PHASE 引用。
 
-      === PHASE 5: Generate Plan ===
+      === PHASE 5：生成计划 ===
 
       Generate `.sisyphus/plans/<change-name>.md` — the OMO-compatible plan with 9 sections.
 
-      First, try using Prometheus:
-      ```
-      task(subagent_type="prometheus", run_in_background=false, prompt="基于 OpenSpec change 生成 9-section 执行计划。
+      Delegate plan generation via category="deep":
 
-      输入文件：
-      - proposal:  openspec/changes/<change-name>/proposal.md
-      - specs:     openspec/changes/<change-name>/specs/
-      - design:    openspec/changes/<change-name>/design.md（如果存在）
-      - tasks:     openspec/changes/<change-name>/tasks.md
-      - research:  openspec/changes/<change-name>/research/（如果存在）
+      task(category="deep", load_skills=[], run_in_background=false,
+           prompt="Generate the OMO-compatible plan at .sisyphus/plans/<change-name>.md.
 
-      输出文件（必须创建）：
-      .sisyphus/plans/<change-name>.md
+           输入文件摘要（已读取）：
+           - Proposal: [将 proposal.md 的核心内容填入此处]
+           - Spec requirements: [将各 spec 的关键 requirement 填入此处]
+           - Design decisions: [将 design.md 的关键决策填入此处]
+           - Task list: [将 tasks.md 的完整 task 列表填入此处]
+           - Research: [将 research/ 的关键发现填入此处，没有则填无]
 
-      必须包含以下 9 个 sections，使用 summary + link 模式：
-      1. ## TL;DR — 1-2 句概述（引用 proposal.md）
-      2. ## Context — 2-3 句背景（引用 proposal.md）
-      3. ## Work Objectives — 每个 capability 及其关键 requirement（引用 specs/）
-      4. ## Verification Strategy — 引用 specs 的 scenarios
-      5. ## Execution Strategy — 引用 design.md 和 research/ 的关键发现
-      6. ## Tasks — tasks.md 的 checkbox 展开为子字段格式
-         每个 task 必须包含：**What to do** / **Must NOT do** / **Recommended Agent Profile** / **References** / **Acceptance Criteria** / **QA Scenarios** / **Parallelization** / **Evidence** / **Commit**
-      7. ## Final Verification Wave — F1~F4
-      8. ## Commit Strategy
-      9. ## Success Criteria
+           The plan MUST include 9 sections using summary + link format:
+           1. ## TL;DR — 1-2句概述（引用 proposal.md）
+           2. ## Context — 2-3句背景（引用 proposal.md）
+           3. ## Work Objectives — 每个 capability 及关键 requirement（引用 specs/）
+           4. ## Verification Strategy — 引用 specs 的 scenarios
+           5. ## Execution Strategy — 引用 design.md 和 research/
+           6. ## Tasks — tasks.md 的 checkbox 展开，每个 task 含 What to do / Must NOT do / Agent Profile / References / Acceptance Criteria / QA Scenarios / Parallelization / Evidence / Commit
+           7. ## Final Verification Wave — F1~F4
+           8. ## Commit Strategy
+           9. ## Success Criteria
 
-      关键规则：
-      - Task 编号必须与 tasks.md 一致（N.M 格式）
-      - 不要复制 artifact 原文（除 Tasks 的 What to do 部分外）
-      - Acceptance Criteria 必须是可执行的命令")
-      ```
+           Key rules:
+           - Task numbers must match tasks.md (N.M format)
+           - Do NOT copy artifact verbatim (except Tasks' What to do)
+           - Acceptance Criteria must be executable commands")
 
-      如果 Prometheus task() 调用失败（超时、不可用、出错），立即停止工作流（**fast fail，不得降级**）：
-      - 向用户报告：「❌ Plan 生成中断：Prometheus 调用失败。[错误信息]」
-      - 不得降级到 category="deep" 或其他 agent
-      - 等待用户介入（用户可选择手动指定替代 agent 或重试 Prometheus）
-
-      === PHASE 6: Plan Structure Validation ===
+      === PHASE 6：Plan 结构验证 ===
 
       After writing the plan, validate:
       1. `grep -c '^## ' .sisyphus/plans/<change-name>.md` → must be at least 9
@@ -754,7 +765,7 @@ artifacts:
 
       If ANY check fails: STOP, fix the plan, re-validate（**最多 3 轮**，超限后汇总给用户）。
 
-      === PHASE 7: Oracle + Metis + Momus Concurrent Review of Plan ===
+      === PHASE 7：Oracle + Metis + Momus 并行审查 Plan ===
 
       Launch 1 Oracle + 1 Metis + 1 Momus agent ALL IN PARALLEL to review the generated plan.
       Oracle 专注于 content 层面：design alignment、Verification Strategy、Success Criteria。
@@ -864,23 +875,37 @@ artifacts:
       4. **分类判定**：
           - Momus ❌ REJECT → 修复 plan 后重新运行 PHASE 7（**最多 3 轮**，超限后汇总给用户）
           - Oracle/Metis 有 🔴 → BLOCKED，修复 plan 后重新运行 PHASE 7（**最多 3 轮**，超限后汇总给用户）
-          **说明**: 此循环是内容质量改进机制（审查 agent 已成功完成分析 → AI 修复 → 重新审查），
-          不是 agent 调用失败的降级处理。如审查 agent 调用本身失败 → 按 fast fail 规则立即停住报错。
-         - 仅 🟡/⚪ → 评估后决定是否修复
-      5. **产出合并清单**：将合并后的发现清单写入输出，供后续 PHASE 引用。
+          **说明**: 此循环是内容质量改进机制（审查 agent 已成功完成分析 → subagent 修复 → 重新审查），
+           不是 agent 调用失败的降级处理。如审查 agent 调用本身失败 → 按 fast fail 规则立即停住报错。
+          - 仅 🟡/⚪ → 评估后决定是否修复
+       5. **产出合并清单**：将合并后的发现清单写入输出，供后续 PHASE 引用。
 
-      === PHASE 8: Generate critic.md ===
+      === PHASE 8：通过 Deep Agent 生成 critic.md ===
 
-      Write to `openspec/changes/<change-name>/critic.md` using the template format.
-      Include a summary of all review findings from PHASE 4 and PHASE 7.
+      Package the complete review findings from PHASE 4 and PHASE 7 into a
+      comprehensive prompt. Then delegate to a focused agent:
 
-      Determine VERDICT:
-      - If any Momus says ❌ REJECT → **🔴 BLOCKED**
-      - If any 🔴 from other reviews → **🔴 BLOCKED**
-      - If only 🟡/⚪ (no 🔴) → **⚠️ CONDITIONAL**
-      - If no issues → **✅ PASS**
+      task(category="deep", load_skills=[], run_in_background=false,
+           prompt="Generate the critic.md file for this OpenSpec change.
 
-      === PHASE 9: Blocking Decision ===
+           Review findings from PHASE 4 (tasks.md review by Oracle + Metis):
+           [将 PHASE 4 的 Oracle 和 Metis 审查发现的 🔴/🟡/⚪ 清单填入此处]
+
+           Review findings from PHASE 7 (plan review by Oracle + Metis + Momus):
+           [将 PHASE 7 的 Oracle、Metis、Momus 审查发现的 🔴/🟡/⚪ 清单填入此处]
+
+           The critic.md MUST:
+           - Follow the template at `schemas/spec-driven/templates/critic.md`
+           - Include a summary of ALL review findings from both phases
+           - List findings grouped by source (Oracle / Metis / Momus)
+           - For each finding, include severity (🔴/🟡/⚪) and description
+
+           Determine VERDICT:
+           - Momus ❌ REJECT or any 🔴 from others → **🔴 BLOCKED**
+           - Only 🟡/⚪ → **⚠️ CONDITIONAL**
+           - No issues → **✅ PASS**")
+
+      === PHASE 9：阻塞判定 ===
 
       - If BLOCKED: "🛑 Critic BLOCKED. Fix 🔴 issues above, then re-create critic artifact. Re-run critic（最多 3 轮）。"
       - If CONDITIONAL: List 🟡 items. User can acknowledge risks or fix.
@@ -974,14 +999,21 @@ apply:
 
     读取 `openspec/changes/<change-name>/verify-round-{N}.md` 中的最终判定：
     1. 如果 ✅ PASS → 通过，继续
-    2. 如果 🔴 BLOCKED → 修复问题后重新运行 Oracle 验证（**最多 3 轮**，超限后汇总给用户）
-          **说明**: 此循环是内容质量改进机制（Oracle 已成功完成验证 → AI 修复 → 重新验证），
-          不是 agent 调用失败的降级处理。如 Oracle 调用本身失败 → 按 fast fail 规则立即停住报错。
-        **修复策略**：
-       - 只修复 🔴 问题，不要修改 🟡/⚪（那些在 CONDITIONAL 路径处理）
-       - 每轮最多修复 3 个 🔴 问题，防止一次改动过大引入新问题
-       - 修复前记录当前状态（git stash），以便失败后回滚
-       - 修复后不要重新运行 /start-work，只修改产出文件
+     2. 如果 🔴 BLOCKED：
+          读取 verify-round-{N}.md 中的 🔴 问题列表。
+          对每个 🔴 问题，调用执行型 subagent 修复：
+          task(category="unspecified-high", load_skills=[], run_in_background=false,
+               prompt="根据以下变更验证结果修复实现产出。只修复标注为 🔴 的问题，不要修改 🟡/⚪ 内容。
+
+               Oracle 验证结果中的 🔴 问题：
+               [将 verify-round-{N}.md 中的 🔴 问题列表及修复建议填入此处]")
+          **修复策略**：
+          - 每轮最多修复 3 个 🔴 问题，防止一次改动过大引入新问题
+          - 修复前记录当前状态（git stash），以便失败后回滚
+          - 修复后不要重新运行 /start-work，只修改产出文件
+          修复完成后重新运行 Oracle 验证（**最多 3 轮**，超限后汇总给用户）
+           **说明**: 此循环是内容质量改进机制（Oracle 已成功完成验证 → subagent 修复 → 重新验证），
+           不是 agent 调用失败的降级处理。如 Oracle 调用本身失败 → 按 fast fail 规则立即停住报错。
     3. 如果 ⚠️ CONDITIONAL → 汇总 🟡/⚪ 问题展示给用户，让用户决定是接受继续还是修复后再重新运行 Oracle 验证
 
     **Sync Protocol**:
