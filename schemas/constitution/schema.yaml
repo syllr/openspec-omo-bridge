@@ -11,51 +11,57 @@ artifacts:
 
       **范围限制：不要修改任何源代码。仅生成 scan.md。**
 
-      通过结构化的 3 阶段流程分析项目的技术栈：
+       首先检测运行模式：检查 `.opencode/skills/constitution/` 目录是否存在。
+       - 如果存在 → **更新模式**：基于现有章程进行更新，diff 现有内容后让用户确认
+       - 如果不存在 → **初始化模式**：从头创建章程
 
-      **Phase 1：项目检测与配置解析**
+       然后通过结构化的 3 阶段流程分析项目的技术栈：
 
-      - 读取配置文件：package.json、go.mod、pyproject.toml、Cargo.toml 等
-      - 使用 Glob 和 Grep 分析项目结构、构建工具、测试框架
-      - 区分已有代码的项目和空项目
+       **Phase 1：项目检测与配置解析**
 
-      **Phase 2：用户对话（/openspec-explore）**
+       - 读取配置文件：package.json、go.mod、pyproject.toml、Cargo.toml 等
+       - 使用 Glob 和 Grep 分析项目结构、构建工具、测试框架
+       - 区分已有代码的项目和空项目
 
-      - 向用户展示当前技术栈分析结果
-      - 讨论是否引入新技术或升级依赖
-      - 识别可能需要验证的技术决策
+       **Phase 2：用户对话（/openspec-explore）**
 
-      **Phase 3：汇总**
+       - 向用户展示当前技术栈分析结果
+       - 讨论是否引入新技术或升级依赖
+       - 识别可能需要验证的技术决策
 
-      - 记录决策和替代方案
-      - 输出结构化的 scan.md 决策日志
+       **Phase 3：汇总**
 
-      **已有项目路径**：从配置分析开始的 3 阶段流程。
+       - 记录决策和替代方案
+       - 输出结构化的 scan.md 决策日志
 
-      **空项目路径**：从 Phase 2 开始（询问用户需求、推荐技术栈），
-      然后直接进入汇总，跳过 Phase 1。
+       **已有项目路径**：从配置分析开始的 3 阶段流程。
 
-      === PHASE 3：通过 Deep Agent 生成 ===
+       **空项目路径**：从 Phase 2 开始（询问用户需求、推荐技术栈），
+       然后直接进入汇总，跳过 Phase 1。
 
-      完成 Phase 1-2 后，将所有发现打包成 prompt，委托给 deep agent 生成 scan.md：
+       === PHASE 3：通过 Deep Agent 生成 ===
 
-      task(category="deep", load_skills=[], run_in_background=false,
-           prompt="为项目章程初始化生成 scan.md 文件。
+       完成 Phase 1-2 后，将所有发现打包成 prompt，委托给 deep agent 生成 scan.md：
 
-           输入文件（请直接读取以下文件获取完整内容）：
-           - scan.md：openspec/changes/<change-name>/scan.md（如果已存在）
+       task(category="deep", load_skills=[], run_in_background=false,
+            prompt="为项目章程生成 scan.md 文件。
 
-           此外直接传入以下上下文：
-           - Phase 1 项目检测结果：[将项目配置文件解析结果以文本形式填入此处]
-           - Phase 2 用户确认结果：[将用户技术栈讨论的结论以文本形式填入此处]
-           - Project type：[现有项目 / 空项目]
+            输入文件（请直接读取以下文件获取完整内容）：
+            - scan.md：openspec/changes/<change-name>/scan.md（如果已存在）
 
-           scan.md 必须：
-           - 包含结构化的技术栈分析报告和决策日志
-           - 记录所有与用户讨论的决策和替代方案
-           - 标注出需要在 design 阶段进一步调研的不确定信号
-           - 明确哪些决策已确认、哪些需要调研
-           - 输出到 openspec/changes/<change-name>/scan.md")
+            此外直接传入以下上下文：
+            - Phase 1 项目检测结果：[将项目配置文件解析结果以文本形式填入此处]
+            - Phase 2 用户确认结果：[将用户技术栈讨论的结论以文本形式填入此处]
+            - Project type：[现有项目 / 空项目]
+            - 运行模式：[初始化模式 / 更新模式]
+
+            scan.md 必须：
+            - 包含结构化的技术栈分析报告和决策日志
+            - 记录所有与用户讨论的决策和替代方案
+            - 标注出需要在 design 阶段进一步调研的不确定信号
+            - 明确哪些决策已确认、哪些需要调研
+            - 如果是更新模式，记录现有章程的变更点
+            - 输出到 openspec/changes/<change-name>/scan.md")
     requires: []
   - id: design
     generates: constitution-design.md
