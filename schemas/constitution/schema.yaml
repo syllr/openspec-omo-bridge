@@ -11,40 +11,36 @@ artifacts:
 
       **范围限制：不要修改任何源代码。仅生成 scan.md。**
 
-
       通过结构化的 3 阶段流程分析项目的技术栈：
-
 
       **Phase 1：项目检测与配置解析**
 
-      - Read configuration files: package.json, go.mod, pyproject.toml, Cargo.toml, etc.
-      - Use Glob and Grep to analyze project structure, build tools, test frameworks
-      - Distinguish between existing project (has code) and empty project
+      - 读取配置文件：package.json、go.mod、pyproject.toml、Cargo.toml 等
+      - 使用 Glob 和 Grep 分析项目结构、构建工具、测试框架
+      - 区分已有代码的项目和空项目
 
       **Phase 2：用户对话（/openspec-explore）**
 
-      - Present current tech stack analysis results
-      - Discuss whether to introduce new technologies or upgrade dependencies
-      - Identify any technology decisions that may need verification
+      - 向用户展示当前技术栈分析结果
+      - 讨论是否引入新技术或升级依赖
+      - 识别可能需要验证的技术决策
 
-      **Phase 3: Summary**
+      **Phase 3：汇总**
 
-      - Document decisions and alternatives
-      - Output structured scan.md with decision log
+      - 记录决策和替代方案
+      - 输出结构化的 scan.md 决策日志
 
+      **已有项目路径**：从配置分析开始的 3 阶段流程。
 
-      **Existing project path**: 3-phase process starting with config analysis.
-
-      **Empty project path**: Start from Phase 2 (ask user about requirements, recommend tech stack),
-      then proceed directly to Summary, skip Phase 1.
+      **空项目路径**：从 Phase 2 开始（询问用户需求、推荐技术栈），
+      然后直接进入汇总，跳过 Phase 1。
 
       === PHASE 3：通过 Deep Agent 生成 ===
 
-      After completing Phases 1-2, package all findings into a prompt and
-      delegate scan.md generation to a focused agent:
+      完成 Phase 1-2 后，将所有发现打包成 prompt，委托给 deep agent 生成 scan.md：
 
       task(category="deep", load_skills=[], run_in_background=false,
-           prompt="Generate the scan.md file for a project constitution initialization.
+           prompt="为项目章程初始化生成 scan.md 文件。
 
            输入文件（请直接读取以下文件获取完整内容）：
            - scan.md：openspec/changes/<change-name>/scan.md（如果已存在）
@@ -54,12 +50,12 @@ artifacts:
            - Phase 2 用户确认结果：[将用户技术栈讨论的结论以文本形式填入此处]
            - Project type：[现有项目 / 空项目]
 
-           The scan.md MUST:
-           - Include the structured tech stack analysis report with decision log
-           - Document all decisions and alternatives discussed with the user
-           - Note any uncertainty signals for further research in the design phase
-           - Be clear about which decisions are confirmed vs. need research
-           - Be output-ready at openspec/changes/<change-name>/scan.md")
+           scan.md 必须：
+           - 包含结构化的技术栈分析报告和决策日志
+           - 记录所有与用户讨论的决策和替代方案
+           - 标注出需要在 design 阶段进一步调研的不确定信号
+           - 明确哪些决策已确认、哪些需要调研
+           - 输出到 openspec/changes/<change-name>/scan.md")
     requires: []
   - id: design
     generates: constitution-design.md
@@ -71,75 +67,68 @@ artifacts:
       **范围限制：不要修改任何源代码。仅生成 constitution-design.md。**
 
 
-      Based on the confirmed tech stack from scan.md, design the constitution structure.
+      基于 scan.md 确认的技术栈，设计章程结构。
 
 
       **Step 1：多 Agent 最佳实践调研**
 
-      - Launch multiple librarian agents in parallel, each focused on one technology from the scan results
-      - Research official documentation, community standards, and common pitfalls
-      - Each agent produces a technology-specific best practice report
-      - After all librarians complete, generate a summary file `research-scope.md` listing all
-        researched topics and their key findings. This file is later used by Technical Research
-        to determine which topics already have coverage.
+      - 并行启动多个 librarian agent，每个聚焦 scan 结果中的一个技术
+      - 调研官方文档、社区标准和常见陷阱
+      - 每个 agent 产出一份技术特定的最佳实践报告
+      - 所有 librarian 完成后，生成一份汇总文件 `research-scope.md`，列出所有已调研主题和关键发现。此文件后续由 Technical Research 使用，以判断哪些主题已有覆盖
 
       **Step 2：用户审核**
 
-      - Present each technology's research results to the user for confirmation
-      - User can approve, request changes, or reject specific recommendations
+      - 向用户展示每项技术的调研结果供确认
+      - 用户可以批准、要求修改或拒绝特定建议
 
       **Step 3：生成参考文档**
 
-      - Call /summarize-research to produce structured reference files:
+      - 调用 /summarize-research 生成结构化的参考文件：
         - coding-standards/naming.md
         - coding-standards/imports.md
         - testing/unit-testing.md
         - architecture.md
         - gotchas.md
-      - Files are organized by domain following the constitution directory structure
+      - 文件按领域组织，遵循章程目录结构
 
 
-      === Technical Research (Optional) ===
+      === 技术调研（可选） ===
 
-      When reading scan.md, watch out for **uncertainty signals** such as:
+      阅读 scan.md 时，注意以下**不确定性信号**：
 
-      - Words like "可能", "maybe", "might", "needs investigation"
-      - Unclear library behavior or compatibility concerns
-      - Technology decisions that need verification before finalizing
-      - References to undocumented APIs or protocols
+      - "可能"、"maybe"、"might"、"needs investigation" 等词语
+      - 不明确的库行为或兼容性问题
+      - 在最终确定前需要验证的技术决策
+      - 引用未文档化的 API 或协议
 
       对于每个不确定点，按以下流程处理：
 
-      1. **Identify research topics**: Extract each uncertain point from scan.md
-         into a named research topic (kebab-case).
+      1. **识别调研主题**：从 scan.md 中提取每个不确定点，命名成 kebab-case 的调研主题
 
-      2. **Research and validate**: For each topic, determine if Step 1's librarian
-         research already covers it. If yes → directly run deep validation.
-         If no → fire a librarian first, then deep validation.
+      2. **调研与验证**：对每个主题，判断 Step 1 的 librarian 调研是否已覆盖。
+         如果已覆盖 → 直接运行 deep 验证。
+         如果未覆盖 → 先发起 librarian 调研，再 deep 验证。
 
-         All research artifacts are saved to `$project/spectest/<topic>/`.
-         After user confirmation, move to `openspec/changes/<change-name>/research/<topic>/`.
+         所有调研产物保存到 `$project/spectest/<topic>/`。
+         用户确认后移到 `openspec/changes/<change-name>/research/<topic>/`。
 
          ```
-         # If topic already researched in Step 1:
+         # 如果主题已在 Step 1 中调研过：
          task(category="deep", load_skills=[], run_in_background=false, prompt="基于已调研的结果，写验证脚本...")
 
-         # If topic needs new research first:
+         # 如果主题需要新调研：
          task(subagent_type="librarian", run_in_background=false, prompt="调研此技术点...")
          task(category="deep", load_skills=[], run_in_background=false, prompt="基于调研结果，写验证脚本...")
          ```
 
-         Fire ALL deep agents in ONE message (Wave 2). If any topics need a new
-         librarian, fire those first (Wave 1), then all deep agents.
+         在同一条消息中发起所有 deep agent（第二波）。如果有任何主题需要新的 librarian，先发起这些（第一波），再发起所有 deep agent。
 
-      3. **User confirmation and finalize**: Present summary of findings. After user confirms,
-         move `spectest/<topic>/` → `openspec/changes/<change-name>/research/<topic>/`.
-         Create `research/index.md` summarizing all topics, conclusions, and key findings.
+      3. **用户确认与最终确定**：向用户展示调研结果摘要。用户确认后，将 `spectest/<topic>/` → `openspec/changes/<change-name>/research/<topic>/`。创建 `research/index.md` 汇总所有主题、结论和关键发现。
 
-      4. **Update constitution-design.md**: Reference research findings in relevant sections.
-         Use links like `详见 research/<topic>/notes.md`.
+      4. **更新 constitution-design.md**：在相关部分引用调研发现。使用 `详见 research/<topic>/notes.md` 格式
 
-      **Important**:
+      **重要**：
       - research/ 是**可选的** — 只有 scan.md 中存在不确定点时才创建
       - research/ 是 side effect，不被 OpenSpec generations 跟踪
       - spectest/ 是临时目录，用户确认后数据才会移到 research/
@@ -147,10 +136,9 @@ artifacts:
 
       **Step 4（可选）：询问代码同步**
 
-      - Use question tool to ask the user: "Do you want to scan existing code for constitution violations?"
-      - If user confirms: add code sync logic to this design, and the tasks phase will include
-        an additional task for fixing violations
-      - If user declines: skip, proceed with standard constitution creation only
+      - 使用 question 工具询问用户："Do you want to scan existing code for constitution violations?"
+      - 如果用户确认：将代码同步逻辑加入此设计，tasks 阶段将包含一个修复违规的额外 task
+      - 如果用户拒绝：跳过，仅执行标准章程创建
 
       **Step 5：生成设计文档**
 
@@ -191,43 +179,43 @@ artifacts:
       === PHASE 1：理解上下文 ===
 
 
-      Read every artifact file. Each has a specific role:
+      读取每个 artifact 文件。每个文件有特定角色：
 
-      | File | Role |
+      | 文件 | 角色 |
       |------|------|
-      | `scan.md` | WHY — tech stack analysis, decisions |
-      | `constitution-design.md` | HOW — reference structure, best practices |
-      | `tasks.md` | DO — checkbox task list |
+      | `scan.md` | WHY — 技术栈分析、决策 |
+      | `constitution-design.md` | HOW — 参考结构、最佳实践 |
+      | `tasks.md` | DO — checkbox 任务清单 |
 
-      How to use each artifact:
-      - **scan.md** → list key technologies to determine task groupings
-      - **constitution-design.md** → extract decisions to plan execution approach
-
-
-      **Step 1: Quick Artifact Review**
-
-      Before generating, quickly check:
-      1. Does scan.md's technology decisions align with constitution-design.md's reference structure?
-      2. Any contradictions between scan.md and constitution-design.md?
-      → If issues found: STOP, list specifics, wait for user.
-      → If all clean: Proceed.
+      如何利用每个 artifact：
+      - **scan.md** → 列出关键技术以确定 task 分组
+      - **constitution-design.md** → 提取决策以规划执行方案
 
 
-      **Step 2: Invoke Oracle for Gap Analysis (MANDATORY)**
+      **Step 1：快速 artifact 审查**
 
-      Invoke Oracle before writing tasks.md. Oracle 会按信源优先级分析冲突并给出修复建议。
+      生成前，快速检查：
+      1. scan.md 的技术决策是否与 constitution-design.md 的参考结构一致？
+      2. scan.md 和 constitution-design.md 之间有无矛盾？
+      → 如果发现问题：停止，列出具体问题，等待用户处理。
+      → 如果全部正常：继续。
+
+
+      **Step 2：调用 Oracle 进行差距分析（强制）**
+
+      编写 tasks.md 前调用 Oracle。Oracle 会按信源优先级分析冲突并给出修复建议。
       在调用 Oracle 前，先读取所有 artifacts，然后在 prompt 中附上关键内容的原文。
 
       **Fast fail 保护**: 如果 Oracle task() 调用失败（超时、不可用、出错），立即停止工作流（**fast fail，不得降级**）：
-      - 向用户报告：「❌ 差距分析中断：Oracle 调用失败。[错误信息]」
+      - 向用户报告：「🔴 差距分析中断：Oracle 调用失败。[错误信息]」
       - 不得自行分析 gap，不得自行生成 tasks.md
       - 等待用户介入
 
       task(subagent_type="oracle", run_in_background=false, prompt="我准备为此变更生成 tasks.md。
 
       已完成的产物原文（关键段落）：
-      - **scan.md** 核心技术决策: [引用原文 2-3 句]
-      - **constitution-design.md** 关键设计决策: [引用原文]
+      - **scan.md** 核心技术决策：[引用原文 2-3 句]
+      - **constitution-design.md** 关键设计决策：[引用原文]
 
       请做 gap analysis，识别：
       1. 遗漏的需求或意图
@@ -257,9 +245,9 @@ artifacts:
 
        1. 如果有「🔧 可自动修复」项：
           对每个 🔧 项，读取 Oracle 指出的具体问题和修改建议，调用执行型 subagent 修复：
-          task(category="unspecified-high", load_skills=[], run_in_background=false,
+          task(category="deep", load_skills=[], run_in_background=false,
                prompt="根据以下 Oracle 差距分析结果修复对应的源文件或 artifact。
-               只修复标注为 🔧 可自动修复的问题，不要修改其他内容。
+               只修复标记为 🔴 的问题，不要修改其他内容。
 
                Oracle 修复建议：
                [将 Oracle 输出的 🔧 项及对应修改建议填入此处]")
@@ -273,34 +261,30 @@ artifacts:
 
        === PHASE 2：通过 Deep Agent 生成 ===
 
-       Package all artifacts content and Oracle gap analysis results into a
-       comprehensive prompt. Then delegate generation to a focused agent:
+       将所有 artifacts 的文件路径传给 deep agent，由其直接读取后生成 tasks.md：
 
        task(category="deep", load_skills=[], run_in_background=false,
-            prompt="Generate a task list (tasks.md) for the following change.
+            prompt="为以下变更生成任务清单（tasks.md）。
 
             输入文件（请直接读取以下文件获取完整内容）：
             - Scan：openspec/changes/<change-name>/scan.md
             - Design：openspec/changes/<change-name>/constitution-design.md
-            - Oracle gap analysis results（直接传入）：[将 Oracle 的输出和冲突修复结果以文本形式填入此处]
-            - Code sync mode：[如果用户选择了代码同步则填 true，否则 false]
 
-            The task list MUST contain:
+            任务清单必须包含：
 
-            **Base tasks (mandatory):**
-            1. Update AGENTS.md — add or update the `## Constitution` section
-            2. Create or update `.opencode/skills/constitution/` — SKILL.md and reference files
+            **基础 task（强制）：**
+            1. 更新 AGENTS.md — 添加或更新 `## Constitution` 部分
+            2. 创建或更新 `.opencode/skills/constitution/` — SKILL.md 和参考文件
 
-            **Optional task (only if code sync is true):**
-            3. Fix existing code violations
+            **可选 task（仅当代码同步为 true）：**
+            3. 修复现有代码违规
 
-            Format requirements:
-            - Use `## Tasks` as section header
-            - Use `### Wave N: Group Name` for sub-groupings
-            - Each task starts with `- [ ] N.M Description`
-            - Cover all tech stack decisions and design decisions from inputs
-            - Reflect gap analysis results from Oracle
-            - Be organized into logical waves of parallel-executable tasks")
+            格式要求：
+            - 使用 `## Tasks` 作为部分标题
+            - 使用 `### Wave N: Group Name` 子分组
+            - 每个 task 以 `- [ ] N.M Description` 开头
+            - 覆盖所有输入中的技术栈决策和设计决策
+            - 组织成逻辑的、可并行执行的 wave")
     requires:
       - design
   - id: critic
