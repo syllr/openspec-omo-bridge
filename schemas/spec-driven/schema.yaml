@@ -1,6 +1,6 @@
 name: spec-driven
 version: 1
-description: Default OpenSpec workflow - proposal → specs → design → tasks → critic → apply
+description: Default OpenSpec workflow - proposal → design → specs → tasks → critic → apply
 artifacts:
   - id: proposal
     generates: proposal.md
@@ -113,7 +113,7 @@ artifacts:
       4. 合并发现：同一问题多个 agent 都发现时取更高严重程度
       5. 分类判定：
          - 有任何 🔴 → BLOCKED，修复 proposal.md 后重新运行 PHASE 3（最多 3 轮）
-         - 仅 🟡/⚪ → 评估后决定是否修复，然后继续
+         - 仅 🟡/⚪ → 展示给用户，让用户评估决定是否修复
 
       **Fast fail：** 如果任一 agent 调用失败（超时、不可用、出错）：
       - 立即停止工作流
@@ -127,129 +127,9 @@ artifacts:
        - 最多 3 轮。3 轮后仍有 🔴：将剩余问题展示给用户
        - 全部清除：proposal 完成，进入下一个 artifact
     requires: []
-  - id: specs
-    generates: specs/**/*.md
-    description: Detailed specifications for the change
-    template: spec.md
-    instruction: |
-      __LANG_PLACEHOLDER__
-
-      **范围限制：不要修改任何源代码。仅生成 spec 文件。**
-
-      **VALIDATION RULES (MUST follow — `openspec validate` enforces these):**
-
-      1. 每个 requirement 必须以 `### Requirement: <name>` 开头
-
-      2. **Requirement 描述中必须包含大写 MUST 或 SHALL。**
-         不要使用中文"必须"— 会验证失败。
-         - 肯定式："The system MUST ..."
-         - 否定式："The system MUST NOT ..."
-
-      3. 每个 requirement 必须至少有一个 scenario。
-
-      4. **每个 scenario 必须以 `#### Scenario: <name>` 开头 — 恰好 4 个 `#`。**
-         使用 3 个 `#` 或项目符号会静默失败。
-
-      5. 每个 scenario 正文必须包含 WHEN / THEN 关键词。
-
-      编写完所有 spec 文件后，运行：
-      `openspec validate <change-name>`
-      修复所有 ERROR 后再继续。
-
-
-      创建定义系统应做什么的规范文件（spec 文件）。
-
-
-      为 proposal 的 Capabilities 部分列出的每个能力创建一个 spec 文件。
-      section.
-
-      如果 proposal 没有列出任何 Capabilities（New 和 Modified 部分都为
-      为空），跳过 spec 文件生成。创建一个空的 `specs/` 目录并
-      然后继续下一个 artifact。
-
-      - 新能力：使用 proposal 中确切的 kebab-case 名称
-      (specs/<capability>/spec.md).
-
-      - 修改的能力：使用 openspec/specs/<capability> 中已有的 spec 文件夹名称
-      specs/<capability>/spec.md.
-
-
-      Delta 操作（使用 ## 标题）：
-
-      - **ADDED Requirements**（新增需求）：新能力
-
-      - **MODIFIED Requirements**（修改的需求）：行为变更 — 必须包含完整的更新内容
-
-      - **REMOVED Requirements**（移除的需求）：已废弃功能 — 必须包含**原因**和**迁移方案**
-
-      - **RENAMED Requirements**（重命名的需求）：仅名称变更 — 使用 FROM:/TO: 格式
-
-      格式要求：
-
-      - 每个 requirement：`### Requirement: <name>` 后跟描述
-
-      - 使用 SHALL/MUST 表示规范性需求（避免 should/may）
-
-      - 每个 scenario：`#### Scenario: <name>` 使用 WHEN/THEN 格式
-
-      - **关键**：Scenarios 必须使用恰好 4 个 `#`（`####`）。使用 3 个 `#`
-        或项目符号会静默失败。
-
-      - 每个 requirement 必须至少有一个 scenario。
-
-
-      MODIFIED requirements 工作流：
-
-      1. 在 openspec/specs/<capability>/spec.md 中找到现有 requirement
-
-      2. 复制完整的 requirement 块（从 `### Requirement:` 到所有 scenarios）
-
-      3. 粘贴到 `## MODIFIED Requirements` 下，编辑以反映新行为
-
-      4. 确保标题文本精确匹配（不区分空白字符）
-
-      常见陷阱：使用 MODIFIED 但内容部分丢失，会在归档时丢失细节。
-
-      如果添加不改变现有行为的新关注点，请使用 ADDED。
-
-
-      Example:
-
-      ```
-
-      ## ADDED Requirements
-
-
-      ### Requirement: User can export data
-
-      The system SHALL allow users to export their data in CSV format.
-
-
-      #### Scenario: Successful export
-
-      - **WHEN** user clicks "Export" button
-
-      - **THEN** system downloads a CSV file with all user data
-
-
-      ## REMOVED Requirements
-
-
-      ### Requirement: Legacy export
-
-      **Reason**: Replaced by new export system
-
-      **Migration**: Use new export endpoint at /api/v2/export
-
-      ```
-
-
-      Spec 应该是可测试的 —— 每个 scenario 都是一个潜在的测试用例。
-    requires:
-      - proposal
   - id: design
     generates: design.md
-    description: Technical design document with implementation details
+    description: Technical design document with implementation details (generated before specs)
     template: design.md
     instruction: |
       __LANG_PLACEHOLDER__
@@ -258,49 +138,12 @@ artifacts:
 
       === PHASE 1：读取输入 ===
 
-      Read the following files and extract key information for the design:
-      - `openspec/changes/<change-name>/proposal.md` — WHY and capabilities
-      - `openspec/changes/<change-name>/specs/` — WHAT, requirements and scenarios
-      - `openspec/changes/<change-name>/research/` — technical research findings (if exists)
+      读取以下文件提取设计所需信息：
+      - `openspec/changes/<change-name>/proposal.md` — 动机和能力
 
-      === PHASE 2：通过 Deep Agent 生成 ===
-
-      Package all extracted context, requirements, and research findings into a
-      comprehensive prompt. Then delegate generation to a focused agent:
-
-      task(category="deep", load_skills=[], run_in_background=false,
-           prompt="为以下变更生成技术设计文档（design.md）。
-
-           输入文件（请直接读取以下文件获取完整内容）：
-           - proposal.md：openspec/changes/<change-name>/proposal.md
-           - specs/：openspec/changes/<change-name>/specs/
-           - research/：openspec/changes/<change-name>/research/（如果存在）
-
-           设计文档必须包含以下部分：
-
-           1. **Context**（上下文）：背景、当前状态、约束、干系人
-           2. **Goals / Non-Goals**（目标/非目标）：设计要实现的和明确排除的
-           3. **Decisions**（决策）：关键技术选择及理由（为什么选 X 不选 Y？）。包含考虑过的替代方案
-           4. **Risks / Trade-offs**（风险/权衡）：已知限制和可能出错的地方。格式：[风险] → 缓解措施
-           5. **Migration Plan**（迁移计划）：部署步骤、回滚策略（如适用）
-           6. **Open Questions**（未决问题）：尚未解决的决策或未知事项
-
-           关键要求：
-           - 关注架构和方法，而非逐行实现
-           - 每个设计决策必须对应至少一个 spec requirement
-           - 选择的方法必须解决对应 requirement 的 scenario
-           - 如果存在 research findings，用 `详见 research/<topic>/notes.md` 引用
-           - 解释每个技术决策背后的"为什么"
-           - 保持聚焦和可执行")
-
-      deep agent 返回后，验证生成的 design.md 是否位于 `openspec/changes/<change-name>/design.md` 且覆盖了所有必需部分。
-      如果有部分缺失，直接修复（仅小改动）。
-
-
-      === 技术调研（可选） ===
+      === PHASE 2：技术调研（可选） ===
 
       阅读 proposal 时，注意以下**不确定性信号**：
-
       - "可能"、"maybe"、"might"、"needs investigation" 等词语
       - 引用未文档化的 API 或协议
       - 关于 API 字段、签名或认证方式的问题
@@ -353,16 +196,119 @@ artifacts:
               └── ...
           ```
 
-       4. **更新 design.md**：在相关的 Decisions 部分引用调研发现。使用 `详见 research/<topic>/notes.md` 格式
-
        **重要**：
        - research/ 目录是**可选的** — 只有 proposal 中存在不确定点时才创建
-       - research/ 是工作过程产物（side effect），不被 OpenSpec generations 跟踪
        - 验证脚本必须是**实际可运行的**（不是伪代码）
-       - spectest/ 是临时目录，用户确认后数据会被移到 research/
-       - 如果调研结果影响了设计方案，在 design.md 的 Decisions 中明确记录
+       - spectest/ 是临时目录，用户确认后数据才会移到 research/
+
+      === PHASE 3：通过 Deep Agent 生成 ===
+
+      打包所有上下文和研究发现（如果存在）到完整 prompt 中，委托 deep agent 生成设计文档：
+
+      task(category="deep", load_skills=[], run_in_background=false,
+           prompt="为以下变更生成技术设计文档（design.md）。
+
+           输入文件（请直接读取以下文件获取完整内容）：
+           - proposal.md：openspec/changes/<change-name>/proposal.md
+           - research/：openspec/changes/<change-name>/research/（如果存在）
+
+           设计文档必须包含以下部分：
+
+           1. **Context**（上下文）：背景、当前状态、约束、干系人
+           2. **Goals / Non-Goals**（目标/非目标）：设计要实现的和明确排除的
+           3. **Decisions**（决策）：关键技术选择及理由（为什么选 X 不选 Y？）。包含考虑过的替代方案
+           4. **Risks / Trade-offs**（风险/权衡）：已知限制和可能出错的地方。格式：[风险] → 缓解措施
+           5. **Migration Plan**（迁移计划）：部署步骤、回滚策略（如适用）
+           6. **Open Questions**（未决问题）：尚未解决的决策或未知事项
+
+           关键要求：
+           - 关注架构和方法，而非逐行实现
+           - 每个设计决策必须对应至少一个 proposal 中的 Capability
+           - 如果存在 research findings，在相关 Decisions 中引用，用 `详见 research/<topic>/notes.md` 格式
+           - 解释每个技术决策背后的"为什么"
+           - 保持聚焦和可执行")
+
+      生成后验证 design.md 是否覆盖所有必需部分。如果 research/ 存在，确认调研发现已在 Decisions 中被引用。
     requires:
       - proposal
+  - id: specs
+    generates: specs/**/*.md
+    description: Detailed specifications for the change (generated after design)
+    template: spec.md
+    instruction: |
+      __LANG_PLACEHOLDER__
+
+      **范围限制：不要修改任何源代码。仅生成 spec 文件。**
+
+      === PHASE 1：读取输入 ===
+
+      读取以下文件，提取 spec 所需的关键信息：
+      - `openspec/changes/<change-name>/proposal.md` — 动机和 Capabilities
+      - `openspec/changes/<change-name>/design.md` — 技术决策和设计细节
+      - `openspec/changes/<change-name>/research/` — 技术调研结论（如果存在）
+
+      如果 proposal 没有列出任何 Capabilities（New 和 Modified 部分都为空），跳过 spec 文件生成。创建一个空的 `specs/` 目录并继续下一个 artifact。
+
+      === PHASE 2：通过 Deep Agent 生成 ===
+
+      将 proposal 和 design 的关键内容打包，委托 deep agent 生成 spec 文件：
+
+      task(category="deep", load_skills=[], run_in_background=false,
+           prompt="根据以下输入生成 spec 文件。
+
+           输入文件（请直接读取以下文件获取完整内容）：
+           - Proposal：openspec/changes/<change-name>/proposal.md
+           - Design：openspec/changes/<change-name>/design.md
+           - Research：openspec/changes/<change-name>/research/（如果存在）
+
+           为 proposal 的 Capabilities 部分列出的每个能力创建一个 spec 文件。
+           - 新能力：使用 proposal 中确切的 kebab-case 名称（specs/<capability>/spec.md）
+           - 修改的能力：使用 openspec/specs/<capability> 中已有的 spec 文件夹名称
+
+           VALIDATION RULES（openspec validate 强制检查以下规则）：
+           1. 每个 requirement 必须以 `### Requirement: <name>` 开头
+           2. Requirement 描述中必须包含大写 MUST 或 SHALL，不要用中文"必须"
+              - 肯定式："The system MUST ..."
+              - 否定式："The system MUST NOT ..."
+           3. 每个 requirement 必须至少有一个 scenario
+           4. 每个 scenario 必须以 `#### Scenario: <name>` 开头（恰好 4 个 #）
+           5. 每个 scenario 正文必须包含 WHEN / THEN 关键词
+
+           Delta 操作（使用 ## 标题）：
+           - **ADDED Requirements**（新增需求）：新能力
+           - **MODIFIED Requirements**（修改的需求）：行为变更，必须包含完整更新内容
+           - **REMOVED Requirements**（移除的需求）：已废弃功能，必须包含**原因**和**迁移方案**
+           - **RENAMED Requirements**（重命名的需求）：仅名称变更，使用 FROM:/TO: 格式
+
+           MODIFIED requirements 工作流：
+           1. 在 openspec/specs/<capability>/spec.md 中找到现有 requirement
+           2. 复制完整的 requirement 块（从 ### Requirement: 到所有 scenarios）
+           3. 粘贴到 ## MODIFIED Requirements 下，编辑以反映新行为
+           4. 确保标题文本精确匹配
+
+           常见陷阱：使用 MODIFIED 但内容部分丢失，会在归档时丢失细节。
+           如果添加不改变现有行为的新关注点，请使用 ADDED。
+
+           Spec 应该是可测试的 —— 每个 scenario 都是一个潜在的测试用例。
+
+           Example 格式参考：
+           ```
+           ## ADDED Requirements
+           ### Requirement: User can export data
+           The system SHALL allow users to export their data in CSV format.
+           #### Scenario: Successful export
+           - **WHEN** user clicks "Export" button
+           - **THEN** system downloads a CSV file with all user data
+           ```")
+
+      === PHASE 3：验证 ===
+
+      编写完所有 spec 文件后，运行：
+      `openspec validate <change-name>`
+      修复所有 ERROR 后再继续。
+    requires:
+      - proposal
+      - design
   - id: tasks
     generates: tasks.md
     description: Implementation checklist with trackable tasks
@@ -374,31 +320,17 @@ artifacts:
 
       创建任务列表（tasks.md）。
 
-
       **你必须创建一个文件：**
 
       `openspec/changes/<change-name>/tasks.md` — 标准 checkbox 任务清单
 
+      === PHASE 1：读取输入 ===
 
-      === PHASE 1：理解上下文 ===
-
-
-      **Step 0：读取并理解所有 OpenSpec 产物**
-
-      读取每个 artifact 文件。每个文件有特定角色：
-
-      | File | Role |
-      |------|------|
-      | `proposal.md` | WHY — 为什么做、有哪些能力 |
-      | `specs/<capability>/spec.md` | WHAT — 需求、验收场景 |
-      | `design.md` | HOW — 技术方案、决策、风险 |
-      | `tasks.md` | DO — checkbox 任务清单 |
-
-
-      如何利用每个 artifact：
-      - **proposal.md** → 列出 Capabilities 以确定 task 分组
-      - **specs/<capability>/spec.md** → 提取 Requirements 以确定 task 范围
-      - **design.md** → 提取 Decisions 以规划执行方案
+      读取以下文件，提取生成 tasks.md 所需的关键信息：
+      - `openspec/changes/<change-name>/proposal.md` — 动机和能力
+      - `openspec/changes/<change-name>/specs/` — 需求和验收场景
+      - `openspec/changes/<change-name>/design.md` — 技术方案、决策、风险
+      - `openspec/changes/<change-name>/research/` — 技术调研（如果存在）
 
 
       **Step 1：快速 artifact 审查**
@@ -410,99 +342,100 @@ artifacts:
       → 如果发现问题：停止，列出具体问题，等待用户处理。
       → 如果全部正常：继续。
 
+      **Step 2：Oracle + Metis 并行差距分析（强制）**
 
-      **Step 2：调用 Oracle 进行差距分析（强制）**
+      调用 Oracle 和 Metis 同时做差距分析，两者使用相同的审查维度。调用前先读取所有 artifacts。
 
-      编写 tasks.md 前调用 Oracle。Oracle 会按信源优先级分析冲突并给出修复建议。
-      在调用 Oracle 前，先读取所有 artifacts，然后在 prompt 中附上关键内容的原文（而非仅摘要），确保 Oracle 有足够上下文做出准确判断。
-
-      **Fast fail 保护**: 如果 Oracle task() 调用失败（超时、不可用、出错），立即停止工作流（**fast fail，不得降级**）：
-      - 向用户报告：「❌ 差距分析中断：Oracle 调用失败。[错误信息]」
+      **Fast fail 保护**: 如果任一 agent 调用失败（超时、不可用、出错），立即停止工作流（**fast fail，不得降级**）：
+      - 向用户报告：「❌ 差距分析中断：[agent name] 调用失败。[错误信息]」
       - 不得自行分析 gap，不得自行生成 tasks.md
       - 等待用户介入
 
-      task(subagent_type="oracle", run_in_background=false, prompt="我准备为此变更生成 tasks.md（任务清单）。
+      TASKS_GAP_PROMPT = "你正在审查一个 OpenSpec change 的产物，为生成 tasks.md 做准备。
+      请逐一检查以下所有检查项：
 
-      已完成的产物原文（关键段落）：
+      审查文件：
+      - proposal：openspec/changes/<change-name>/proposal.md
+      - specs：openspec/changes/<change-name>/specs/
+      - design：openspec/changes/<change-name>/design.md
+      - research：openspec/changes/<change-name>/research/（如果存在）
 
-      - **proposal.md** 核心变更陈述: [引用原文 2-3 句]
-      - **各 spec 的关键 requirement 原文**:
-        - <capability-1>: 「### Requirement: <名称>
-          <完整描述，须含 MUST/SHALL>」
-          Scenario 示例: 「#### Scenario: <名称>  WHEN ... THEN ...」
-        - <capability-2>: 「### Requirement: <名称>
-          <完整描述，须含 MUST/SHALL>」
-      - **design.md** 关键决策原文（如果存在）: [引用决策原文]
+      信源优先级：proposal.md > design.md > specs
 
-       请做 gap analysis，识别：
-       1. 遗漏的需求或意图
-       2. 表达模糊的地方
-       3. scope creep / AI-slop
-       4. 缺失的验收标准
-       5. 未覆盖的边界情况
-       6. **research 完整性**：
-          - 扫描 proposal.md，找出所有"可能"、"maybe"、"needs investigation"等不确定性信号
-          - 检查 `openspec/changes/<change-name>/research/` 目录是否存在对应的调研子目录
-          - 如果 proposal 中有不确定点但 research/ 中没有对应调研 → 判断是否合理：
-            - 如果 design.md 的 Decisions 部分已明确解决该不确定点 → 不标记
-            - 如果 design 阶段遗漏了调研 → 标记为 🔴 缺失
+      □ 遗漏与溢出——proposal 中的要点未被 specs/design 覆盖？反之，specs/design 中是否有 proposal 未提及的内容（scope leak）？
+      □ scope creep / AI-slop——是否有模糊、空洞或不必要的范围扩张？
+      □ 缺失的验收标准——每个 requirement 是否有明确的验收方式？
+      □ 未覆盖的边界情况——错误路径、并发、权限等是否被考虑？
+      □ artifacts 一致性——specs 和 design 之间是否有矛盾？（spec 说 A，design 说 B）
+      □ 表达模糊——是否有表述不清、可能产生歧义的地方？
+      □ task 可衍生性——每个 requirement 是否能自然拆分为一个或多个可执行的 task？
+      □ 依赖隐含——是否有隐含的先后依赖关系未被明确声明？
 
-      **信源优先级（冲突处理依据）**：
-      1. proposal.md（最高）— WHY 和核心变更
-      2. design.md — 技术决策
-      3. specs — 详细需求
+      严重程度：🔴 阻塞 / 🟡 警告 / ⚪ 建议
+      输出格式：按严重程度列出发现，对每个 🔴/🟡 给出具体修改建议"
 
-      **冲突处理规则**：
-      - 低优先级与高优先级存在**明显冲突**时，给出具体的修改建议以对齐高优先级
-      - 如果 design.md 与 specs 冲突，以 proposal 为基准回溯判定
-      - 明确可自动修复的 → 标注「🔧 可自动修复：...」并说明修改内容
-      - 需要用户判断的 → 标注「👤 需用户确认：...」并提供选项
-      - 模糊不清的 → 标注「❓ 需追问：...」并说明需要什么信息")
+      task(subagent_type="oracle", run_in_background=false, prompt=TASKS_GAP_PROMPT)
+      task(subagent_type="metis", run_in_background=false, prompt=TASKS_GAP_PROMPT)
 
-       **说明**: 此循环是内容质量改进机制（Oracle 已成功完成 gap 分析 → subagent 修复 → 重新调用），
-       不是 agent 调用失败的降级处理。如 Oracle 调用本身失败 → 按 fast fail 规则立即停住报错。
+      **收集评审结果：**
+      1. 读取 Oracle 输出 → 列出所有 🔴/🟡/⚪ 发现
+      2. 读取 Metis 输出 → 列出所有 🔴/🟡/⚪ 发现
+      3. **自检**：确认两个 agent 的结果都已成功读取。如有遗漏，回到步骤 1 重新读取
+      4. 合并发现：同一问题多个 agent 都发现时取更高严重程度
+      5. 分类判定：
+         - 有任何 🔴 → BLOCKED
+           **说明**：此循环是内容质量改进机制（审查 agent 已成功完成分析 → subagent 修复 → 重新审查），
+           不是 agent 调用失败的降级处理。如审查 agent 调用本身失败 → 按 fast fail 规则立即停住报错。
+           将所有 🔴 问题打包，调用 deep agent 一次性修复：
+           task(category="deep", load_skills=[], run_in_background=false,
+                prompt="根据以下差距分析结果，一次性修复所有被指出的问题。
 
-       应用 Oracle 的分析结果，循环执行以下冲突修复流程（**最多循环 3 轮**）：
+                只修复标记为 🔴 的问题，不要修改其他内容。
 
-       1. 如果有「🔧 可自动修复」项：
-          对每个 🔧 项，读取 Oracle 指出的具体问题和修改建议，调用执行型 subagent 修复：
-          task(category="unspecified-high", load_skills=[], run_in_background=false,
-               prompt="根据以下 Oracle 差距分析结果修复对应的源文件或 artifact。
-               只修复标注为 🔧 可自动修复的问题，不要修改其他内容。
-
-               Oracle 修复建议（直接传入）：
-               [将 Oracle 输出的 🔧 项及对应修改建议以文本形式填入此处]")
-          全部修复完成后，重新调用 Oracle 验证（回到本步骤）
-      2. 如果只剩「👤 需用户确认」和/或「❓ 需追问」→ 停止循环
-         - 需用户确认 → 提供方案让用户选择
-         - 需追问 → 直接提问让用户回答
-      3. 如果全部 ✅ Confirmed → Proceed
-      4. **达到 3 轮上限时**：即使仍有「🔧 可自动修复」项，也停止循环，将所有未解决项（🔧/👤/❓）汇总展示给用户
+               Oracle + Metis 审查发现的所有问题：
+               [将 Oracle/Metis 输出的所有 🔴 问题及修复建议以文本形式填入此处]")
+           修复完成后重新运行审查（**最多 3 轮**，超限后汇总给用户）
+         - 仅 🟡/⚪ → 展示给用户，让用户评估决定是否修复
 
 
        === PHASE 2：通过 Deep Agent 生成 ===
 
-       将产物的所有内容以及 Oracle 差距分析结果打包成完整 prompt，委托给专注 agent 生成：
+        将所有 artifacts 的文件路径传给 deep agent，由其直接读取后生成 tasks.md：
 
        task(category="deep", load_skills=[], run_in_background=false,
             prompt="为以下变更生成任务清单（tasks.md）。
 
-            输入文件：
+            输入文件（请直接读取以下文件获取完整内容）：
             - Proposal：openspec/changes/<change-name>/proposal.md
             - Specs：openspec/changes/<change-name>/specs/
             - Design：openspec/changes/<change-name>/design.md
-            - Oracle gap analysis results（直接传入）：[将 Oracle 的输出和冲突修复结果以文本形式填入此处]
+            - Research：openspec/changes/<change-name>/research/（如果存在）
 
             任务清单必须：
             - 使用 `## Tasks` 作为部分标题
-            - 使用 `### Wave N: Group Name` 子分组
+            - 使用 `### Wave N: Group Name` 子分组，每个 Wave 5-8 个 task，不少于 3 个
             - 每个 task 以 `- [ ] N.M Description` 开头
-            - 覆盖所有 spec requirement 和 design decisions
-            - 反映 Oracle 差距分析的结果
-            - 组织成逻辑的、可并行执行的 wave")
+
+            每个 task 必须包含以下 9 个子字段：
+            - **What to do**（做什么）：可执行的实施步骤
+            - **Must NOT do**（不做什么）：明确的排除项/守卫栏
+            - **Recommended Agent Profile**（推荐 agent）：category + skills
+            - **References**（参考）：代码模式参考（文件路径+行号）
+            - **Acceptance Criteria**（验收标准）：可执行的验证命令（如 `bun test`、`curl`）
+            - **QA Scenarios**（QA 场景）：至少 1 个快乐路径 + 1 个失败/边缘路径，每个场景包含五要素（Tool / Preconditions / Steps / Expected / Evidence）
+            - **Parallelization**（并行）：并行组、阻塞关系
+            - **Evidence**（证据）：验证证据路径（.sisyphus/evidence/）
+            - **Commit**（提交）：是否提交及提交信息
+
+            Wave 规则：
+            - 同一 Wave 内 task 默认并发执行
+            - 不同 Wave 之间串行
+            - 只有两种情况下需要串行：Input dependency（Task B 读 Task A 的输出）或 File conflict（两个 task 修改同一文件）
+            - 没有文件读写关系的 task 不应有依赖关系
+
+            覆盖所有 spec requirement 和 design decisions，按逻辑依赖关系组织 wave。")
     requires:
       - specs
-      - design
   - id: critic
     generates: critic.md
     description: >
@@ -518,60 +451,20 @@ artifacts:
       === PHASE 1：读取上下文 ===
 
       读取以下文件：
-      - `openspec/changes/<change-name>/tasks.md` — checkbox task list
-      - `openspec/changes/<change-name>/specs/` — all spec files
-      - `openspec/changes/<change-name>/design.md` — technical design
-      - `openspec/changes/<change-name>/proposal.md` — proposal
-      - `openspec/changes/<change-name>/research/` — technical research (if exists)
+      - `openspec/changes/<change-name>/tasks.md` — checkbox 任务清单
+      - `openspec/changes/<change-name>/specs/` — 需求和验收场景
+      - `openspec/changes/<change-name>/design.md` — 技术方案、决策、风险
+      - `openspec/changes/<change-name>/proposal.md` — 动机和能力
+      - `openspec/changes/<change-name>/research/` — 技术调研（如果存在）
 
-      === PHASE 2：基础结构检查 ===
+      === PHASE 2：Spec 验证（强制） ===
 
-      Check the basic structure of the change:
-      1. `ls openspec/changes/<change-name>/specs/` — spec 目录存在且有文件（如果 proposal 无 Capabilities 则跳过此项）
-      2. `test -f openspec/changes/<change-name>/tasks.md && echo exists` — tasks.md 存在
-      3. `grep -c '^- \[' openspec/changes/<change-name>/tasks.md` — 至少 1 个 task checkbox
+      运行 `openspec validate <change-name>` 检查 spec 格式。
 
-      If ANY check fails: STOP, list what's missing, wait for user.
-      If all pass: Proceed.
+      如果验证通过 → 继续。
+      如果验证失败 → 显示错误信息给用户，由用户决定如何修复。不得自行修复格式问题。
 
-      === PHASE 3：Spec 验证（强制） ===
-
-      Run `openspec validate <change-name>` to check spec format.
-
-      If validation passes → Proceed to PHASE 4.
-
-      If validation ERRORS → Invoke Oracle for fix guidance:
-      （格式修复通常不涉及内容冲突，信源优先级规则在此作为兜底保障。）
-      如果 Oracle task() 调用失败（超时、不可用、出错），立即停止工作流（**fast fail，不得降级**）：
-      - 向用户报告：「❌ Spec 格式验证中断：Oracle 调用失败。[错误信息]」
-      - 不得自行分析验证错误，不得自行修复，不得跳过验证
-      - 等待用户介入决定如何继续
-      ```
-      task(subagent_type="oracle", run_in_background=false, prompt="openspec validate 报告了以下格式错误：
-      [复制验证错误信息]
-
-      以下是出错的 requirement 原文块（供内容冲突判断参考）：
-      [复制相关 requirement 的完整 `### Requirement:` 块，含所有 scenarios]
-
-      请分析每个错误的原因并给出具体的修复建议。
-      Spec 格式要求：
-      - Requirement 必须以 `### Requirement: <name>` 开头
-      - 描述中必须包含大写 MUST 或 SHALL（不能用中文"必须"）
-      - 每个 requirement 至少一个 scenario
-      - Scenario 以 `#### Scenario: <name>` 开头（4 个 #）
-      - Scenario 正文包含 WHEN / THEN
-
-      修复过程中如涉及内容冲突，按信源优先级处理：
-        1. proposal.md（最高）— WHY 和核心变更
-        2. design.md — 技术决策
-        3. specs — 详细需求
-      低优先级与高优先级明显冲突时，给出修改建议对齐高优先级，标注「🔧 可自动修复」。（格式修复通常不涉及内容冲突，此规则作为兜底保障。）")
-      ```
-
-      Apply Oracle's fix suggestions. Re-run `openspec validate`.
-      Repeat until validation passes（**最多 3 轮**）。如果 3 轮后仍未通过，汇总所有剩余错误展示给用户。
-
-      === PHASE 4：Oracle + Metis 并行审查 tasks.md ===
+      === PHASE 3：Oracle + Metis 并行审查 tasks.md ===
 
       同时启动 1 个 Oracle + 1 个 Metis agent 并行审查 tasks.md。
       Oracle 和 Metis 均从以下 4 个维度进行全面审查，各自独立输出发现。
@@ -623,7 +516,7 @@ artifacts:
           - 仅 🟡/⚪ → 评估后决定是否修复
        5. **产出合并清单**：将合并后的发现清单写入输出，供后续 PHASE 引用。
 
-      === PHASE 5：生成计划 ===
+      === PHASE 4：生成计划 ===
 
       生成 `.sisyphus/plans/<change-name>.md` — 包含 9 个部分的 OMO 兼容执行计划。
 
@@ -655,7 +548,7 @@ artifacts:
            - 不要复制 artifact 原文（Tasks 的 What to do 部分除外）
            - Acceptance Criteria 必须是可执行的命令")
 
-      === PHASE 6：Plan 结构验证 ===
+      === PHASE 5：Plan 结构验证 ===
 
       编写 plan 后，执行以下验证：
       1. `grep -c '^## ' .sisyphus/plans/<change-name>.md` → 必须至少 9 个
@@ -665,7 +558,7 @@ artifacts:
 
       如果任何检查不通过：停止，修复 plan，重新验证（**最多 3 轮**，超限后汇总给用户）。
 
-      === PHASE 7：Oracle + Metis + Momus 并行审查 Plan ===
+      === PHASE 6：Oracle + Metis + Momus 并行审查 Plan ===
 
       同时启动 1 个 Oracle + 1 个 Metis + 1 个 Momus agent 并行审查生成的 plan。
       三个 agent 各自从内容完整性、结构格式、可执行性、潜在问题 4 个维度进行全面审查。
@@ -738,26 +631,26 @@ artifacts:
       2. **自检**：确认所有 3 个 agent 结果都已读完。如有遗漏，回到 Step 1 重新读取。
       3. **合并去重**：按 severity 合并，标注来源（Oracle / Metis / Momus）。同一问题多个 agent 都发现时取更高 severity。
       4. **分类判定**：
-          - Momus ❌ REJECT → 修复 plan 后重新运行 PHASE 7（**最多 3 轮**，超限后汇总给用户）
-          - Oracle/Metis 有 🔴 → BLOCKED，修复 plan 后重新运行 PHASE 7（**最多 3 轮**，超限后汇总给用户）
+          - Momus ❌ REJECT → 修复 plan 后重新运行 PHASE 6（**最多 3 轮**，超限后汇总给用户）
+          - Oracle/Metis 有 🔴 → BLOCKED，修复 plan 后重新运行 PHASE 6（**最多 3 轮**，超限后汇总给用户）
           **说明**: 此循环是内容质量改进机制（审查 agent 已成功完成分析 → subagent 修复 → 重新审查），
            不是 agent 调用失败的降级处理。如审查 agent 调用本身失败 → 按 fast fail 规则立即停住报错。
           - 仅 🟡/⚪ → 评估后决定是否修复
        5. **产出合并清单**：将合并后的发现清单写入输出，供后续 PHASE 引用。
 
-      === PHASE 8：通过 Deep Agent 生成 critic.md ===
+      === PHASE 7：通过 Deep Agent 生成 critic.md ===
 
-      Package the complete review findings from PHASE 4 and PHASE 7 into a
+      Package the complete review findings from PHASE 3 and PHASE 6 into a
       comprehensive prompt. Then delegate to a focused agent:
 
       task(category="deep", load_skills=[], run_in_background=false,
            prompt="Generate the critic.md file for this OpenSpec change.
 
-           Review findings from PHASE 4 (tasks.md review by Oracle + Metis):
-           [将 PHASE 4 的 Oracle 和 Metis 审查发现的 🔴/🟡/⚪ 清单填入此处]
+           Review findings from PHASE 3 (tasks.md review by Oracle + Metis):
+           [将 PHASE 3 的 Oracle 和 Metis 审查发现的 🔴/🟡/⚪ 清单填入此处]
 
-           Review findings from PHASE 7 (plan review by Oracle + Metis + Momus):
-           [将 PHASE 7 的 Oracle、Metis、Momus 审查发现的 🔴/🟡/⚪ 清单填入此处]
+           Review findings from PHASE 6 (plan review by Oracle + Metis + Momus):
+           [将 PHASE 6 的 Oracle、Metis、Momus 审查发现的 🔴/🟡/⚪ 清单填入此处]
 
            The critic.md MUST:
            - Follow the template at `schemas/spec-driven/templates/critic.md`
@@ -770,7 +663,7 @@ artifacts:
            - Only 🟡/⚪ → **⚠️ CONDITIONAL**
            - No issues → **✅ PASS**")
 
-      === PHASE 9：阻塞判定 ===
+      === PHASE 8：阻塞判定 ===
 
       - If BLOCKED: "🛑 Critic BLOCKED. Fix 🔴 issues above, then re-create critic artifact. Re-run critic（最多 3 轮）。"
       - If CONDITIONAL: List 🟡 items. User can acknowledge risks or fix.
@@ -863,13 +756,12 @@ apply:
     读取 `openspec/changes/<change-name>/verify-round-{N}.md` 中的最终判定：
     1. 如果 ✅ PASS → 通过，继续
      2. 如果 🔴 BLOCKED：
-          读取 verify-round-{N}.md 中的 🔴 问题列表。
-          对每个 🔴 问题，调用执行型 subagent 修复：
-          task(category="unspecified-high", load_skills=[], run_in_background=false,
-               prompt="根据以下变更验证结果修复实现产出。只修复标注为 🔴 的问题，不要修改 🟡/⚪ 内容。
+           读取 verify-round-{N}.md 中的 🔴 问题列表，打包所有问题，调用 deep agent 一次性修复：
+           task(category="deep", load_skills=[], run_in_background=false,
+                prompt="根据以下变更验证结果修复实现产出。只修复标注为 🔴 的问题，不要修改 🟡/⚪ 内容。
 
-               Oracle 验证结果中的 🔴 问题：
-               [将 verify-round-{N}.md 中的 🔴 问题列表及修复建议填入此处]")
+                Oracle 验证结果中的所有 🔴 问题：
+                [将 verify-round-{N}.md 中的 🔴 问题列表及修复建议填入此处]")
           **修复策略**：
           - 每轮最多修复 3 个 🔴 问题，防止一次改动过大引入新问题
           - 修复前记录当前状态（git stash），以便失败后回滚
