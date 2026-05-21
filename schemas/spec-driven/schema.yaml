@@ -766,28 +766,21 @@ apply:
     最终判定标准：
     - 🔴 BLOCKED：存在严重的实现偏离，必须修复才能继续
     - ⚠️ CONDITIONAL：实现基本正确但有 🟡/⚪ 瑕疵，可接受风险继续推进
-    注意：请谨慎区分 BLOCKED 和 CONDITIONAL。只有确实阻碍功能正确性的问题才标 🔴。
-
-    将完整结果保存到 openspec/changes/<change-name>/verify-round-{N}.md。")
+     注意：请谨慎区分 BLOCKED 和 CONDITIONAL。只有确实阻碍功能正确性的问题才标 🔴。
+     ")
     ```
 
-    读取 `openspec/changes/<change-name>/verify-round-{N}.md` 中的最终判定：
-    1. 如果 ✅ PASS → 通过，继续
-     2. 如果 🔴 BLOCKED：
-           读取 verify-round-{N}.md 中的 🔴 问题列表，打包所有问题，调用 deep agent 一次性修复：
+      读取 Oracle 输出中的最终判定：
+      1. 如果 ✅ PASS → 继续
+      2. 如果 🔴 BLOCKED：
+           将所有 🔴 问题打包，调用 deep agent 一次性修复：
            task(category="deep", load_skills=[], run_in_background=false,
-                prompt="根据以下变更验证结果修复实现产出。只修复标注为 🔴 的问题，不要修改 🟡/⚪ 内容。
+                prompt="根据以下验证结果修复实现产出。只修复标记为 🔴 的问题，不要修改其他内容。
 
                 Oracle 验证结果中的所有 🔴 问题：
-                [将 verify-round-{N}.md 中的 🔴 问题列表及修复建议填入此处]")
-          **修复策略**：
-          - 每轮最多修复 3 个 🔴 问题，防止一次改动过大引入新问题
-          - 修复前记录当前状态（git stash），以便失败后回滚
-          - 修复后不要重新运行 /start-work，只修改产出文件
-          修复完成后重新运行 Oracle 验证（**最多 3 轮**，超限后汇总给用户）
-           **说明**: 此循环是内容质量改进机制（Oracle 已成功完成验证 → subagent 修复 → 重新验证），
-           不是 agent 调用失败的降级处理。如 Oracle 调用本身失败 → 按 fast fail 规则立即停住报错。
-    3. 如果 ⚠️ CONDITIONAL → 汇总 🟡/⚪ 问题展示给用户，让用户决定是接受继续还是修复后再重新运行 Oracle 验证
+                [将 Oracle 输出的 🔴 问题列表及修复建议填入此处]")
+           修复完成后重新运行 Oracle 验证（**最多 3 轮**，超限后汇总给用户）
+      3. 如果 ⚠️ CONDITIONAL → 汇总 🟡/⚪ 展示给用户，让用户决定是否接受
 
     **同步协议**：
     - plan 文件的 `## Tasks` 部分跟踪 `/start-work` 的 checkbox 状态
