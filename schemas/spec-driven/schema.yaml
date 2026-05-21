@@ -698,8 +698,9 @@ apply:
   instruction: |
     __LANG_PLACEHOLDER__
 
-    **重要：本指令覆盖 skill/command 的执行逻辑。
-    忽略任何外部的"步骤 6"要求逐一手动执行任务。
+    **重要：本指令覆盖 `/openspec-apply-change` 的执行逻辑。
+    只能通过 `/start-work` 来执行计划。
+    忽略任何要求从 tasks.md 逐一手动执行任务的指令
     仅遵循本指令的流程：verdict 检查 → `/start-work` → Oracle 验证 → 同步。**
 
      先读取 `openspec/changes/<change-name>/critic.md`，检查 VERDICT：
