@@ -74,8 +74,9 @@ artifacts:
        □ 范围控制——提案中是否有对话中未讨论的内容（范围蔓延）？
        □ 结构完整性——所有必需的部分是否存在且格式正确？
        □ 格式卫生——有无空部分、未替换占位符、[TODO]/[TBD] 标记？
-       □ 命名规范——Capabilities 是否使用 kebab-case？
-       □ 边界清晰——What Changes / Capabilities / Impact 是否没有混淆？
+        □ 命名规范——Capabilities 是否使用 kebab-case？
+        □ Capability 粒度——每个 Capability 是否独立可测？有无过粗（应拆分为多个 spec）或过细（可合并）的情况？
+        □ 边界清晰——What Changes / Capabilities / Impact 是否没有混淆？
        □ 可操作性——Capabilities 是否具体到可以衍生 specs？Impact 是否明确？
        □ 模糊性——表达是否清晰？有无 AI-slop（模糊空洞的表述）？
        □ 不确定信号——需要调研的点是否已用 [NEEDS INVESTIGATION] 标记？
@@ -97,6 +98,7 @@ artifacts:
         □ 结构完整性——所有必需的部分是否存在且格式正确？
         □ 格式卫生——有无空部分、未替换占位符、[TODO]/[TBD] 标记？
         □ 命名规范——Capabilities 是否使用 kebab-case？
+        □ Capability 粒度——每个 Capability 是否独立可测？有无过粗（应拆分为多个 spec）或过细（可合并）的情况？
         □ 边界清晰——What Changes / Capabilities / Impact 是否没有混淆？
         □ 可操作性——Capabilities 是否具体到可以衍生 specs？Impact 是否明确？
         □ 模糊性——表达是否清晰？有无 AI-slop（模糊空洞的表述）？
@@ -367,8 +369,10 @@ artifacts:
       □ 缺失的验收标准——每个 requirement 是否有明确的验收方式？
       □ 未覆盖的边界情况——错误路径、并发、权限等是否被考虑？
       □ artifacts 一致性——specs 和 design 之间是否有矛盾？（spec 说 A，design 说 B）
-      □ 表达模糊——是否有表述不清、可能产生歧义的地方？
-      □ task 可衍生性——每个 requirement 是否能自然拆分为一个或多个可执行的 task？
+       □ 表达模糊——是否有表述不清、可能产生歧义的地方？
+       □ research 完整性——proposal 中标记 [NEEDS INVESTIGATION] 的不确定点是否都有对应的 research/ 产出？结论是否在 design 中被引用？
+       □ decision 理由——design 中的关键技术决策是否都有明确的选型理由？有无"选 X 但没说为什么"的情况？
+       □ task 可衍生性——每个 requirement 是否能自然拆分为一个或多个可执行的 task？
       □ 依赖隐含——是否有隐含的先后依赖关系未被明确声明？
 
       严重程度：🔴 阻塞 / 🟡 警告 / ⚪ 建议
@@ -493,9 +497,9 @@ artifacts:
        □ QA Scenarios 质量——每个 QA Scenario 是否包含五要素（Tool/Preconditions/Steps/Expected/Evidence）？
          是否至少覆盖 1 个成功场景（happy path）+ 1 个异常场景？
        □ Wave 结构——Wave 分组是否合理？命名清晰？数量合理（5-8 个，不少于 3）？
-       □ 并发依赖——同 Wave 内 task 是否互不依赖？不同 Wave 依赖是否真实？有无虚假依赖？
-       □ 描述质量与 Evidence/Commit——task 描述是否有模糊、空洞、歧义？
-         Evidence 是否可采集？Commit 信息是否描述 task 本质变更？
+        □ 并发依赖——同 Wave 内 task 是否互不依赖？不同 Wave 依赖是否真实？有无虚假依赖？
+        □ 描述质量——task 描述是否有模糊、空洞、歧义？Must NOT do 是否提供了有效的守卫栏？
+        □ Evidence/Commit——Evidence 路径是否可采集？Commit Message 是否描述 task 本质变更？
 
        严重程度：🔴 阻塞 / 🟡 警告 / ⚪ 建议
        输出格式：逐项检查，然后汇总问题清单，每个问题标注 severity。"
@@ -587,17 +591,15 @@ artifacts:
         - `openspec/changes/<change-name>/tasks.md` — checkbox 任务清单
         - `openspec/changes/<change-name>/research/` — 技术调研（如果存在）
 
-        □ 内容完整性——Execution Strategy 是否准确反映了 design 的决策？
-          Verification Strategy 是否覆盖了所有 spec scenarios？
-          Success Criteria 是否可衡量且覆盖所有 capability？
-          research/ 的调研发现是否被正确引用？
+        □ Design 对齐——Execution Strategy 是否准确反映了 design 的技术决策和风险缓解措施？
+        □ Verification 覆盖——Verification Strategy 是否覆盖了所有 spec 的 scenarios？
+        □ Success Criteria——是否可衡量？是否覆盖了所有 capability？
+        □ research 引用——research/ 的调研发现是否在 plan 中被正确引用？
         □ 结构格式——所有 9 个 section 是否存在？是否使用 summary + link 模式？
-          section 间是否有逻辑连贯性？
-          每个 task 的子字段是否齐全？QA Scenarios 是否有五要素？
-        □ 可执行性——FVW 是否合理？每个 scenario 是否有明确验证方式？
-          执行策略是否可行？Wave 分组合理？同 Wave 可并发？依赖真实？
-        □ AI-slop——是否有遗漏的边界场景？逻辑漏洞？矛盾？
-          QA Scenarios 是否至少覆盖 1 个成功场景（happy path）+ 1 个异常场景？
+        □ Tasks 一致性——plan 的 Tasks section 是否准确镜像了 tasks.md 的内容（task 数量、编号一致）？
+        □ QA Scenarios 质量——每个 QA Scenario 是否有五要素？是否至少覆盖 1 个成功场景 + 1 个异常场景？
+        □ 可执行性——FVW 是否合理？执行策略是否可行？Wave 分组合理？依赖真实？
+        □ 潜在问题——是否有遗漏的边界场景？逻辑漏洞？矛盾？
 
         严重程度：🔴 阻塞 / 🟡 警告 / ⚪ 建议
         输出格式：逐项检查，然后汇总问题清单，每个问题标注 severity。"
@@ -757,9 +759,14 @@ apply:
     - 是否有超出 proposal 范围的 scope leak？
     - proposal 中的所有 Capability 是否都有对应实现？
 
-    维度 4 — Task 完成度：
-    - tasks.md 中的所有 task 是否都有对应的实现产出？
-    - plan 中每个 task 的 Evidence 路径（.sisyphus/evidence/）是否存在且有效？
+     维度 4 — Task 完成度：
+     - tasks.md 中的所有 task 是否都有对应的实现产出？
+     - plan 中每个 task 的 Evidence 路径是否存在？关键 task 的 evidence 内容是否与 Acceptance Criteria 匹配？
+
+     维度 5 — 非功能性合规性（如果 design/proposal 中有相关要求）：
+     - 性能要求（响应时间、吞吐量等）是否达标？
+     - 安全相关决策（认证、授权、加密）是否在实现中正确应用？
+     - 兼容性约束是否被遵守？
 
     输出格式：逐维度分析 + 问题汇总 + 总体结论。
 
