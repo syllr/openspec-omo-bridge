@@ -92,9 +92,9 @@ scan → design → tasks → critic → apply
 - **design**: Multi-agent research for best practices per technology, `/summarize-research` to generate reference docs, optional code sync question.
 - **tasks**: Simple checkbox list (2 base tasks: update AGENTS.md + create skill files; 1 optional: fix violations).
 - **critic**: Multi-agent plan review (Oracle + Metis + Momus). Reuses spec-driven's critic mechanism with adaptations.
-- **apply**: Writes AGENTS.md (`## Constitution` section) + `.opencode/skills/constitution/` (SKILL.md + references). Init/update/incomplete detection via fixed file paths. Output quality validation: frontmatter, AGENTS.md section, references integrity.
+- **apply**: Writes AGENTS.md (`## Constitution` section) + `docs/constitution/` (reference files). Init/update/incomplete detection via `docs/constitution/` and AGENTS.md section. Output quality validation: references existence, AGENTS.md section integrity.
 
-**Output**: `.opencode/skills/constitution/SKILL.md` with YAML frontmatter + references/ organized by domain.
+**Output**: AGENTS.md (`## Constitution` section) + `docs/constitution/` with reference files organized by domain.
 
 **Re-entrant design**: Re-run `openspec new change --schema constitution <name>` at any time. Apply detects existing files to determine init/update/incomplete mode.
 

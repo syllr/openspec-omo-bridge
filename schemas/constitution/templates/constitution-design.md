@@ -28,7 +28,7 @@
 ## Constitution Directory Layout
 
 <!--
-.opencode/skills/constitution/
+docs/constitution/
 ├── SKILL.md
 └── references/
     ├── tech-stack.md

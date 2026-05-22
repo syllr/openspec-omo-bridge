@@ -24,7 +24,7 @@
       **Commit**: YES
       - Message: `docs(constitution): update AGENTS.md with constitution section`
 
-- [ ] 1.2 Create `.opencode/skills/constitution/` structure
+- [ ] 1.2 Create `docs/constitution/` reference files
       **What to do**: - Create SKILL.md with valid YAML frontmatter (`name: constitution`, `description`) - Create reference files under `references/` organized by domain - Reference files: tech-stack.md, project-structure.md, coding-standards/, testing/, architecture.md, gotchas.md - For multi-module projects: organize into per-module subdirectories
 
       **Must NOT do**:
@@ -36,8 +36,8 @@
       - constitution-design.md (structure and content)
 
       **Acceptance Criteria**:
-      - `ls .opencode/skills/constitution/SKILL.md` exists
-      - `head -3 .opencode/skills/constitution/SKILL.md | grep -q '^---'`
+      - `ls docs/constitution/tech-stack.md` exists
+      - `grep -q '^## Constitution$' AGENTS.md`
 
       **QA Scenarios**:
       <!-- Tool: / Preconditions: / Steps: / Expected: / Evidence path -->

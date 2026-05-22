@@ -11,17 +11,32 @@ artifacts:
 
       **范围限制：不要修改任何源代码。仅生成 scan.md。**
 
-       首先检测运行模式：检查 `.opencode/skills/constitution/` 目录是否存在。
-       - 如果存在 → **更新模式**：基于现有章程进行更新，diff 现有内容后让用户确认
+       首先检测运行模式：检查 `docs/constitution/` 目录和 `AGENTS.md` 的 `## Constitution` 部分是否存在。
+       - 如果都存在 → **更新模式**：基于现有章程进行更新，diff 现有内容后让用户确认
        - 如果不存在 → **初始化模式**：从头创建章程
 
        然后通过结构化的 3 阶段流程分析项目的技术栈：
 
        **Phase 1：项目检测与配置解析**
 
+       根据运行模式执行不同操作：
+
+       **初始化模式**（`docs/constitution/` 或 `AGENTS.md ## Constitution` 不存在）：
        - 读取配置文件：package.json、go.mod、pyproject.toml、Cargo.toml 等
        - 使用 Glob 和 Grep 分析项目结构、构建工具、测试框架
-       - 区分已有代码的项目和空项目
+       - 向用户展示当前项目技术栈
+
+       **更新模式**（`docs/constitution/` 和 `AGENTS.md ## Constitution` 都已存在）：
+       - 读取当前项目技术栈（同初始化模式）
+       - 运行以下命令提取现有 Constitution 内容（找任何包含标记的文件，不限文件名）：
+         ```
+         grep -rl 'constitution-start' . 2>/dev/null | while read f; do
+           echo "--- $f ---"
+           awk '/constitution-start/,/constitution-end/' "$f" | grep -v 'constitution-start\|constitution-end'
+         done
+         ```
+       - 读取 `docs/constitution/` 获取已有参考文档
+       - 对比新旧技术栈差异，向用户展示需要更新或新增的技术点
 
        **Phase 2：用户对话（/openspec-explore）**
 
@@ -48,12 +63,22 @@ artifacts:
 
             输入文件（请直接读取以下文件获取完整内容）：
             - scan.md：openspec/changes/<change-name>/scan.md（如果已存在）
+            - docs/constitution/：docs/constitution/（如果存在，已有的宪法参考文件）
+            - AGENTS.md：项目中找到的所有 AGENTS.md（多个层级，如果存在）
 
             此外直接传入以下上下文：
-            - Phase 1 项目检测结果：[将项目配置文件解析结果以文本形式填入此处]
-            - Phase 2 用户确认结果：[将用户技术栈讨论的结论以文本形式填入此处]
-            - Project type：[现有项目 / 空项目]
-            - 运行模式：[初始化模式 / 更新模式]
+             - Phase 1 项目检测结果：[将项目配置文件解析结果以文本形式填入此处]
+             - Phase 2 用户确认结果：[将用户技术栈讨论的结论以文本形式填入此处]
+             - Project type：[现有项目 / 空项目]
+             - 运行模式：[初始化模式 / 更新模式]
+             - 现有 Constitution 内容（更新模式下运行以下命令提取）：
+               ```
+               grep -rl 'constitution-start' . 2>/dev/null | while read f; do
+                 echo "--- $f ---"
+                 awk '/constitution-start/,/constitution-end/' "$f" | grep -v 'constitution-start\|constitution-end'
+               done
+               ```
+               将命令输出填入此处；初始化模式填"无"
 
             scan.md 必须：
             - 包含结构化的技术栈分析报告和决策日志
@@ -62,7 +87,7 @@ artifacts:
             - 明确哪些决策已确认、哪些需要调研
             - 如果是更新模式，记录现有章程的变更点
             - 输出到 openspec/changes/<change-name>/scan.md")
-    requires: []
+    requires: [ ]
   - id: design
     generates: constitution-design.md
     description: Constitution design document with best practices and reference structure
@@ -90,13 +115,11 @@ artifacts:
 
       **Step 3：生成参考文档**
 
-      - 调用 /summarize-research 生成结构化的参考文件：
-        - coding-standards/naming.md
-        - coding-standards/imports.md
-        - testing/unit-testing.md
-        - architecture.md
-        - gotchas.md
-      - 文件按领域组织，遵循章程目录结构
+      - 调用 /summarize-research 生成结构化的参考文件，每个技术栈独立目录：
+        - `docs/constitution/<tech-1>/` — 该技术的编码规范、最佳实践
+        - `docs/constitution/<tech-2>/` — 该技术的编码规范、最佳实践
+        - `docs/constitution/architecture.md` — 全局架构约束和 cross-cutting concerns
+      - 文件按技术栈组织
 
 
       === 技术调研（可选） ===
@@ -279,8 +302,27 @@ artifacts:
             任务清单必须包含：
 
             **基础 task（强制）：**
-            1. 更新 AGENTS.md — 添加或更新 `## Constitution` 部分
-            2. 创建或更新 `.opencode/skills/constitution/` — SKILL.md 和参考文件
+            1. 更新 AGENTS.md — 添加或更新 `## Constitution` 部分，使用以下标准格式（参考 `schemas/constitution/templates/constitution-section.md`）：
+
+               ```markdown
+               ## Constitution
+
+               <!-- constitution-start -->
+               - **技术栈**: TypeScript, React, Go, PostgreSQL
+               - **参考文档**:
+                 - <技术1> → `docs/constitution/<tech1>/`
+                 - <技术2> → `docs/constitution/<tech2>/`
+               - **编码规范**: <内联描述，或 `docs/constitution/<file>.md` 引用>
+               - **架构约束**: <内联描述，或 `docs/constitution/<file>.md` 引用>
+               <!-- constitution-end -->
+               ```
+
+               编码规范和架构约束既可内联（内容简单时），也可引用文件（内容复杂时）。
+
+            2. 创建或更新 `docs/constitution/` — 参考文档
+
+            **可选 task（仅当代码同步为 true）：**
+            3. 修复现有代码违规
 
             **可选 task（仅当代码同步为 true）：**
             3. 修复现有代码违规
@@ -557,7 +599,7 @@ apply:
 
     ```
     task(subagent_type="oracle", run_in_background=false, prompt="你正在验证实现产出与 OpenSpec change artifacts 的一致性。
-    请检查所有实现产出（AGENTS.md、.opencode/skills/constitution/ 下的文件等）是否按 scan.md 和 constitution-design.md 的要求正确实现。
+    请检查所有实现产出（AGENTS.md 的 ## Constitution 部分、docs/constitution/ 下的文件等）是否按 scan.md 和 constitution-design.md 的要求正确实现。
     按严重程度输出发现（🔴阻塞 / 🟡警告 / ⚪建议）。
 
     审查文件：
@@ -572,19 +614,27 @@ apply:
 
     请逐一检查变更文件是否满足以下条件：
 
-    维度 1 — scan 合规性：
-    - scan.md 中的技术选型决策是否在实现中得到正确体现？
-    - 所有已决定的技术栈是否在 SKILL.md 和 reference 文件中正确记录？
+     维度 1 — scan 合规性：
+     - scan.md 中的技术选型决策是否在实现中得到正确体现？
+     - 所有已决定的技术栈是否在 AGENTS.md 的 `## Constitution` 和 `docs/constitution/` 中正确记录？
 
-    维度 2 — Design 对齐（实现与 Design 一致性）：
-    - 实现方案是否符合 constitution-design.md 的设计决策？
-    - 目录结构和参考文件组织是否与设计一致？
-    - research/ 中的调研结论是否在实现中得到正确应用？
+     维度 2 — Design 对齐（实现与 Design 一致性）：
+     - 实现方案是否符合 constitution-design.md 的设计决策？
+     - 目录结构和参考文件组织是否与设计一致？
+     - research/ 中的调研结论是否在实现中得到正确应用？
+     - 运行以下命令检查 AGENTS.md 的 Constitution 内容是否完整：
+       ```
+       grep -rl 'constitution-start' . 2>/dev/null | while read f; do
+         echo "--- $f ---"
+         awk '/constitution-start/,/constitution-end/' "$f" | grep -v 'constitution-start\|constitution-end'
+       done
+       ```
+       验证输出是否包含所有已确认的技术栈
 
-    维度 3 — 范围完整性：
-    - 是否所有已确认的技术栈都有对应的 reference 文件？
-    - 是否有超出定义范围的漏加或多余内容？
-    - tasks.md 中的所有 task 是否有对应实现产出？
+     维度 3 — 范围完整性：
+     - 是否所有已确认的技术栈都有对应的 `docs/constitution/<tech>/` 目录？
+     - 是否有超出定义范围的漏加或多余内容？
+     - tasks.md 中的所有 task 是否有对应实现产出？
 
     输出格式：逐维度分析 + 问题汇总 + 总体结论。
 
@@ -616,19 +666,24 @@ apply:
     3. 如果 ⚠️ CONDITIONAL → 汇总 🟡/⚪ 问题展示给用户，让用户决定是接受继续还是修复后再重新运行 Oracle 验证
 
     **初始化/更新检测**：
-    - 执行前，检查 `.opencode/skills/constitution/SKILL.md` 和 `AGENTS.md` 的 `## Constitution` 部分是否存在
+    - 执行前，检查 `docs/constitution/` 目录和 `AGENTS.md` 的 `## Constitution` 部分是否存在
     - 两者都存在 → **更新模式**：diff 现有内容，要求用户确认
     - 两者都缺失 → **初始化模式**：从头创建所有文件
     - 部分存在 → **不完整模式**：警告用户，提供选项（覆盖/补全/中止）
 
-    **输出质量验证**：
-    `/start-work` 完成后，验证创建的输出文件：
-    1. **SKILL.md frontmatter**：检查 `.opencode/skills/constitution/SKILL.md` 是否有有效的 YAML frontmatter，包含 `name: constitution` 和非空的 `description`。用 grep 查找 `^---` 边界
-    2. **AGENTS.md constitution 部分**：检查 `AGENTS.md` 是否包含 `## Constitution`
-    3. **核心参考文件**：检查必要的参考文件是否存在（tech-stack.md、architecture.md 等）
-    4. **参考链接完整性**：检查 SKILL.md 的参考链接是否指向 `.opencode/skills/constitution/references/` 下的现有文件
+     **输出质量验证**：
+     `/start-work` 完成后，验证创建的输出文件：
+     1. **Constitution 格式**：运行以下命令验证 AGENTS.md 标记格式正确：
+        ```
+        grep -rl 'constitution-start' . 2>/dev/null | while read f; do
+          echo "--- $f ---"
+          awk '/constitution-start/,/constitution-end/' "$f" | grep -v 'constitution-start\|constitution-end'
+        done
+        ```
+     2. **文档目录**：检查每个技术栈是否有对应的 `docs/constitution/<tech>/` 目录且包含有意义的参考文件
+     3. **AGENTS.md 完整性**：检查 `AGENTS.md` 是否包含 `<!-- constitution-start -->` 和 `<!-- constitution-end -->` 标记
 
-    如果任何验证失败：警告用户并提供修复选项。
+     如果任何验证失败：警告用户并提供修复选项。
 
     **同步协议**：
     - plan 文件的 `## Tasks` 部分跟踪 `/start-work` 的 checkbox 状态
