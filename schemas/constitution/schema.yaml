@@ -28,14 +28,16 @@ artifacts:
 
        **更新模式**（`docs/constitution/` 和 `AGENTS.md ## Constitution` 都已存在）：
        - 读取当前项目技术栈（同初始化模式）
-       - 运行以下命令提取现有 Constitution 内容（找任何包含标记的文件，不限文件名）：
-         ```
-         grep -rl 'constitution-start' . 2>/dev/null | while read f; do
-           echo "--- $f ---"
-           awk '/constitution-start/,/constitution-end/' "$f" | grep -v 'constitution-start\|constitution-end'
-         done
-         ```
-       - 读取 `docs/constitution/` 获取已有参考文档
+        - 运行以下命令提取现有 Constitution 内容（从项目根目录查找所有 AGENTS.md）：
+          ```
+          find . -name "AGENTS.md" -type f 2>/dev/null | while read f; do
+            if grep -q 'constitution-start' "$f" 2>/dev/null; then
+              echo "--- $f ---"
+              awk '/constitution-start/,/constitution-end/' "$f" | grep -v 'constitution-start\|constitution-end'
+            fi
+          done
+          ```
+        - 读取 `docs/constitution/` 获取已有参考文档
        - 对比新旧技术栈差异，向用户展示需要更新或新增的技术点
 
        **Phase 2：用户对话（/openspec-explore）**
@@ -73,9 +75,11 @@ artifacts:
              - 运行模式：[初始化模式 / 更新模式]
              - 现有 Constitution 内容（更新模式下运行以下命令提取）：
                ```
-               grep -rl 'constitution-start' . 2>/dev/null | while read f; do
-                 echo "--- $f ---"
-                 awk '/constitution-start/,/constitution-end/' "$f" | grep -v 'constitution-start\|constitution-end'
+               find . -name "AGENTS.md" -type f 2>/dev/null | while read f; do
+                 if grep -q 'constitution-start' "$f" 2>/dev/null; then
+                   echo "--- $f ---"
+                   awk '/constitution-start/,/constitution-end/' "$f" | grep -v 'constitution-start\|constitution-end'
+                 fi
                done
                ```
                将命令输出填入此处；初始化模式填"无"
@@ -624,11 +628,13 @@ apply:
      - research/ 中的调研结论是否在实现中得到正确应用？
      - 运行以下命令检查 AGENTS.md 的 Constitution 内容是否完整：
        ```
-       grep -rl 'constitution-start' . 2>/dev/null | while read f; do
-         echo "--- $f ---"
-         awk '/constitution-start/,/constitution-end/' "$f" | grep -v 'constitution-start\|constitution-end'
-       done
-       ```
+         find . -name "AGENTS.md" -type f 2>/dev/null | while read f; do
+           if grep -q 'constitution-start' "$f" 2>/dev/null; then
+             echo "--- $f ---"
+             awk '/constitution-start/,/constitution-end/' "$f" | grep -v 'constitution-start\|constitution-end'
+           fi
+         done
+         ```
        验证输出是否包含所有已确认的技术栈
 
      维度 3 — 范围完整性：
@@ -675,9 +681,11 @@ apply:
      `/start-work` 完成后，验证创建的输出文件：
      1. **Constitution 格式**：运行以下命令验证 AGENTS.md 标记格式正确：
         ```
-        grep -rl 'constitution-start' . 2>/dev/null | while read f; do
-          echo "--- $f ---"
-          awk '/constitution-start/,/constitution-end/' "$f" | grep -v 'constitution-start\|constitution-end'
+        find . -name "AGENTS.md" -type f 2>/dev/null | while read f; do
+          if grep -q 'constitution-start' "$f" 2>/dev/null; then
+            echo "--- $f ---"
+            awk '/constitution-start/,/constitution-end/' "$f" | grep -v 'constitution-start\|constitution-end'
+          fi
         done
         ```
      2. **文档目录**：检查每个技术栈是否有对应的 `docs/constitution/<tech>/` 目录且包含有意义的参考文件

@@ -169,18 +169,18 @@ artifacts:
 
           等待所有 librarian 完成后，将每个结果保存到 `spectest/<topic>/notes.md`
 
-          **第二波 — 所有 deep agent 并发**：所有 librarian 完成后，在同一条消息中发起所有主题的分析任务。每个 deep agent 阅读 librarian 的调研结果，编写使用真实 API/接口调用的验证脚本。
+          **第二波 — 所有 agent 并发**：所有 librarian 完成后，在同一条消息中发起所有主题的分析任务。每个 agent 阅读 librarian 的调研结果，编写使用真实 API/接口调用的验证脚本。
 
           ```
-          task(category="deep", load_skills=[], run_in_background=false, prompt="基于 spectest/plugin-config/notes.md 的调研结果，
+          task(category="write", load_skills=[], run_in_background=false, prompt="基于 spectest/plugin-config/notes.md 的调研结果，
           写一个脚本来实际测试 plugin.xml 配置声明格式。调用真实接口验证签名方式，
           给出完整的代码示例和调用方式。将脚本和结果保存到 spectest/plugin-config/。")
-          task(category="deep", load_skills=[], run_in_background=false, prompt="基于 spectest/pkce-flow/notes.md 的调研结果，
+          task(category="write", load_skills=[], run_in_background=false, prompt="基于 spectest/pkce-flow/notes.md 的调研结果，
           写一个脚本来验证 PKCE code_challenge 生成流程...")
           # ...N 个 topic，全部并发
           ```
 
-          等待所有 deep agent 完成后，将每个结果保存到 `spectest/<topic>/`
+          等待所有 agent 完成后，将每个结果保存到 `spectest/<topic>/`
 
        3. **用户确认**：向用户展示所有调研结果的摘要。用户确认后，将每个 `spectest/<topic>/` 目录移动到 `openspec/changes/<change-name>/research/<topic>/`
 
@@ -203,11 +203,11 @@ artifacts:
        - 验证脚本必须是**实际可运行的**（不是伪代码）
        - spectest/ 是临时目录，用户确认后数据才会移到 research/
 
-      === PHASE 3：通过 Deep Agent 生成 ===
+      === PHASE 3：通过 Agent 生成 ===
 
-      打包所有上下文和研究发现（如果存在）到完整 prompt 中，委托 deep agent 生成设计文档：
+      打包所有上下文和研究发现（如果存在）到完整 prompt 中，委托 agent 生成设计文档：
 
-      task(category="deep", load_skills=[], run_in_background=false,
+      task(category="write", load_skills=[], run_in_background=false,
            prompt="为以下变更生成技术设计文档（design.md）。
 
            输入文件（请直接读取以下文件获取完整内容）：
@@ -251,11 +251,11 @@ artifacts:
 
       如果 proposal 没有列出任何 Capabilities（New 和 Modified 部分都为空），跳过 spec 文件生成。创建一个空的 `specs/` 目录并继续下一个 artifact。
 
-      === PHASE 2：通过 Deep Agent 生成 ===
+      === PHASE 2：通过 Agent 生成 ===
 
-      将 proposal 和 design 的关键内容打包，委托 deep agent 生成 spec 文件：
+      将 proposal 和 design 的关键内容打包，委托 agent 生成 spec 文件：
 
-      task(category="deep", load_skills=[], run_in_background=false,
+      task(category="write", load_skills=[], run_in_background=false,
            prompt="根据以下输入生成 spec 文件。
 
            输入文件（请直接读取以下文件获取完整内容）：
@@ -390,8 +390,8 @@ artifacts:
          - 有任何 🔴 → BLOCKED
            **说明**：此循环是内容质量改进机制（审查 agent 已成功完成分析 → subagent 修复 → 重新审查），
            不是 agent 调用失败的降级处理。如审查 agent 调用本身失败 → 按 fast fail 规则立即停住报错。
-           将所有 🔴 问题打包，调用 deep agent 一次性修复：
-           task(category="deep", load_skills=[], run_in_background=false,
+           将所有 🔴 问题打包，调用 agent 一次性修复：
+           task(category="write", load_skills=[], run_in_background=false,
                 prompt="根据以下差距分析结果，一次性修复所有被指出的问题。
 
                 只修复标记为 🔴 的问题，不要修改其他内容。
@@ -402,11 +402,11 @@ artifacts:
          - 仅 🟡/⚪ → 展示给用户，让用户评估决定是否修复
 
 
-       === PHASE 2：通过 Deep Agent 生成 ===
+       === PHASE 2：通过 Agent 生成 ===
 
-        将所有 artifacts 的文件路径传给 deep agent，由其直接读取后生成 tasks.md：
+        将所有 artifacts 的文件路径传给 agent，由其直接读取后生成 tasks.md：
 
-       task(category="deep", load_skills=[], run_in_background=false,
+       task(category="write", load_skills=[], run_in_background=false,
             prompt="为以下变更生成任务清单（tasks.md）。
 
             输入文件（请直接读取以下文件获取完整内容）：
@@ -517,8 +517,8 @@ artifacts:
          - 有任何 🔴 → BLOCKED
            **说明**: 此循环是内容质量改进机制（审查 agent 已成功完成分析 → subagent 修复 → 重新审查），
            不是 agent 调用失败的降级处理。如审查 agent 调用本身失败 → 按 fast fail 规则立即停住报错。
-           将所有 🔴 问题打包，调用 deep agent 一次性修复：
-           task(category="deep", load_skills=[], run_in_background=false,
+           将所有 🔴 问题打包，调用 agent 一次性修复：
+           task(category="write", load_skills=[], run_in_background=false,
                 prompt="根据以下审查结果，一次性修复所有被指出的问题。
 
                 只修复标记为 🔴 的问题，不要修改其他内容。
@@ -533,9 +533,9 @@ artifacts:
 
       生成 `.omo/plans/<change-name>.md` — 包含 9 个部分的 OMO 兼容执行计划。
 
-      Delegate plan generation via category="deep":
+      Delegate plan generation via category="write":
 
-      task(category="deep", load_skills=[], run_in_background=false,
+      task(category="write", load_skills=[], run_in_background=false,
            prompt="为以下变更生成 OMO 兼容的执行计划，保存到 .omo/plans/<change-name>.md。
 
            输入文件摘要（已读取）：
@@ -650,8 +650,8 @@ artifacts:
          - Momus 🔴 REJECT 或 任一 agent 有 🔴 → BLOCKED
            **说明**: 此循环是内容质量改进机制（审查 agent 已成功完成分析 → subagent 修复 → 重新审查），
            不是 agent 调用失败的降级处理。如审查 agent 调用本身失败 → 按 fast fail 规则立即停住报错。
-           将所有 🔴 问题打包，调用 deep agent 一次性修复：
-           task(category="deep", load_skills=[], run_in_background=false,
+           将所有 🔴 问题打包，调用 agent 一次性修复：
+           task(category="write", load_skills=[], run_in_background=false,
                 prompt="根据以下审查结果，一次性修复所有被指出的问题。
 
                 只修复标记为 🔴 的问题，不要修改其他内容。
@@ -662,11 +662,11 @@ artifacts:
          - 仅 🟡/⚪ → 展示给用户，让用户评估决定是否修复
        7. 产出合并清单：将合并后的发现清单写入输出，供后续 PHASE 引用
 
-      === PHASE 6：通过 Deep Agent 生成 critic.md ===
+      === PHASE 6：通过 Agent 生成 critic.md ===
 
-      Package the review findings into a prompt. Delegate to deep agent to generate critic.md：
+      Package the review findings into a prompt. Delegate to agent to generate critic.md：
 
-      task(category="deep", load_skills=[], run_in_background=false,
+      task(category="write", load_skills=[], run_in_background=false,
            prompt="生成 critic.md 文件。
 
            PHASE 3（tasks.md 审查）的未解决问题：
@@ -686,8 +686,8 @@ artifacts:
 
       === PHASE 7：阻塞判定 ===
 
-      - 如果 deep 返回的 critic.md 为 "ALL DONE" → **✅ PASS**，继续
-      - 如果 deep 返回的 critic.md 包含未解决问题 → **⚠️ CONDITIONAL**，列出 🟡 项让用户确认是否接受风险
+      - 如果返回的 critic.md 为 "ALL DONE" → **✅ PASS**，继续
+      - 如果返回的 critic.md 包含未解决问题 → **⚠️ CONDITIONAL**，列出 🟡 项让用户确认是否接受风险
       - 用户确认后进入 apply 阶段
     requires:
       - tasks
@@ -781,8 +781,8 @@ apply:
       读取 Oracle 输出中的最终判定：
       1. 如果 ✅ PASS → 继续
       2. 如果 🔴 BLOCKED：
-           将所有 🔴 问题打包，调用 deep agent 一次性修复：
-           task(category="deep", load_skills=[], run_in_background=false,
+           将所有 🔴 问题打包，调用 agent 一次性修复：
+           task(category="write", load_skills=[], run_in_background=false,
                 prompt="根据以下验证结果修复实现产出。只修复标记为 🔴 的问题，不要修改其他内容。
 
                 Oracle 验证结果中的所有 🔴 问题：
