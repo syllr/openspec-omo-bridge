@@ -4,334 +4,217 @@ description: Independent schema for project constitution initialization and upda
 artifacts:
   - id: scan
     generates: scan.md
-    description: Tech stack analysis and multi-agent parallel research
+    description: Ask user to select constitution dimension(s) and gather requirements
     template: scan.md
     instruction: |
       __LANG_PLACEHOLDER__
 
       **范围限制：不要修改任何源代码。仅生成 scan.md。**
 
-       首先检测运行模式：
-       - 检查 `docs/constitution/` 目录是否存在（使用 `ls docs/constitution/ 2>/dev/null && echo exists`）
-       - 检查 `AGENTS.md` 是否存在 Constitution 内容（使用以下命令检测 constitution-start 标记）：
-         ```
-         count=$(find . -name "AGENTS.md" -type f -not -path '*/node_modules/*' -not -path '*/.git/*' 2>/dev/null | xargs grep -l 'constitution-start' 2>/dev/null | wc -l)
-         echo "Found $count AGENTS.md files with constitution content"
-         ```
-       - 查看 count 值：如果 > 0，说明有 AGENTS.md 包含 Constitution 内容
-       - 如果两者都存在 → **更新模式**：基于现有章程进行更新，diff 现有内容后让用户确认
-       - 如果都不存在 → **初始化模式**：从头创建章程
+      === Step 1：询问用户要添加哪个维度 ===
 
-       然后通过对话确定项目章程的内容：
+      使用 question 工具询问用户要添加哪个维度的宪法：
 
-       === Phase 1：用户对话（/openspec-explore） ===
+      ```
+      可选维度列表：
+      1. code-conventions   — 代码风格/命名/注释/import/函数规范
+      2. architecture        — 分层/模块/依赖方向
+      3. domain             — 核心实体/业务模型/值对象/聚合根
+      4. integration        — 外部API/数据库/消息队列等外部依赖
+      5. api                — 我对外提供的接口规范
+      6. security           — 认证/授权/加密/输入验证
+      7. testing            — 测试策略/覆盖率/Mock规范
+      8. observability       — 日志/监控/告警/错误处理
+      9. release            — Git/Commit规范/CI-CD/发布流程
+      10. documentation     — README/ADR/变更日志
 
-       根据运行模式执行：
+      请告诉我要添加哪个维度的宪法（可以说序号或名称）。
+      ```
 
-       **初始化模式**：
-       - 直接用 /openspec-explore 和用户对话，主动引导用户说出想加什么章程规则
-       - 如果用户不知道从何说起，可以抛出常见例子帮助用户决策：
-         - 「函数不超过 100 行？」
-         - 「不允许循环依赖？」
-         - 「Commit message 用 Conventional Commits 格式？」
-         - 「代码需要测试覆盖？」
-         - 「命名规范用什么风格？」
-       - 记录用户确认的每个规则，标记用户不确定的点
+      === Step 2：检查是否已存在 ===
 
-       **更新模式**：
-       - 运行以下命令提取现有 Constitution 内容（从项目根目录查找所有 AGENTS.md）：
-         ```
-         find . -name "AGENTS.md" -type f 2>/dev/null | while read f; do
-           if grep -q 'constitution-start' "$f" 2>/dev/null; then
-             echo "--- $f ---"
-             awk '/constitution-start/,/constitution-end/' "$f" | grep -v 'constitution-start\|constitution-end'
-           fi
-         done
-         ```
-       - 读取 `docs/constitution/` 获取已有参考文档
-       - 展示现有章程，问用户哪些规则要新增、修改或删除
+      根据用户选择的维度，运行以下命令检查是否已存在该维度的宪法：
 
-       两种模式都记录用户的最终决策和不确定信号。
+      ```bash
+      # 检查 docs/constitution/ 是否存在
+      ls docs/constitution/ 2>/dev/null || echo "docs/constitution/ does not exist"
 
-       === PHASE 3：通过 Agent 生成 ===
+      # 如果存在，检查该维度的 constitution.yaml
+      cat docs/constitution/<dimension>/constitution.yaml 2>/dev/null || echo "No constitution.yaml found"
+      ```
 
-       完成 Phase 1-2 后，将所有发现打包成 prompt，委托给 agent 生成 scan.md：
+      如果该维度已存在：
+      - 告知用户该维度已存在
+      - 询问用户是要更新（UPDATE）还是跳过（SKIP）
+      - 如果是 UPDATE，读取现有 constitution.yaml 了解已有条目
 
-        task(category="write", load_skills=[], run_in_background=false,
-            prompt="为项目章程生成 scan.md 文件。
+      === Step 3：确认用户需求 ===
 
-            输入文件（请直接读取以下文件获取完整内容）：
-            - scan.md 模板：schemas/constitution/templates/scan.md
-            - scan.md：openspec/changes/<change-name>/scan.md（如果已存在，更新模式）
-            - docs/constitution/：docs/constitution/（如果存在，已有的宪法参考文件）
-            - AGENTS.md：项目中找到的所有 AGENTS.md（多个层级，如果存在）
+      通过对话了解用户的具体需求：
+      - 如果是 code-conventions：需要支持哪些语言？有什么特殊要求？
+      - 如果是 integration：需要集成哪些外部系统？
+      - 如果是 api：主要对外暴露哪些接口？
+      - 如果是其他维度：用户想约束什么？
 
-            此外直接传入以下上下文：
-             - 用户确认的章程规则：[将用户确认的所有规则以文本形式填入此处]
-             - 运行模式：[初始化模式 / 更新模式]
-             - 现有 Constitution 内容（更新模式下运行以下命令提取）：
-               ```
-               find . -name "AGENTS.md" -type f 2>/dev/null | while read f; do
-                 if grep -q 'constitution-start' "$f" 2>/dev/null; then
-                   echo "--- $f ---"
-                   awk '/constitution-start/,/constitution-end/' "$f" | grep -v 'constitution-start\|constitution-end'
-                 fi
-               done
-               ```
-               将命令输出填入此处；初始化模式填"无"
+      记录用户确认的内容和不确定的点（标记 [NEEDS RESEARCH]）。
 
-            按模板结构输出，模板中每个 section 的内容由用户确认的规则填充。未涉及的维度留空即可。")
+      === Step 4：生成 scan.md ===
+
+      打包上下文，委托 category="write" 生成 scan.md：
+
+      task(category="write", load_skills=[], run_in_background=false,
+          prompt="生成 scan.md 文件。
+
+          输入文件（请直接读取）：
+          - scan.md 模板：schemas/constitution/templates/scan.md
+
+          直接传入的上下文：
+          - 用户选择的维度：[填入用户选择的维度名称]
+          - 适用技术栈：[填入用户确认的技术栈，或"通用"]
+          - 用户需求摘要：[填入用户描述的具体需求]
+          - 该维度是否已存在：[是/否]
+          - 已有条目：[从 constitution.yaml 读取的内容，如果没有则填"无"]
+
+          按模板结构输出。所有维度中，只聚焦用户选择的维度，其他维度留空或标注'非本次聚焦'。")
     requires: [ ]
   - id: design
     generates: design.md
-    description: Constitution design document with best practices and reference structure
+    description: Research best practices for the selected dimension and design reference structure
     template: design.md
     instruction: |
       __LANG_PLACEHOLDER__
 
       **范围限制：不要修改任何源代码。仅生成 design.md。**
 
+      === Step 1：读取 scan.md ===
 
-      基于 scan.md 确认的技术栈，设计章程结构。
+      读取 `openspec/changes/<change-name>/scan.md`，确认：
+      - 聚焦哪个维度
+      - 适用技术栈
+      - 用户需求摘要
 
+      === Step 2：调研最佳实践 ===
 
-      **Step 1：多 Agent 最佳实践调研**
+      根据用户选择的维度，启动 librarian agent 调研该维度的业界最佳实践：
 
-      - 并行启动多个 librarian agent，每个聚焦 scan 结果中的一个技术
-      - 调研官方文档、社区标准和常见陷阱
-      - 每个 agent 产出一份技术特定的最佳实践报告
-      - 所有 librarian 完成后，生成一份汇总文件 `research-scope.md`，列出所有已调研主题和关键发现。此文件后续由 Technical Research 使用，以判断哪些主题已有覆盖
+      task(subagent_type="librarian", run_in_background=false,
+           prompt="调研项目章程中【{dimension}】维度的业界最佳实践。
 
-      **Step 2：用户审核**
+           已确认的信息：
+           - 维度：{dimension}
+           - 适用技术栈：{tech_stack}
+           - 用户需求：{user_requirements}
 
-      - 向用户展示每项技术的调研结果供确认
-      - 用户可以批准、要求修改或拒绝特定建议
+           请调研：
+           1. 该维度的核心内容是什么？
+           2. 业界有哪些标准和最佳实践？（Google Style Guide、Uber Go Guide、OWASP 等）
+           3. 每个技术栈有什么特有的规范？
+           4. 常见的坑是什么？
 
-      **Step 3：生成参考文档**
+           输出：
+           - 该维度的核心规则列表
+           - 参考资料（URL + 关键摘要）
+           - 技术栈特有规则（按技术栈分类）
 
-      - 调用 /summarize-research 生成结构化的参考文件，每个技术栈独立目录：
-        - `docs/constitution/<tech-1>/` — 该技术的编码规范、最佳实践
-        - `docs/constitution/<tech-2>/` — 该技术的编码规范、最佳实践
-        - `docs/constitution/architecture.md` — 全局架构约束和 cross-cutting concerns
-      - 文件按技术栈组织
+           将结果保存到 openspec/changes/<change-name>/research/<dimension>/")
 
+      === Step 3：展示调研结果 ===
 
-      === 技术调研（可选） ===
+      向用户展示调研结果，确认或修改。
 
-      阅读 scan.md 时，注意以下**不确定性信号**：
-
-      - "可能"、"maybe"、"might"、"needs investigation" 等词语
-      - 不明确的库行为或兼容性问题
-      - 在最终确定前需要验证的技术决策
-      - 引用未文档化的 API 或协议
-
-      对于每个不确定点，按以下流程处理：
-
-      1. **识别调研主题**：从 scan.md 中提取每个不确定点，命名成 kebab-case 的调研主题
-
-       2. **调研与验证**：对每个主题，判断 Step 1 的 librarian 调研是否已覆盖。
-          如果已覆盖 → 直接运行验证。
-          如果未覆盖 → 先发起 librarian 调研，再运行验证。
-
-         所有调研产物保存到 `$project/spectest/<topic>/`。
-         用户确认后移到 `openspec/changes/<change-name>/research/<topic>/`。
-
-         ```
-         # 如果主题已在 Step 1 中调研过：
-         task(category="write", load_skills=[], run_in_background=false, prompt="基于已调研的结果，写验证脚本...")
-
-         # 如果主题需要新调研：
-         task(subagent_type="librarian", run_in_background=false, prompt="调研此技术点...")
-         task(category="write", load_skills=[], run_in_background=false, prompt="基于调研结果，写验证脚本...")
-         ```
-
-         在同一条消息中发起所有 agent（第二波）。如果有任何主题需要新的 librarian，先发起这些（第一波），再发起所有 agent。
-
-      3. **用户确认与最终确定**：向用户展示调研结果摘要。用户确认后，将 `spectest/<topic>/` → `openspec/changes/<change-name>/research/<topic>/`。创建 `research/index.md` 汇总所有主题、结论和关键发现。
-
-      4. **更新 design.md**：在相关部分引用调研发现。使用 `详见 research/<topic>/notes.md` 格式
-
-      **重要**：
-      - research/ 是**可选的** — 只有 scan.md 中存在不确定点时才创建
-      - research/ 是 side effect，不被 OpenSpec generations 跟踪
-      - spectest/ 是临时目录，用户确认后数据才会移到 research/
-
-
-      **Step 4（可选）：询问代码同步**
-
-      - 使用 question 工具询问用户："Do you want to scan existing code for constitution violations?"
-      - 如果用户确认：将代码同步逻辑加入此设计，tasks 阶段将包含一个修复违规的额外 task
-      - 如果用户拒绝：跳过，仅执行标准章程创建
-
-      **Step 5：生成设计文档**
-
-      将所有调研结果和设计决策打包，委托 category="write" 生成 design.md：
+      === Step 4：生成 design.md ===
 
       task(category="write", load_skills=[], run_in_background=false,
-           prompt="根据以下输入生成 design.md。
+          prompt="生成 design.md 文件。
 
-           输入文件（请直接读取以下文件获取完整内容）：
-           - 模板：schemas/constitution/templates/design.md
-           - Scan：openspec/changes/<change-name>/scan.md
-           - Research：openspec/changes/<change-name>/research/（如果存在）
+          输入文件（请直接读取）：
+          - 模板：schemas/constitution/templates/design.md
+          - Scan：openspec/changes/<change-name>/scan.md
+          - Research：openspec/changes/<change-name>/research/<dimension>/（如果存在）
 
-           直接传入的上下文：
-           - 用户确认选项：[将用户批准/拒绝/修改的具体内容以文本形式填入此处]
-           - 代码同步模式：[用户是否选择了代码同步检测]
+          直接传入的上下文：
+          - 聚焦维度：[填入本次聚焦的维度]
+          - 用户确认内容：[填入用户批准的规则]
 
-           按模板结构输出。如果存在 research/ 目录，在相关决策中引用调研发现。
-
-           参考文档（Step 3 创建的临时文件）将在 apply 阶段最终确定。")
-
-      Step 3 创建的参考文档是临时工作文件，将在 apply 阶段最终确定。
+          按模板结构输出。只聚焦用户选择的维度，其他 9 个维度保持占位符（标注'非本次聚焦'）。")
     requires:
       - scan
   - id: tasks
     generates: tasks.md
-    description: Simple execution plan with 2 base tasks plus 1 optional task
+    description: Generate tasks for creating the selected constitution dimension
     template: tasks.md
     instruction: |
       __LANG_PLACEHOLDER__
 
       **范围限制：不要修改任何源代码。仅生成 tasks.md。**
 
+      === Step 1：读取上下文 ===
 
-      === PHASE 1：理解上下文 ===
+      读取 scan.md 和 design.md，确认：
+      - 聚焦哪个维度
+      - 该维度是否已存在（scan 中记录）
+      - 设计决策
 
+      === Step 2：生成任务清单 ===
 
-      读取每个 artifact 文件。每个文件有特定角色：
+      task(category="write", load_skills=[], run_in_background=false,
+          prompt="为以下变更生成 tasks.md。
 
-      | 文件 | 角色 |
-      |------|------|
-      | `scan.md` | WHY — 技术栈分析、决策 |
-      | `design.md` | HOW — 参考结构、最佳实践 |
-      | `tasks.md` | DO — checkbox 任务清单 |
+          输入文件（请直接读取）：
+          - Scan：openspec/changes/<change-name>/scan.md
+          - Design：openspec/changes/<change-name>/design.md
 
-      如何利用每个 artifact：
-      - **scan.md** → 列出关键技术以确定 task 分组
-      - **design.md** → 提取决策以规划执行方案
+          任务清单必须包含以下 tasks：
 
+          **Task 1：创建 docs/constitution/<dimension>/ 目录结构**
 
-      **Step 1：快速 artifact 审查**
+          创建以下文件：
+          - `docs/constitution/<dimension>/constitution.yaml` — 元数据表
+          - `docs/constitution/<dimension>/universal.md` — 通用规范（所有技术栈共用）
+          - `docs/constitution/<dimension>/<tech1>.md` — 技术栈特有规范（如适用）
 
-      生成前，快速检查：
-      1. scan.md 的技术决策是否与 design.md 的参考结构一致？
-      2. scan.md 和 design.md 之间有无矛盾？
-      → 如果发现问题：停止，列出具体问题，等待用户处理。
-      → 如果全部正常：继续。
+          constitution.yaml 格式：
+          ```yaml
+          dimension: <dimension>
+          description: <维度说明>
+          items:
+            - tech_stack: []
+              status: active
+              summary: <规范摘要>
+              file: universal.md
 
+            - tech_stack: [<tech>]
+              status: active
+              summary: <规范摘要>
+              file: <tech>.md
+          ```
 
-      **Step 2：调用 Oracle 进行差距分析（强制）**
+          **Task 2：更新 AGENTS.md**
 
-      编写 tasks.md 前调用 Oracle。Oracle 会按信源优先级分析冲突并给出修复建议。
-      在调用 Oracle 前，先读取所有 artifacts，然后在 prompt 中附上关键内容的原文。
+          读取 AGENTS.md，找到 `<!-- constitution-start -->` 和 `<!-- constitution-end -->` 之间的现有内容，追加新维度。
 
-      **Fast fail 保护**: 如果 Oracle task() 调用失败（超时、不可用、出错），立即停止工作流（**fast fail，不得降级**）：
-      - 向用户报告：「🔴 差距分析中断：Oracle 调用失败。[错误信息]」
-      - 不得自行分析 gap，不得自行生成 tasks.md
-      - 等待用户介入
+          使用以下标准格式（参考 `schemas/constitution/templates/section.md`）：
+          ```markdown
+          - **<dimension>** → `docs/constitution/<dimension>/`
+            - 通用: <规范摘要>
+            - <tech>: <特有规范摘要>（如适用）
+          ```
 
-      task(subagent_type="oracle", run_in_background=false, prompt="我准备为此变更生成 tasks.md。
+          **注意**：
+          - 如果该维度已存在（scan 中标记为 UPDATE 模式），先读取现有的 constitution.yaml，然后在对应 tech_stack 下追加或更新条目，不要覆盖整个文件
+          - 如果是全新维度（INIT 模式），直接追加到 AGENTS.md
 
-      已完成的产物原文（关键段落）：
-      - **scan.md** 核心技术决策：[引用原文 2-3 句]
-      - **design.md** 关键设计决策：[引用原文]
-
-      请做 gap analysis，识别：
-      1. 遗漏的需求或意图
-      2. 表达模糊的地方
-      3. scope creep / AI-slop
-      4. 缺失的验收标准
-      5. 未覆盖的边界情况
-      6. **research 完整性**：
-         - 检查 scan.md 中的不确定性信号
-         - 如果 scan.md 有不确切表述但 research/ 中无对应调研 → 标记为 🔴 缺失
-
-      **信源优先级（冲突处理依据）**：
-      1. scan.md（最高）— 技术栈分析和决策
-      2. research/（如果存在）— 实证调研结果，优先级高于未经验证的设计假设
-      3. design.md — 参考结构设计
-
-      **冲突处理规则**：
-      - 低优先级与高优先级存在**明显冲突**时，给出具体的修改建议以对齐高优先级
-      - 明确可自动修复的 → 标注「🔧 可自动修复：...」并说明修改内容
-      - 需要用户判断的 → 标注「👤 需用户确认：...」并提供选项
-      - 模糊不清的 → 标注「❓ 需追问：...」并说明需要什么信息")
-
-      **说明**: 此循环是内容质量改进机制（Oracle 已成功完成 gap 分析 → subagent 修复 → 重新调用），
-       不是 agent 调用失败的降级处理。如 Oracle 调用本身失败 → 按 fast fail 规则立即停住报错。
-
-       应用 Oracle 的分析结果，循环执行以下冲突修复流程（**最多循环 3 轮**）：
-
-       1. 如果有「🔧 可自动修复」项：
-          对每个 🔧 项，读取 Oracle 指出的具体问题和修改建议，调用执行型 subagent 修复：
-          task(category="write", load_skills=[], run_in_background=false,
-               prompt="根据以下 Oracle 差距分析结果修复对应的源文件或 artifact。
-               只修复标记为 🔴 的问题，不要修改其他内容。
-
-               Oracle 修复建议：
-               [将 Oracle 输出的 🔧 项及对应修改建议填入此处]")
-          全部修复完成后，重新调用 Oracle 验证（回到本步骤）
-      2. 如果只剩「👤 需用户确认」和/或「❓ 需追问」→ 停止循环
-         - 需用户确认 → 提供方案让用户选择
-         - 需追问 → 直接提问让用户回答
-      3. 如果全部 ✅ Confirmed → Proceed
-      4. **达到 3 轮上限时**：即使仍有「🔧 可自动修复」项，也停止循环，将所有未解决项汇总展示给用户
-
-
-       === PHASE 2：通过 Agent 生成 ===
-
-       将所有 artifacts 的文件路径传给 agent，由其直接读取后生成 tasks.md：
-
-       task(category="write", load_skills=[], run_in_background=false,
-            prompt="为以下变更生成任务清单（tasks.md）。
-
-            输入文件（请直接读取以下文件获取完整内容）：
-            - Scan：openspec/changes/<change-name>/scan.md
-            - Design：openspec/changes/<change-name>/design.md
-
-            任务清单必须包含：
-
-            **基础 task（强制）：**
-            1. 更新 AGENTS.md — 添加或更新 `## Constitution` 部分，使用以下标准格式（参考 `schemas/constitution/templates/constitution-section.md`）：
-
-               ```markdown
-               ## Constitution
-
-               <!-- constitution-start -->
-               - **技术栈**: TypeScript, React, Go, PostgreSQL
-               - **参考文档**:
-                 - <技术1> → `docs/constitution/<tech1>/`
-                 - <技术2> → `docs/constitution/<tech2>/`
-               - **编码规范**: <内联描述，或 `docs/constitution/<file>.md` 引用>
-               - **架构约束**: <内联描述，或 `docs/constitution/<file>.md` 引用>
-               <!-- constitution-end -->
-               ```
-
-               编码规范和架构约束既可内联（内容简单时），也可引用文件（内容复杂时）。
-
-            2. 创建或更新 `docs/constitution/` — 参考文档
-
-            **可选 task（仅当代码同步为 true）：**
-            3. 修复现有代码违规
-
-            **可选 task（仅当代码同步为 true）：**
-            3. 修复现有代码违规
-
-            格式要求：
-            - 使用 `## Tasks` 作为部分标题
-            - 使用 `### Wave N: Group Name` 子分组
-            - 每个 task 以 `- [ ] N.M Description` 开头
-            - 覆盖所有输入中的技术栈决策和设计决策
-            - 组织成逻辑的、可并行执行的 wave")
+          格式要求：
+          - 使用 `## Tasks` 作为部分标题
+          - 使用 `### Wave N: Group Name` 子分组
+          - 每个 task 以 `- [ ] N.M Description` 开头")
     requires:
       - design
   - id: critic
     generates: critic.md
     description: >
-      Plan generation and multi-agent review. Generates
-      .omo/plans/<change-name>.md (OMO plan) and critic.md
-      (review report with verdict).
+      Plan generation and multi-agent review for constitution items.
+      Generates .omo/plans/<change-name>.md and critic.md.
     template: critic.md
     instruction: |
       __LANG_PLACEHOLDER__
@@ -341,214 +224,92 @@ artifacts:
       === PHASE 1：读取上下文 ===
 
       读取以下文件：
-      - `openspec/changes/<change-name>/tasks.md` — checkbox task list
-      - `openspec/changes/<change-name>/scan.md` — tech stack analysis
-      - `openspec/changes/<change-name>/design.md` — constitution design
-      - `openspec/changes/<change-name>/research/` — technical research (if exists)
+      - `openspec/changes/<change-name>/tasks.md`
+      - `openspec/changes/<change-name>/scan.md`
+      - `openspec/changes/<change-name>/design.md`
 
       === PHASE 2：基础结构检查 ===
 
-      Check the basic structure of the change:
-      1. `ls openspec/changes/<change-name>/scan.md` — scan.md 存在
-      2. `ls openspec/changes/<change-name>/design.md` — design.md 存在
-      3. `test -f openspec/changes/<change-name>/tasks.md && echo exists` — tasks.md 存在
-      4. `grep -c '^- \[' openspec/changes/<change-name>/tasks.md` — 至少 1 个 task checkbox
+      检查：
+      1. scan.md、design.md、tasks.md 都存在
+      2. tasks.md 至少 1 个 checkbox
 
-      If ANY check fails: STOP, list what's missing, wait for user.
-      If all pass: Proceed.
+      如果任何检查失败：停止，列出缺失项，等待用户。
 
-      === PHASE 3：Oracle + Metis 并行审查 tasks.md ===
-
-      同时启动 1 个 Oracle + 1 个 Metis agent 并行审查 tasks.md。
-      Oracle 专注于内容拆分合理性，Metis 专注于 OMO 格式合规性。
-
-      ```
-       CONST_TASKS_REVIEW_PROMPT = "你正在审查一个 OpenSpec change 的任务清单（tasks.md）。请逐一检查以下所有检查项：
-
-        审查文件：
-        - tasks:    openspec/changes/<change-name>/tasks.md
-        - scan:     openspec/changes/<change-name>/scan.md
-        - design:   openspec/changes/<change-name>/design.md
-
-        □ 内容完整性——scan.md 和 design.md 的要求是否都有对应 task 覆盖？
-        □ 边界控制——是否有多余的 task（超出 scope）？有无遗漏？
-        □ 原子性——每个 task 是否足够原子化？有无拆分过粗或过细？
-        □ 9 字段齐全——每个 task 是否包含 What to do / Must NOT do / Agent Profile /
-          References / Acceptance Criteria / QA Scenarios / Parallelization / Evidence / Commit？
-        □ QA Scenarios 质量——是否包含五要素（Tool/Preconditions/Steps/Expected/Evidence）？
-        □ 可执行性——Acceptance Criteria 是否是具体可执行的命令？
-          Agent Profile 的 category 是否匹配任务类型？
-          Must NOT do 是否明确指出了边界？
-        □ Wave 结构——Wave 分组是否合理？命名清晰？数量合理？
-        □ 并发——同 Wave 内 task 是否互不依赖？不同 Wave 依赖是否真实？有无虚假依赖？
-        □ AI-slop——是否有模糊、空洞、歧义的描述？
-          QA Scenarios 是否至少覆盖 1 个快乐路径 + 1 个失败路径？
-
-        严重程度：🔴 阻塞 / 🟡 警告 / ⚪ 建议
-        输出格式：逐项检查，然后汇总问题清单，每个问题标注 severity。"
-
-      ORACLE_REVIEW_PROMPT = CONST_TASKS_REVIEW_PROMPT
-      METIS_REVIEW_PROMPT = CONST_TASKS_REVIEW_PROMPT
-
-      task(subagent_type="oracle", run_in_background=false, prompt=ORACLE_REVIEW_PROMPT)
-      task(subagent_type="metis", run_in_background=false, prompt=METIS_REVIEW_PROMPT)
-      ```
-
-      **收集评审结果（以下步骤不可跳过）**：
-
-      1. **逐 agent 提取发现**：先读取 Oracle 完整输出，列出所有 🔴/🟡/⚪。再读取 Metis 完整输出，列出所有 🔴/🟡/⚪。
-      2. **自检**：确认两个 agent 结果都已读完。如有遗漏，回到 Step 1 重新读取。
-      3. **合并去重**：按 severity 合并，标注来源（Oracle / Metis）。同一问题两个 agent 都发现时取更高 severity。
-      4. **分类判定**：
-         - 任一 agent 有 🔴 → BLOCKED，修复源文件后重新运行 PHASE 3（**最多 3 轮**，超限后汇总 🔴 问题给用户）
-          **说明**: 此循环是内容质量改进机制（审查 agent 已成功完成分析 → subagent 修复 → 重新审查），
-           不是 agent 调用失败的降级处理。如审查 agent 调用本身失败 → 按 fast fail 规则立即停住报错。
-          - 仅 🟡/⚪ → 评估后决定是否修复
-       5. **产出合并清单**：将合并后的发现清单写入输出，供后续 PHASE 引用。
-
-      === PHASE 4：生成计划 ===
-
-      生成 `.omo/plans/<change-name>.md` — OMO 兼容执行计划。
-
-      Delegate plan generation via category="write":
+      === PHASE 3：生成 Plan ===
 
       task(category="write", load_skills=[], run_in_background=false,
-           prompt="为以下变更生成 OMO 兼容的执行计划，保存到 .omo/plans/<change-name>.md。
+          prompt="生成 .omo/plans/<change-name>.md。
 
-           输入文件（请直接读取以下文件获取完整内容）：
-           - Scan：openspec/changes/<change-name>/scan.md
-           - Design：openspec/changes/<change-name>/design.md
-           - Tasks：openspec/changes/<change-name>/tasks.md
-           - Research：openspec/changes/<change-name>/research/（如果存在）
+          输入文件（请直接读取）：
+          - Tasks：openspec/changes/<change-name>/tasks.md
+          - Scan：openspec/changes/<change-name>/scan.md
+          - Design：openspec/changes/<change-name>/design.md
 
-           计划必须包含以下 7 个部分，使用 summary + link 格式：
-           1. ## TL;DR（摘要）
-           2. ## Context（上下文）
-           3. ## Work Objectives（工作目标）
-           4. ## Execution Strategy（执行策略）— 引用 design.md 和 research/
-           5. ## Tasks（任务）— tasks.md 的 checkbox 展开，每个 task 含 What to do / Must NOT do / Agent Profile / References / Acceptance Criteria / QA Scenarios / Parallelization / Evidence / Commit
-           6. ## Final Verification Wave（最终验证波）— F1~F4
-           7. ## Success Criteria（成功标准）
+          计划必须包含：
+          1. ## TL;DR
+          2. ## Context（来自 scan.md）
+          3. ## Work Objectives
+          4. ## Execution Strategy
+          5. ## Tasks（从 tasks.md 展开）
+          6. ## Final Verification Wave
+          7. ## Success Criteria
 
-           注意：根据 Design Decision 6，跳过 Verification Strategy 和 Commit Strategy 部分。
+          跳过 Verification Strategy 和 Commit Strategy。")
 
-           关键规则：
-           - Task 编号必须与 tasks.md 一致
-           - 不要复制 artifact 原文（Tasks 的 What to do 部分除外）
-           - Acceptance Criteria 必须是可执行的命令")
+      === PHASE 4：Plan 结构验证 ===
 
-      === PHASE 5：Plan 结构验证 ===
+      验证：
+      1. 所有 7 个 section 都存在
+      2. Tasks 数量与 tasks.md 一致
 
-      编写 plan 后，执行以下验证：
-      1. `grep -c '^## ' .omo/plans/<change-name>.md` → 必须至少 7 个（跳过 Verification Strategy 和 Commit Strategy）
-      2. `grep -q '## Tasks' .omo/plans/<change-name>.md` → Tasks 部分存在
-      3. `grep -q '## Final Verification Wave' .omo/plans/<change-name>.md` → FVW 存在
-      4. `sed -n '/^## Tasks/,/^## /p' .omo/plans/<change-name>.md | grep -c '^- \['` 应等于 `grep -c '^- \[' openspec/changes/<change-name>/tasks.md`
+      === PHASE 5：Oracle + Momus 并行审查 ===
 
-      如果任何检查不通过：停止，修复 plan，重新验证（**最多 3 轮**，超限后汇总给用户）。
+      task(subagent_type="oracle", run_in_background=false,
+           prompt="审查 .omo/plans/<change-name>.md。
 
-      === PHASE 6：Oracle + Metis + Momus 并行审查 Plan ===
+           检查：
+           - 内容完整性
+           - 可执行性
+           - 边界场景覆盖
 
-      同时启动 1 个 Oracle + 1 个 Metis + 1 个 Momus agent 并行审查生成的 plan。
-      三个 agent 各自从内容完整性、结构格式、可执行性、潜在问题 4 个维度进行全面审查。
-      Momus 额外负责最终门禁判定（OKAY/REJECT）。
+           输出：🔴/🟡/⚪ 问题清单。")
 
-      ```
-       CONST_PLAN_REVIEW_PROMPT = "你正在审查 OMO plan。请逐一检查以下所有检查项：
+      task(subagent_type="momus", run_in_background=false,
+           prompt="对 plan 执行门禁判定。
 
-        审查文件：
-        - plan:  .omo/plans/<change-name>.md
-        - design: openspec/changes/<change-name>/design.md
-        - tasks: openspec/changes/<change-name>/tasks.md
-        - research: openspec/changes/<change-name>/research/（如果存在）
+           审查文件：
+           - plan: .omo/plans/<change-name>.md
+           - tasks: openspec/changes/<change-name>/tasks.md
 
-        □ 内容完整性——Execution Strategy 是否反映了 design 的决策？
-          Success Criteria 是否可衡量？
-          research/ 的调研发现是否被正确引用？
-        □ 结构格式——所有 section 是否存在？每个 section 使用 summary + link 模式？
-          每个 task 的子字段是否齐全？QA Scenarios 是否有五要素？
-        □ 可执行性——FVW 是否合理？执行策略是否可行？
-          Wave 分组合理？同 Wave 可并发？依赖真实？
-        □ AI-slop——是否有遗漏的边界场景？逻辑漏洞？矛盾？
-          QA Scenarios 是否至少覆盖 1 个快乐路径 + 1 个失败路径？
+           判定：
+           - ✅ OKAY — 可执行
+           - ❌ REJECT — 需修复")
 
-        严重程度：🔴 阻塞 / 🟡 警告 / ⚪ 建议
-        输出格式：逐项检查，然后汇总问题清单，每个问题标注 severity。"
+      收集结果，如果有 🔴 或 REJECT，修复后重新审查（最多 3 轮）。
 
-      ORACLE_PLAN_REVIEW_PROMPT = CONST_PLAN_REVIEW_PROMPT
-      METIS_PLAN_REVIEW_PROMPT = CONST_PLAN_REVIEW_PROMPT
-
-      MOMUS_PLAN_REVIEW_PROMPT = "你正在对 OMO plan 执行双重门禁审查（Momus 评审）。
-
-      **Part A — 执行路径审查**：
-      1. Wave 依赖是否合理？同一 Wave 内的 task 是否真的可以并发？
-      2. 每个 task 的 Acceptance Criteria 是否可执行？
-      3. FVW 是否覆盖了关键验证点？
-      4. 如果 research/ 存在：调研结论是否被 plan 正确引用？
-
-      **Part B — 风险矩阵审查**：
-      1. 是否有遗漏的边界场景？
-      2. QA Scenarios 是否至少包含一个快乐路径 + 一个失败路径？
-      3. Success Criteria 是否真正可衡量？
-      4. 如果 research/ 存在：是否有 research 发现未被 plan 覆盖？
-
-      审查文件：
-      - plan:  .omo/plans/<change-name>.md
-      - tasks: openspec/changes/<change-name>/tasks.md
-      - research: openspec/changes/<change-name>/research/（如果存在）
-
-      最终判定（综合 Part A 和 Part B）：
-      - ✅ OKAY — plan 可执行
-      - ❌ REJECT — plan 不可执行，需要修复后重新评审"
-
-      task(subagent_type="oracle", run_in_background=false, prompt=ORACLE_PLAN_REVIEW_PROMPT)
-      task(subagent_type="metis", run_in_background=false, prompt=METIS_PLAN_REVIEW_PROMPT)
-      task(subagent_type="momus", run_in_background=false, prompt=MOMUS_PLAN_REVIEW_PROMPT)
-      ```
-
-      **收集评审结果（以下步骤不可跳过）**：
-
-      1. **逐 agent 提取发现**：读取 Oracle 完整输出 → 读取 Metis 完整输出 → 读取 Momus 完整输出。每个 agent 单独列出发现。
-      2. **自检**：确认所有 3 个 agent 结果都已读完。如有遗漏，回到 Step 1 重新读取。
-      3. **合并去重**：按 severity 合并，标注来源（Oracle / Metis / Momus）。同一问题多个 agent 都发现时取更高 severity。
-      4. **分类判定**：
-         - Momus ❌ REJECT → 修复 plan 后重新运行 PHASE 6（**最多 3 轮**，超限后汇总给用户）
-          - Oracle/Metis 有 🔴 → BLOCKED，修复 plan 后重新运行 PHASE 6（**最多 3 轮**，超限后汇总给用户）
-          **说明**: 此循环是内容质量改进机制（审查 agent 已成功完成分析 → subagent 修复 → 重新审查），
-           不是 agent 调用失败的降级处理。如审查 agent 调用本身失败 → 按 fast fail 规则立即停住报错。
-          - 仅 🟡/⚪ → 评估后决定是否修复
-       5. **产出合并清单**：将合并后的发现清单写入输出，供后续 PHASE 引用。
-
-      === PHASE 7：通过 Agent 生成 critic.md ===
-
-      Package the complete review findings from PHASE 3 and PHASE 6 into a
-      comprehensive prompt. Then delegate to a focused agent:
+      === PHASE 6：生成 critic.md ===
 
       task(category="write", load_skills=[], run_in_background=false,
-           prompt="Generate the critic.md file for this OpenSpec change.
+          prompt="生成 critic.md。
 
-           Review findings from PHASE 3 (tasks.md review by Oracle + Metis):
-           [将 PHASE 3 的 Oracle 和 Metis 审查发现的 🔴/🟡/⚪ 清单填入此处]
+          输入文件（请直接读取）：
+          - 模板：schemas/constitution/templates/critic.md
 
-           Review findings from PHASE 6 (plan review by Oracle + Metis + Momus):
-           [将 PHASE 6 的 Oracle、Metis、Momus 审查发现的 🔴/🟡/⚪ 清单填入此处]
+          审查发现：
+          - Oracle 发现：[填入 🔴/🟡/⚪]
+          - Momus 判定：[OKAY/REJECT]
 
-           The critic.md MUST:
-           - Follow the template at `schemas/constitution/templates/critic.md`
-           - Include a summary of ALL review findings from both phases
-           - List findings grouped by source (Oracle / Metis / Momus)
-           - For each finding, include severity (🔴/🟡/⚪) and description
+          判定标准：
+          - REJECT 或 🔴 → 🔴 BLOCKED
+          - 仅 🟡/⚪ → ⚠️ CONDITIONAL
+          - 无问题 → ✅ PASS")
 
-           Determine VERDICT:
-           - Momus ❌ REJECT or any 🔴 from others → **🔴 BLOCKED**
-           - Only 🟡/⚪ → **⚠️ CONDITIONAL**
-           - No issues → **✅ PASS**")
+      === PHASE 7：阻塞判定 ===
 
-      === PHASE 8：阻塞判定 ===
-
-      - If BLOCKED: "🛑 Critic BLOCKED. Fix 🔴 issues above, then re-create critic artifact. Re-run critic（最多 3 轮）。"
-      - If CONDITIONAL: List 🟡 items. User can acknowledge risks or fix.
-      - If PASS: "✅ All checks passed. Proceed to apply."
+      - 🔴 BLOCKED：修复后重新运行 critic
+      - ⚠️ CONDITIONAL：列出 🟡 项，用户确认后可继续
+      - ✅ PASS：继续 apply
     requires:
       - tasks
 apply:
@@ -559,141 +320,85 @@ apply:
     __LANG_PLACEHOLDER__
 
     **重要：本指令覆盖 skill/command 的执行逻辑。
-    忽略任何外部的"步骤 6"要求逐一手动执行任务。
     仅遵循本指令的流程：verdict 检查 → `/start-work` → Oracle 验证 → 同步。**
 
-    先读取 `openspec/changes/<change-name>/critic.md`，检查 VERDICT：
+    === Step 1：检查 VERDICT ===
 
-    1. 读取 `## Verdict` 部分，找到 `**VERDICT**: ...`
-    2. 如果 `🔴 BLOCKED`：停止。输出"🛑 Critic 阻塞了此变更。修复问题后重新运行 critic。"不要继续
-    3. 如果 `⚠️ CONDITIONAL`：列出 🟡 项。要求用户确认后再继续
-    4. 如果 `✅ PASS`：继续
+    读取 `openspec/changes/<change-name>/critic.md`，检查 `**VERDICT**: ...`
 
-    VERDICT 确认后，调用：
+    - 🔴 BLOCKED：停止，输出"🛑 Critic 阻塞。修复后重新运行 critic。"
+    - ⚠️ CONDITIONAL：列出 🟡 项，用户确认后再继续
+    - ✅ PASS：继续
+
+    === Step 2：检测运行模式 ===
+
+    ```bash
+    # 检查 docs/constitution/ 是否存在
+    ls docs/constitution/ 2>/dev/null && echo "docs/constitution/ exists" || echo "docs/constitution/ does not exist"
+
+    # 检查 AGENTS.md 是否有 Constitution 内容
+    count=$(find . -name "AGENTS.md" -type f -not -path '*/node_modules/*' -not -path '*/.git/*' 2>/dev/null | xargs grep -l 'constitution-start' 2>/dev/null | wc -l)
+    echo "Found $count AGENTS.md files with constitution content"
+    ```
+
+    - docs/constitution/ 存在 且 count > 0 → **APPEND 模式**
+    - 两者都不存在 → **INIT 模式**
+    - 只有其中之一存在 → **不完整模式**：警告用户
+
+    === Step 3：执行 /start-work ===
+
     ```
     /start-work .omo/plans/<change-name>.md
     ```
 
-    这会调用 OMO 内置的计划执行器（Atlas），读取计划文件并执行任务，包含委托、验证和会话连续性。
+    `/start-work` 完成后，验证输出文件：
+    1. `docs/constitution/<dimension>/constitution.yaml` 存在且格式正确
+    2. `docs/constitution/<dimension>/universal.md` 存在且有内容
+    3. AGENTS.md 的 `<!-- constitution-start -->` 和 `<!-- constitution-end -->` 之间有新维度条目
 
-    `/start-work` 完成后，捕获变更文件列表：
+    如果验证失败：警告用户并提供修复选项。
+
+    === Step 4：Oracle 验证（最多 3 轮） ===
+
     ```
     git diff --name-only HEAD
     ```
-    这告诉 Oracle 哪些文件被此变更创建或修改。
-    然后运行 Oracle 验证，最多 3 轮。
 
-     如果 Oracle task() 调用失败（超时、不可用、出错），立即停止工作流（**fast fail，不得降级**）：
-     - 向用户报告：「❌ 实现验证中断：Oracle 调用失败。[错误信息]」
-     - 不得自行分析 git diff，不得自行生成 verify.md，不得自行判定
-     - 等待用户介入
+    将 git diff 输出传给 Oracle：
 
+    task(subagent_type="oracle", run_in_background=false,
+         prompt="验证 constitution 变更的实现产出。
+
+         审查文件：
+         - scan: openspec/changes/<change-name>/scan.md
+         - design: openspec/changes/<change-name>/design.md
+         - tasks: openspec/changes/<change-name>/tasks.md
+
+         变更文件清单：
+         [在此填入 git diff 输出]
+
+         检查：
+         1. docs/constitution/<dimension>/constitution.yaml 格式是否正确？
+         2. docs/constitution/<dimension>/ 下的参考文件是否有实质内容？
+         3. AGENTS.md 是否正确追加了新维度条目？
+         4. 是否有遗漏或超出 scope 的内容？
+
+         输出：🔴/🟡/⚪ 问题清单。最终判定：✅ PASS / 🔴 BLOCKED / ⚠️ CONDITIONAL
+
+         将结果保存到 openspec/changes/<change-name>/verify-round-{N}.md。")
+
+    读取验证结果：
+    - ✅ PASS → 继续
+    - 🔴 BLOCKED → 修复后重新验证（最多 3 轮）
+    - ⚠️ CONDITIONAL → 汇总 🟡 项，用户决定是否继续
+
+    === Step 5：同步 ===
+
+    `/start-work` 完成后，将 `.omo/plans/<change-name>.md` 的 checkbox 状态复制到
+    `openspec/changes/<change-name>/tasks.md` 保持同步。
+
+    运行：
     ```
-    task(subagent_type="oracle", run_in_background=false, prompt="你正在验证实现产出与 OpenSpec change artifacts 的一致性。
-    请检查所有实现产出（AGENTS.md 的 ## Constitution 部分、docs/constitution/ 下的文件等）是否按 scan.md 和 design.md 的要求正确实现。
-    按严重程度输出发现（🔴阻塞 / 🟡警告 / ⚪建议）。
-
-    审查文件：
-    - scan:     openspec/changes/<change-name>/scan.md
-    - design:   openspec/changes/<change-name>/design.md
-    - tasks:    openspec/changes/<change-name>/tasks.md
-    - plan:     .omo/plans/<change-name>.md
-    - research: openspec/changes/<change-name>/research/（如果存在）
-
-    变更文件清单（来自 git diff --name-only HEAD）：
-    [在此填入上个命令的输出]
-
-    请逐一检查变更文件是否满足以下条件：
-
-     维度 1 — scan 合规性：
-     - scan.md 中的技术选型决策是否在实现中得到正确体现？
-     - 所有已决定的技术栈是否在 AGENTS.md 的 `## Constitution` 和 `docs/constitution/` 中正确记录？
-
-     维度 2 — Design 对齐（实现与 Design 一致性）：
-     - 实现方案是否符合 design.md 的设计决策？
-     - 目录结构和参考文件组织是否与设计一致？
-     - research/ 中的调研结论是否在实现中得到正确应用？
-     - 运行以下命令检查 AGENTS.md 的 Constitution 内容是否完整：
-       ```
-         find . -name "AGENTS.md" -type f 2>/dev/null | while read f; do
-           if grep -q 'constitution-start' "$f" 2>/dev/null; then
-             echo "--- $f ---"
-             awk '/constitution-start/,/constitution-end/' "$f" | grep -v 'constitution-start\|constitution-end'
-           fi
-         done
-         ```
-       验证输出是否包含所有已确认的技术栈
-
-     维度 3 — 范围完整性：
-     - 是否所有已确认的技术栈都有对应的 `docs/constitution/<tech>/` 目录？
-     - 是否有超出定义范围的漏加或多余内容？
-     - tasks.md 中的所有 task 是否有对应实现产出？
-
-    输出格式：逐维度分析 + 问题汇总 + 总体结论。
-
-    最终判定标准：
-    - 🔴 BLOCKED：存在严重的实现偏离，必须修复才能继续
-    - ⚠️ CONDITIONAL：实现基本正确但有 🟡/⚪ 瑕疵，可接受风险继续推进
-    注意：请谨慎区分 BLOCKED 和 CONDITIONAL。只有确实阻碍功能正确性的问题才标 🔴。
-
-    将完整结果保存到 openspec/changes/<change-name>/verify-round-{N}.md。")
+    diff <(grep '^- \[' openspec/changes/<change-name>/tasks.md) <(sed -n '/^## Tasks/,/^## /p' .omo/plans/<change-name>.md | grep '^- \[')
     ```
-
-    读取 `openspec/changes/<change-name>/verify-round-{N}.md` 中的最终判定：
-    1. 如果 ✅ PASS → 通过，继续
-     2. 如果 🔴 BLOCKED：
-          读取 verify-round-{N}.md 中的 🔴 问题列表。
-          对每个 🔴 问题，调用执行型 subagent 修复：
-          task(category="unspecified-high", load_skills=[], run_in_background=false,
-               prompt="根据以下变更验证结果修复实现产出。只修复标注为 🔴 的问题，不要修改 🟡/⚪ 内容。
-
-               Oracle 验证结果中的 🔴 问题：
-               [将 verify-round-{N}.md 中的 🔴 问题列表及修复建议填入此处]")
-          **修复策略**：
-          - 每轮最多修复 3 个 🔴 问题，防止一次改动过大引入新问题
-          - 修复前记录当前状态（git stash），以便失败后回滚
-          - 修复后不要重新运行 /start-work，只修改产出文件
-          修复完成后重新运行 Oracle 验证（**最多 3 轮**，超限后汇总给用户）
-           **说明**: 此循环是内容质量改进机制（Oracle 已成功完成验证 → subagent 修复 → 重新验证），
-           不是 agent 调用失败的降级处理。如 Oracle 调用本身失败 → 按 fast fail 规则立即停住报错。
-    3. 如果 ⚠️ CONDITIONAL → 汇总 🟡/⚪ 问题展示给用户，让用户决定是接受继续还是修复后再重新运行 Oracle 验证
-
-    **初始化/更新检测**：
-    - 检查 `docs/constitution/` 目录是否存在（使用 `ls docs/constitution/ 2>/dev/null && echo exists`）
-    - 检查 `AGENTS.md` 是否存在 Constitution 内容（使用以下命令检测 constitution-start 标记）：
-      ```
-      count=$(find . -name "AGENTS.md" -type f -not -path '*/node_modules/*' -not -path '*/.git/*' 2>/dev/null | xargs grep -l 'constitution-start' 2>/dev/null | wc -l)
-      echo "Found $count AGENTS.md files with constitution content"
-      ```
-    - 查看 count 值：如果 > 0，docs/constitution/ 也存在 → **更新模式**
-
-      查看 count 值：如果 = 0，docs/constitution/ 也不存在 → **初始化模式**
-      
-      count > 0 但 docs/constitution/ 不存在，或反之 → **不完整模式**：警告用户，提供选项
-    - 两者都存在 → **更新模式**：diff 现有内容，要求用户确认
-    - 两者都缺失 → **初始化模式**：从头创建所有文件
-    - 部分存在 → **不完整模式**：警告用户，提供选项（覆盖/补全/中止）
-
-     **输出质量验证**：
-     `/start-work` 完成后，验证创建的输出文件：
-     1. **Constitution 格式**：运行以下命令验证 AGENTS.md 标记格式正确：
-        ```
-        find . -name "AGENTS.md" -type f 2>/dev/null | while read f; do
-          if grep -q 'constitution-start' "$f" 2>/dev/null; then
-            echo "--- $f ---"
-            awk '/constitution-start/,/constitution-end/' "$f" | grep -v 'constitution-start\|constitution-end'
-          fi
-        done
-        ```
-     2. **文档目录**：检查每个技术栈是否有对应的 `docs/constitution/<tech>/` 目录且包含有意义的参考文件
-     3. **AGENTS.md 完整性**：检查 `AGENTS.md` 是否包含 `<!-- constitution-start -->` 和 `<!-- constitution-end -->` 标记
-
-     如果任何验证失败：警告用户并提供修复选项。
-
-    **同步协议**：
-    - plan 文件的 `## Tasks` 部分跟踪 `/start-work` 的 checkbox 状态
-    - `openspec/changes/<change-name>/tasks.md` 是 OpenSpec 的真实来源
-    - `/start-work` 完成或暂停后，将 `.omo/plans/<change-name>.md` 的 checkbox 状态复制到
-      `openspec/changes/<change-name>/tasks.md` 保持同步
-    - 运行以下命令验证暂停/完成时的状态一致性：
-      diff <(grep '^- \[' openspec/changes/<change-name>/tasks.md) <(sed -n '/^## Tasks/,/^## /p' .omo/plans/<change-name>.md | grep '^- \[')
+    验证状态一致。

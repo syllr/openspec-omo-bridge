@@ -1,100 +1,90 @@
-## Context
+## Constitution Dimension Scan
 
-<!-- 项目上下文摘要 -->
+<!-- 模板版本：2025-05-22 -->
 
-## Tech Stack
+## Step 1: 选择维度
 
-### Languages & Frameworks
+使用 question 工具询问用户要添加哪个维度的宪法：
 
-<!-- 用户确认的编程语言、框架及版本 -->
+```
+可选维度列表：
+1. code-conventions   — 代码风格/命名/注释/import/函数规范
+2. architecture        — 分层/模块/依赖方向
+3. domain             — 核心实体/业务模型/值对象/聚合根
+4. integration        — 外部API/数据库/消息队列等外部依赖
+5. api                — 我对外提供的接口规范
+6. security           — 认证/授权/加密/输入验证
+7. testing            — 测试策略/覆盖率/Mock规范
+8. observability       — 日志/监控/告警/错误处理
+9. release            — Git/Commit规范/CI-CD/发布流程
+10. documentation     — README/ADR/变更日志
 
-### Databases & Storage
+请告诉我要添加哪个维度的宪法（可以说序号或名称）。
+```
 
-<!-- 数据库、缓存、对象存储等 -->
+## Step 2: 检查已有 Constitution
 
-### Infrastructure
+在询问用户后，运行以下命令检查项目中是否已存在该维度的宪法：
 
-<!-- CI/CD、容器化、部署方式等 -->
+```bash
+# 检查 docs/constitution/ 是否存在
+ls docs/constitution/ 2>/dev/null || echo "docs/constitution/ does not exist"
 
-## Code Conventions
+# 如果存在，检查该维度的 constitution.yaml
+cat docs/constitution/<dimension>/constitution.yaml 2>/dev/null || echo "No constitution.yaml found"
+```
 
-<!-- 用户确认的代码规范，如：命名风格、函数最大行数、注释要求、import 组织规则等 -->
-<!-- 如果用户不要求特别约束，留空即可 -->
+## Step 3: 确认用户选择
 
-### Naming Conventions
+### 已选维度
 
-<!-- variables, functions, classes, files, constants -->
+<!-- 用户选择的维度 -->
 
-### Function/Class Rules
+### 该维度已有内容（如果存在）
 
-<!-- 函数最大行数、参数上限、嵌套层级等 -->
+<!-- 从 docs/constitution/<dimension>/constitution.yaml 读取已有条目 -->
 
-### Documentation
+### 用户特定需求
 
-<!-- 注释要求、文档需求 -->
+<!-- 通过对话了解用户的具体需求，例如：
+- 如果是 code-conventions：需要支持哪些语言？有什么特殊要求？
+- 如果是 integration：需要集成哪些外部系统？
+- 如果是 api：主要对外暴露哪些接口？
+-->
 
-### Imports & Modules
+## Step 4: 记录扫描结果
 
-<!-- import 组织、路径别名、barrel exports -->
+### 确认添加的维度
 
-## Architecture Constraints
+<!-- 维度名称 -->
 
-<!-- 用户确认的架构约束，如：分层规范、循环依赖禁止、模块边界等 -->
+### 适用技术栈（如有）
 
-### Layering Rules
+<!-- 例如：Python / Go / TypeScript / 通用（无特定技术栈） -->
 
-<!-- Controller → Service → Repository 等 -->
+### 用户需求摘要
 
-### Dependency Rules
+<!-- 用户描述的具体需求 -->
 
-<!-- 禁止循环依赖、依赖方向约束 -->
+### 已有条目冲突检查
 
-### Module Structure
+| 检查项                                | 结果                     |
+| ------------------------------------- | ------------------------ |
+| 该维度是否已存在于 docs/constitution/ | <!-- 是/否 -->           |
+| 是否有重复的技术栈约束                | <!-- 是/否，具体说明 --> |
 
-<!-- 目录组织、模块边界 -->
+## Step 5: 决策汇总
 
-## Workflow Conventions
+### 已确认
 
-<!-- 用户确认的工作流规范，如：Git 分支策略、Commit 格式、Code Review 流程、测试要求等 -->
+<!-- 用户确认的内容 -->
 
-### Git Branching
+### 需要 design 阶段调研
 
-<!-- 分支命名规范、合并策略 -->
-
-### Commit Convention
-
-<!-- Conventional Commits 等格式要求 -->
-
-### Code Review
-
-<!-- Review 流程、前置条件 -->
-
-### Testing
-
-<!-- 测试类型、覆盖率要求 -->
-
-## Security & Tooling
-
-<!-- 安全要求、Linter/Formatter 配置 -->
-
-## User Decisions Summary
-
-<!-- 与用户对话后确认的所有决策汇总 -->
-
-### Confirmed
-
-<!-- 用户确认的规则 -->
-
-### Rejected
-
-<!-- 讨论后否决的规则 -->
-
-### Uncertainties
-
-<!-- 需要 design 阶段进一步调研的点（标记 [NEEDS INVESTIGATION]） -->
+<!-- 标记 [NEEDS RESEARCH] 的点 -->
 
 ## Decision Log
 
-| Category      | Decision      | Rationale     | Alternatives  |
-| ------------- | ------------- | ------------- | ------------- |
-| <!-- 维度 --> | <!-- 决策 --> | <!-- 理由 --> | <!-- 备选 --> |
+| 维度          | 决策              | 理由          | 备选              |
+| ------------- | ----------------- | ------------- | ----------------- |
+| <!-- 维度 --> | <!-- 用户选择 --> | <!-- 原因 --> | <!-- 备选方案 --> |
