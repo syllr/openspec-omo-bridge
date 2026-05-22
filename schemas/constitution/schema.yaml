@@ -11,9 +11,18 @@ artifacts:
 
       **范围限制：不要修改任何源代码。仅生成 scan.md。**
 
-       首先检测运行模式：检查 `docs/constitution/` 目录和 `AGENTS.md` 的 `## Constitution` 部分是否存在。
-       - 如果都存在 → **更新模式**：基于现有章程进行更新，diff 现有内容后让用户确认
-       - 如果不存在 → **初始化模式**：从头创建章程
+       首先检测运行模式：
+       - 检查 `docs/constitution/` 目录是否存在（使用 `ls docs/constitution/ 2>/dev/null && echo exists`）
+       - 检查 `AGENTS.md` 是否存在 Constitution 内容（使用以下命令检测 constitution-start 标记）：
+         ```
+         find . -name "AGENTS.md" -type f 2>/dev/null | while read f; do
+           if grep -q 'constitution-start' "$f" 2>/dev/null; then
+             echo "FOUND in $f"
+           fi
+         done
+         ```
+       - 如果两者都存在 → **更新模式**：基于现有章程进行更新，diff 现有内容后让用户确认
+       - 如果都不存在 → **初始化模式**：从头创建章程
 
        然后通过结构化的 3 阶段流程分析项目的技术栈：
 
@@ -21,7 +30,7 @@ artifacts:
 
        根据运行模式执行不同操作：
 
-       **初始化模式**（`docs/constitution/` 或 `AGENTS.md ## Constitution` 不存在）：
+       **初始化模式**
        - 读取配置文件：package.json、go.mod、pyproject.toml、Cargo.toml 等
        - 使用 Glob 和 Grep 分析项目结构、构建工具、测试框架
        - 向用户展示当前项目技术栈
@@ -56,11 +65,11 @@ artifacts:
        **空项目路径**：从 Phase 2 开始（询问用户需求、推荐技术栈），
        然后直接进入汇总，跳过 Phase 1。
 
-       === PHASE 3：通过 Deep Agent 生成 ===
+       === PHASE 3：通过 Agent 生成 ===
 
-       完成 Phase 1-2 后，将所有发现打包成 prompt，委托给 deep agent 生成 scan.md：
+       完成 Phase 1-2 后，将所有发现打包成 prompt，委托给 agent 生成 scan.md：
 
-       task(category="deep", load_skills=[], run_in_background=false,
+       task(category="write", load_skills=[], run_in_background=false,
             prompt="为项目章程生成 scan.md 文件。
 
             输入文件（请直接读取以下文件获取完整内容）：
@@ -139,23 +148,23 @@ artifacts:
 
       1. **识别调研主题**：从 scan.md 中提取每个不确定点，命名成 kebab-case 的调研主题
 
-      2. **调研与验证**：对每个主题，判断 Step 1 的 librarian 调研是否已覆盖。
-         如果已覆盖 → 直接运行 deep 验证。
-         如果未覆盖 → 先发起 librarian 调研，再 deep 验证。
+       2. **调研与验证**：对每个主题，判断 Step 1 的 librarian 调研是否已覆盖。
+          如果已覆盖 → 直接运行验证。
+          如果未覆盖 → 先发起 librarian 调研，再运行验证。
 
          所有调研产物保存到 `$project/spectest/<topic>/`。
          用户确认后移到 `openspec/changes/<change-name>/research/<topic>/`。
 
          ```
          # 如果主题已在 Step 1 中调研过：
-         task(category="deep", load_skills=[], run_in_background=false, prompt="基于已调研的结果，写验证脚本...")
+         task(category="write", load_skills=[], run_in_background=false, prompt="基于已调研的结果，写验证脚本...")
 
          # 如果主题需要新调研：
          task(subagent_type="librarian", run_in_background=false, prompt="调研此技术点...")
-         task(category="deep", load_skills=[], run_in_background=false, prompt="基于调研结果，写验证脚本...")
+         task(category="write", load_skills=[], run_in_background=false, prompt="基于调研结果，写验证脚本...")
          ```
 
-         在同一条消息中发起所有 deep agent（第二波）。如果有任何主题需要新的 librarian，先发起这些（第一波），再发起所有 deep agent。
+         在同一条消息中发起所有 agent（第二波）。如果有任何主题需要新的 librarian，先发起这些（第一波），再发起所有 agent。
 
       3. **用户确认与最终确定**：向用户展示调研结果摘要。用户确认后，将 `spectest/<topic>/` → `openspec/changes/<change-name>/research/<topic>/`。创建 `research/index.md` 汇总所有主题、结论和关键发现。
 
@@ -175,9 +184,9 @@ artifacts:
 
       **Step 5：生成设计文档**
 
-      将所有调研结果和设计决策打包，委托 category="deep" 生成 constitution-design.md：
+      将所有调研结果和设计决策打包，委托 category="write" 生成 constitution-design.md：
 
-      task(category="deep", load_skills=[], run_in_background=false,
+      task(category="write", load_skills=[], run_in_background=false,
            prompt="根据以下输入生成 constitution-design.md。
 
            输入文件（请直接读取以下文件获取完整内容）：
@@ -278,7 +287,7 @@ artifacts:
 
        1. 如果有「🔧 可自动修复」项：
           对每个 🔧 项，读取 Oracle 指出的具体问题和修改建议，调用执行型 subagent 修复：
-          task(category="deep", load_skills=[], run_in_background=false,
+          task(category="write", load_skills=[], run_in_background=false,
                prompt="根据以下 Oracle 差距分析结果修复对应的源文件或 artifact。
                只修复标记为 🔴 的问题，不要修改其他内容。
 
@@ -292,11 +301,11 @@ artifacts:
       4. **达到 3 轮上限时**：即使仍有「🔧 可自动修复」项，也停止循环，将所有未解决项汇总展示给用户
 
 
-       === PHASE 2：通过 Deep Agent 生成 ===
+       === PHASE 2：通过 Agent 生成 ===
 
-       将所有 artifacts 的文件路径传给 deep agent，由其直接读取后生成 tasks.md：
+       将所有 artifacts 的文件路径传给 agent，由其直接读取后生成 tasks.md：
 
-       task(category="deep", load_skills=[], run_in_background=false,
+       task(category="write", load_skills=[], run_in_background=false,
             prompt="为以下变更生成任务清单（tasks.md）。
 
             输入文件（请直接读取以下文件获取完整内容）：
@@ -423,9 +432,9 @@ artifacts:
 
       生成 `.omo/plans/<change-name>.md` — OMO 兼容执行计划。
 
-      Delegate plan generation via category="deep":
+      Delegate plan generation via category="write":
 
-      task(category="deep", load_skills=[], run_in_background=false,
+      task(category="write", load_skills=[], run_in_background=false,
            prompt="为以下变更生成 OMO 兼容的执行计划，保存到 .omo/plans/<change-name>.md。
 
            输入文件（请直接读取以下文件获取完整内容）：
@@ -532,12 +541,12 @@ artifacts:
           - 仅 🟡/⚪ → 评估后决定是否修复
        5. **产出合并清单**：将合并后的发现清单写入输出，供后续 PHASE 引用。
 
-      === PHASE 7：通过 Deep Agent 生成 critic.md ===
+      === PHASE 7：通过 Agent 生成 critic.md ===
 
       Package the complete review findings from PHASE 3 and PHASE 6 into a
       comprehensive prompt. Then delegate to a focused agent:
 
-      task(category="deep", load_skills=[], run_in_background=false,
+      task(category="write", load_skills=[], run_in_background=false,
            prompt="Generate the critic.md file for this OpenSpec change.
 
            Review findings from PHASE 3 (tasks.md review by Oracle + Metis):
@@ -672,7 +681,15 @@ apply:
     3. 如果 ⚠️ CONDITIONAL → 汇总 🟡/⚪ 问题展示给用户，让用户决定是接受继续还是修复后再重新运行 Oracle 验证
 
     **初始化/更新检测**：
-    - 执行前，检查 `docs/constitution/` 目录和 `AGENTS.md` 的 `## Constitution` 部分是否存在
+    - 检查 `docs/constitution/` 目录是否存在（使用 `ls docs/constitution/ 2>/dev/null && echo exists`）
+    - 检查 `AGENTS.md` 是否存在 Constitution 内容（使用以下命令检测 constitution-start 标记）：
+      ```
+      find . -name "AGENTS.md" -type f 2>/dev/null | while read f; do
+        if grep -q 'constitution-start' "$f" 2>/dev/null; then
+          echo "FOUND in $f"
+        fi
+      done
+      ```
     - 两者都存在 → **更新模式**：diff 现有内容，要求用户确认
     - 两者都缺失 → **初始化模式**：从头创建所有文件
     - 部分存在 → **不完整模式**：警告用户，提供选项（覆盖/补全/中止）
