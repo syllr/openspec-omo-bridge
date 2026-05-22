@@ -15,61 +15,45 @@ artifacts:
        - 检查 `docs/constitution/` 目录是否存在（使用 `ls docs/constitution/ 2>/dev/null && echo exists`）
        - 检查 `AGENTS.md` 是否存在 Constitution 内容（使用以下命令检测 constitution-start 标记）：
          ```
-         find . -name "AGENTS.md" -type f 2>/dev/null | while read f; do
-           if grep -q 'constitution-start' "$f" 2>/dev/null; then
-             echo "FOUND in $f"
-           fi
-         done
+         count=$(find . -name "AGENTS.md" -type f -not -path '*/node_modules/*' -not -path '*/.git/*' 2>/dev/null | xargs grep -l 'constitution-start' 2>/dev/null | wc -l)
+         echo "Found $count AGENTS.md files with constitution content"
          ```
+       - 查看 count 值：如果 > 0，说明有 AGENTS.md 包含 Constitution 内容
        - 如果两者都存在 → **更新模式**：基于现有章程进行更新，diff 现有内容后让用户确认
        - 如果都不存在 → **初始化模式**：从头创建章程
 
-       然后通过结构化的 3 阶段流程分析项目的技术栈：
+       然后通过用户对话确定项目技术栈：
 
-       **Phase 1：项目检测与配置解析**
+       === Phase 1：用户对话（/openspec-explore） ===
 
-       根据运行模式执行不同操作：
+       根据运行模式向用户提问：
 
-       **初始化模式**
-       - 读取配置文件：package.json、go.mod、pyproject.toml、Cargo.toml 等
-       - 使用 Glob 和 Grep 分析项目结构、构建工具、测试框架
-       - 向用户展示当前项目技术栈
+       **初始化模式**：
+       - 问用户：「你们项目用什么技术栈？」
+       - 用户主动说明或用 /openspec-explore 讨论
+       - 识别用户提到的每个技术栈，以及是否需要进一步调研
 
-       **更新模式**（`docs/constitution/` 和 `AGENTS.md ## Constitution` 都已存在）：
-       - 读取当前项目技术栈（同初始化模式）
-        - 运行以下命令提取现有 Constitution 内容（从项目根目录查找所有 AGENTS.md）：
-          ```
-          find . -name "AGENTS.md" -type f 2>/dev/null | while read f; do
-            if grep -q 'constitution-start' "$f" 2>/dev/null; then
-              echo "--- $f ---"
-              awk '/constitution-start/,/constitution-end/' "$f" | grep -v 'constitution-start\|constitution-end'
-            fi
-          done
-          ```
-        - 读取 `docs/constitution/` 获取已有参考文档
-       - 对比新旧技术栈差异，向用户展示需要更新或新增的技术点
+       **更新模式**：
+       - 运行以下命令提取现有 Constitution 内容（从项目根目录查找所有 AGENTS.md）：
+         ```
+         find . -name "AGENTS.md" -type f 2>/dev/null | while read f; do
+           if grep -q 'constitution-start' "$f" 2>/dev/null; then
+             echo "--- $f ---"
+             awk '/constitution-start/,/constitution-end/' "$f" | grep -v 'constitution-start\|constitution-end'
+           fi
+         done
+         ```
+       - 读取 `docs/constitution/` 获取已有参考文档
+       - 向用户展示现有章程，问：「要新增、修改或删除什么技术？」
+       - 用户确认后记录变更
 
-       **Phase 2：用户对话（/openspec-explore）**
-
-       - 向用户展示当前技术栈分析结果
-       - 讨论是否引入新技术或升级依赖
-       - 识别可能需要验证的技术决策
-
-       **Phase 3：汇总**
-
-       - 记录决策和替代方案
-       - 输出结构化的 scan.md 决策日志
-
-       **已有项目路径**：从配置分析开始的 3 阶段流程。
-
-       **空项目路径**：从 Phase 2 开始（询问用户需求、推荐技术栈），
-       然后直接进入汇总，跳过 Phase 1。
+       两种模式都记录用户的最终决策和不确定信号。
 
        === PHASE 3：通过 Agent 生成 ===
 
        完成 Phase 1-2 后，将所有发现打包成 prompt，委托给 agent 生成 scan.md：
 
-       task(category="write", load_skills=[], run_in_background=false,
+        task(category="write", load_skills=[], run_in_background=false,
             prompt="为项目章程生成 scan.md 文件。
 
             输入文件（请直接读取以下文件获取完整内容）：
@@ -78,9 +62,7 @@ artifacts:
             - AGENTS.md：项目中找到的所有 AGENTS.md（多个层级，如果存在）
 
             此外直接传入以下上下文：
-             - Phase 1 项目检测结果：[将项目配置文件解析结果以文本形式填入此处]
-             - Phase 2 用户确认结果：[将用户技术栈讨论的结论以文本形式填入此处]
-             - Project type：[现有项目 / 空项目]
+             - 用户确认的技术栈：[将用户确认的技术栈列表以文本形式填入此处]
              - 运行模式：[初始化模式 / 更新模式]
              - 现有 Constitution 内容（更新模式下运行以下命令提取）：
                ```
@@ -684,12 +666,14 @@ apply:
     - 检查 `docs/constitution/` 目录是否存在（使用 `ls docs/constitution/ 2>/dev/null && echo exists`）
     - 检查 `AGENTS.md` 是否存在 Constitution 内容（使用以下命令检测 constitution-start 标记）：
       ```
-      find . -name "AGENTS.md" -type f 2>/dev/null | while read f; do
-        if grep -q 'constitution-start' "$f" 2>/dev/null; then
-          echo "FOUND in $f"
-        fi
-      done
+      count=$(find . -name "AGENTS.md" -type f -not -path '*/node_modules/*' -not -path '*/.git/*' 2>/dev/null | xargs grep -l 'constitution-start' 2>/dev/null | wc -l)
+      echo "Found $count AGENTS.md files with constitution content"
       ```
+    - 查看 count 值：如果 > 0，docs/constitution/ 也存在 → **更新模式**
+
+      查看 count 值：如果 = 0，docs/constitution/ 也不存在 → **初始化模式**
+      
+      count > 0 但 docs/constitution/ 不存在，或反之 → **不完整模式**：警告用户，提供选项
     - 两者都存在 → **更新模式**：diff 现有内容，要求用户确认
     - 两者都缺失 → **初始化模式**：从头创建所有文件
     - 部分存在 → **不完整模式**：警告用户，提供选项（覆盖/补全/中止）
