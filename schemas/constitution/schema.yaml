@@ -1,6 +1,6 @@
 name: constitution
 version: 1
-description: Independent schema for project constitution initialization and updates - scan → design → tasks → critic → apply
+description: Simplified 3-stage schema for project constitution - scan → design → apply
 artifacts:
   - id: scan
     generates: scan.md
@@ -36,17 +36,40 @@ artifacts:
       根据用户选择的维度，运行以下命令检查是否已存在该维度的宪法：
 
       ```bash
-      # 检查 docs/constitution/ 是否存在
-      ls docs/constitution/ 2>/dev/null || echo "docs/constitution/ does not exist"
+      # 检查 docs/constitution/<dimension>/ 目录是否存在
+      ls docs/constitution/<dimension>/ 2>/dev/null || echo "docs/constitution/<dimension>/ does not exist"
+      ```
 
-      # 如果存在，检查该维度的 constitution.yaml
+      如果该维度目录已存在，读取其中的 constitution.yaml：
+      ```bash
       cat docs/constitution/<dimension>/constitution.yaml 2>/dev/null || echo "No constitution.yaml found"
       ```
 
+      **constitution.yaml 是每个维度的元数据文件**，记录了该维度下已有哪些条目（按 tech_stack 分组）。它的结构如下：
+      ```yaml
+      dimension: <维度名>
+      description: <维度说明>
+      items:
+        - tech_stack: []             # 空 = 所有技术栈通用的规则
+          status: active
+          summary: <规则摘要>
+          file: universal.md         # 具体内容写在这个文件里
+
+        - tech_stack: [python]       # 特定技术栈的规则
+          status: active
+          summary: <规则摘要>
+          file: python.md
+      ```
+
+      通过读取 constitution.yaml，你可以判断：
+      - 用户要添加的 tech_stack 是否已有条目 → **重复**，告知用户
+      - 是同一个维度但不同 tech_stack → **可以追加**
+      - 同一维度且同一 tech_stack → **询问用户是覆盖还是跳过**
+
       如果该维度已存在：
-      - 告知用户该维度已存在
+      - 告知用户该维度已存在，展示已有条目
       - 询问用户是要更新（UPDATE）还是跳过（SKIP）
-      - 如果是 UPDATE，读取现有 constitution.yaml 了解已有条目
+      - 如果是 UPDATE，基于 constitution.yaml 确定是追加新 tech_stack 还是覆盖已有条目
 
       === Step 3：确认用户需求 ===
 
@@ -122,7 +145,35 @@ artifacts:
 
       向用户展示调研结果，确认或修改。
 
-      === Step 4：生成 design.md ===
+      === Step 4：确定 constitution.yaml 结构 ===
+
+      在生成 design.md 之前，先确定本次要生成的 constitution.yaml 结构：
+
+      **constitution.yaml 是每个维度的元数据文件**，生成在 `docs/constitution/<dimension>/` 下。
+      tasks 阶段会根据 design 结果创建这个文件，因此 design 时需要明确它的内容。
+
+      结构示例：
+      ```yaml
+      dimension: <维度名>            # 必填
+      description: <维度说明>         # 必填
+      items:                         # 条目列表
+        - tech_stack: []             # 空 = 所有技术栈通用的规则
+          status: active             # active / proposed / under_review
+          summary: <规则摘要>         # 简短描述，显示在 AGENTS.md 中
+          file: universal.md         # 具体规范写入这个文件
+
+        - tech_stack: [python]       # Python 特有规则
+          status: active
+          summary: <规则摘要>
+          file: python.md
+      ```
+
+      根据调研结果和用户确认，确定：
+      - 有哪些通用规则（tech_stack: []）→ 写入 universal.md
+      - 有哪些技术栈特有规则 → 按 tech_stack 分文件
+      - 如果是 UPDATE 模式，需要参照现有 constitution.yaml 决定是追加还是覆盖
+
+      === Step 5：生成 design.md ===
 
       task(category="write", load_skills=[], run_in_background=false,
           prompt="生成 design.md 文件。
@@ -135,200 +186,31 @@ artifacts:
           直接传入的上下文：
           - 聚焦维度：[填入本次聚焦的维度]
           - 用户确认内容：[填入用户批准的规则]
+          - constitution.yaml 结构设计（已确认）：
+            [填入 Step 4 确认的 constitution.yaml 结构]
 
           按模板结构输出。只聚焦用户选择的维度，其他 9 个维度保持占位符（标注'非本次聚焦'）。")
     requires:
       - scan
-  - id: tasks
-    generates: tasks.md
-    description: Generate tasks for creating the selected constitution dimension
-    template: tasks.md
-    instruction: |
-      __LANG_PLACEHOLDER__
-
-      **范围限制：不要修改任何源代码。仅生成 tasks.md。**
-
-      === Step 1：读取上下文 ===
-
-      读取 scan.md 和 design.md，确认：
-      - 聚焦哪个维度
-      - 该维度是否已存在（scan 中记录）
-      - 设计决策
-
-      === Step 2：生成任务清单 ===
-
-      task(category="write", load_skills=[], run_in_background=false,
-          prompt="为以下变更生成 tasks.md。
-
-          输入文件（请直接读取）：
-          - Scan：openspec/changes/<change-name>/scan.md
-          - Design：openspec/changes/<change-name>/design.md
-
-          任务清单必须包含以下 tasks：
-
-          **Task 1：创建 docs/constitution/<dimension>/ 目录结构**
-
-          创建以下文件：
-          - `docs/constitution/<dimension>/constitution.yaml` — 元数据表
-          - `docs/constitution/<dimension>/universal.md` — 通用规范（所有技术栈共用）
-          - `docs/constitution/<dimension>/<tech1>.md` — 技术栈特有规范（如适用）
-
-          constitution.yaml 格式：
-          ```yaml
-          dimension: <dimension>
-          description: <维度说明>
-          items:
-            - tech_stack: []
-              status: active
-              summary: <规范摘要>
-              file: universal.md
-
-            - tech_stack: [<tech>]
-              status: active
-              summary: <规范摘要>
-              file: <tech>.md
-          ```
-
-          **Task 2：更新 AGENTS.md**
-
-          读取 AGENTS.md，找到 `<!-- constitution-start -->` 和 `<!-- constitution-end -->` 之间的现有内容，追加新维度。
-
-          使用以下标准格式（参考 `schemas/constitution/templates/section.md`）：
-          ```markdown
-          - **<dimension>** → `docs/constitution/<dimension>/`
-            - 通用: <规范摘要>
-            - <tech>: <特有规范摘要>（如适用）
-          ```
-
-          **注意**：
-          - 如果该维度已存在（scan 中标记为 UPDATE 模式），先读取现有的 constitution.yaml，然后在对应 tech_stack 下追加或更新条目，不要覆盖整个文件
-          - 如果是全新维度（INIT 模式），直接追加到 AGENTS.md
-
-          格式要求：
-          - 使用 `## Tasks` 作为部分标题
-          - 使用 `### Wave N: Group Name` 子分组
-          - 每个 task 以 `- [ ] N.M Description` 开头")
-    requires:
-      - design
-  - id: critic
-    generates: critic.md
-    description: >
-      Plan generation and multi-agent review for constitution items.
-      Generates .omo/plans/<change-name>.md and critic.md.
-    template: critic.md
-    instruction: |
-      __LANG_PLACEHOLDER__
-
-      **范围限制：不要修改任何源代码。仅生成 critic.md 和 .omo/plans/<change-name>.md。**
-
-      === PHASE 1：读取上下文 ===
-
-      读取以下文件：
-      - `openspec/changes/<change-name>/tasks.md`
-      - `openspec/changes/<change-name>/scan.md`
-      - `openspec/changes/<change-name>/design.md`
-
-      === PHASE 2：基础结构检查 ===
-
-      检查：
-      1. scan.md、design.md、tasks.md 都存在
-      2. tasks.md 至少 1 个 checkbox
-
-      如果任何检查失败：停止，列出缺失项，等待用户。
-
-      === PHASE 3：生成 Plan ===
-
-      task(category="write", load_skills=[], run_in_background=false,
-          prompt="生成 .omo/plans/<change-name>.md。
-
-          输入文件（请直接读取）：
-          - Tasks：openspec/changes/<change-name>/tasks.md
-          - Scan：openspec/changes/<change-name>/scan.md
-          - Design：openspec/changes/<change-name>/design.md
-
-          计划必须包含：
-          1. ## TL;DR
-          2. ## Context（来自 scan.md）
-          3. ## Work Objectives
-          4. ## Execution Strategy
-          5. ## Tasks（从 tasks.md 展开）
-          6. ## Final Verification Wave
-          7. ## Success Criteria
-
-          跳过 Verification Strategy 和 Commit Strategy。")
-
-      === PHASE 4：Plan 结构验证 ===
-
-      验证：
-      1. 所有 7 个 section 都存在
-      2. Tasks 数量与 tasks.md 一致
-
-      === PHASE 5：Oracle + Momus 并行审查 ===
-
-      task(subagent_type="oracle", run_in_background=false,
-           prompt="审查 .omo/plans/<change-name>.md。
-
-           检查：
-           - 内容完整性
-           - 可执行性
-           - 边界场景覆盖
-
-           输出：🔴/🟡/⚪ 问题清单。")
-
-      task(subagent_type="momus", run_in_background=false,
-           prompt="对 plan 执行门禁判定。
-
-           审查文件：
-           - plan: .omo/plans/<change-name>.md
-           - tasks: openspec/changes/<change-name>/tasks.md
-
-           判定：
-           - ✅ OKAY — 可执行
-           - ❌ REJECT — 需修复")
-
-      收集结果，如果有 🔴 或 REJECT，修复后重新审查（最多 3 轮）。
-
-      === PHASE 6：生成 critic.md ===
-
-      task(category="write", load_skills=[], run_in_background=false,
-          prompt="生成 critic.md。
-
-          输入文件（请直接读取）：
-          - 模板：schemas/constitution/templates/critic.md
-
-          审查发现：
-          - Oracle 发现：[填入 🔴/🟡/⚪]
-          - Momus 判定：[OKAY/REJECT]
-
-          判定标准：
-          - REJECT 或 🔴 → 🔴 BLOCKED
-          - 仅 🟡/⚪ → ⚠️ CONDITIONAL
-          - 无问题 → ✅ PASS")
-
-      === PHASE 7：阻塞判定 ===
-
-      - 🔴 BLOCKED：修复后重新运行 critic
-      - ⚠️ CONDITIONAL：列出 🟡 项，用户确认后可继续
-      - ✅ PASS：继续 apply
-    requires:
-      - tasks
+  # tasks 和 critic 阶段已删除：对于 constitution 场景，
+  # 产出只是几个文档文件，不需要复杂的执行计划和多 agent 评审。
+  # apply 直接基于 design 输出创建文件。
 apply:
   requires:
-    - critic
-  tracks: tasks.md
+    - design
+  tracks: design.md
   instruction: |
     __LANG_PLACEHOLDER__
 
-    **重要：本指令覆盖 skill/command 的执行逻辑。
-    仅遵循本指令的流程：verdict 检查 → `/start-work` → Oracle 验证 → 同步。**
+    **重要：tasks 和 critic 阶段已删除。apply 直接基于 design 输出创建文件。**
 
-    === Step 1：检查 VERDICT ===
+    === Step 1：读取上下文 ===
 
-    读取 `openspec/changes/<change-name>/critic.md`，检查 `**VERDICT**: ...`
-
-    - 🔴 BLOCKED：停止，输出"🛑 Critic 阻塞。修复后重新运行 critic。"
-    - ⚠️ CONDITIONAL：列出 🟡 项，用户确认后再继续
-    - ✅ PASS：继续
+    读取 `openspec/changes/<change-name>/scan.md` 和 `openspec/changes/<change-name>/design.md`，确认：
+    - 聚焦哪个维度
+    - 该维度是否已存在
+    - constitution.yaml 结构（items 列表、tech_stack 分组）
+    - 每个文件的规范内容
 
     === Step 2：检测运行模式 ===
 
@@ -336,69 +218,106 @@ apply:
     # 检查 docs/constitution/ 是否存在
     ls docs/constitution/ 2>/dev/null && echo "docs/constitution/ exists" || echo "docs/constitution/ does not exist"
 
-    # 检查 AGENTS.md 是否有 Constitution 内容
-    count=$(find . -name "AGENTS.md" -type f -not -path '*/node_modules/*' -not -path '*/.git/*' 2>/dev/null | xargs grep -l 'constitution-start' 2>/dev/null | wc -l)
-    echo "Found $count AGENTS.md files with constitution content"
+    # 检查根目录 AGENTS.md 是否有 Constitution 内容
+    test -f AGENTS.md && grep -q 'constitution-start' AGENTS.md && echo "AGENTS.md has constitution content" || echo "AGENTS.md has no constitution content"
     ```
 
-    - docs/constitution/ 存在 且 count > 0 → **APPEND 模式**
+    - docs/constitution/ 存在 且 AGENTS.md 有 constitution 内容 → **APPEND 模式**
     - 两者都不存在 → **INIT 模式**
     - 只有其中之一存在 → **不完整模式**：警告用户
 
-    === Step 3：执行 /start-work ===
+    === Step 3：直接创建文件 ===
 
-    ```
-    /start-work .omo/plans/<change-name>.md
-    ```
+    **不需要 /start-work，不需要 plan 文件。直接按 design 产出创建文件。**
 
-    `/start-work` 完成后，验证输出文件：
-    1. `docs/constitution/<dimension>/constitution.yaml` 存在且格式正确
-    2. `docs/constitution/<dimension>/universal.md` 存在且有内容
-    3. AGENTS.md 的 `<!-- constitution-start -->` 和 `<!-- constitution-end -->` 之间有新维度条目
+    **3.1 创建目录**
 
-    如果验证失败：警告用户并提供修复选项。
-
-    === Step 4：Oracle 验证（最多 3 轮） ===
-
-    ```
-    git diff --name-only HEAD
+    ```bash
+    mkdir -p docs/constitution/<dimension>/
     ```
 
-    将 git diff 输出传给 Oracle：
+    **3.2 创建 / 更新 constitution.yaml**
 
-    task(subagent_type="oracle", run_in_background=false,
-         prompt="验证 constitution 变更的实现产出。
+    APPEND 模式：
+    1. 读取现有的 `docs/constitution/<dimension>/constitution.yaml`
+    2. 在 items 列表中追加新条目（保留已有条目，不要覆盖）
+    3. 写回文件
 
-         审查文件：
-         - scan: openspec/changes/<change-name>/scan.md
-         - design: openspec/changes/<change-name>/design.md
-         - tasks: openspec/changes/<change-name>/tasks.md
+    INIT 模式：
+    直接按 design 中确认的结构创建。
 
-         变更文件清单：
-         [在此填入 git diff 输出]
+    constitution.yaml 格式：
+    ```yaml
+    dimension: <dimension>
+    description: <维度说明>
+    items:
+      - tech_stack: []              # 空 = 通用规则
+        status: active
+        summary: <规范摘要>
+        file: universal.md
 
-         检查：
-         1. docs/constitution/<dimension>/constitution.yaml 格式是否正确？
-         2. docs/constitution/<dimension>/ 下的参考文件是否有实质内容？
-         3. AGENTS.md 是否正确追加了新维度条目？
-         4. 是否有遗漏或超出 scope 的内容？
-
-         输出：🔴/🟡/⚪ 问题清单。最终判定：✅ PASS / 🔴 BLOCKED / ⚠️ CONDITIONAL
-
-         将结果保存到 openspec/changes/<change-name>/verify-round-{N}.md。")
-
-    读取验证结果：
-    - ✅ PASS → 继续
-    - 🔴 BLOCKED → 修复后重新验证（最多 3 轮）
-    - ⚠️ CONDITIONAL → 汇总 🟡 项，用户决定是否继续
-
-    === Step 5：同步 ===
-
-    `/start-work` 完成后，将 `.omo/plans/<change-name>.md` 的 checkbox 状态复制到
-    `openspec/changes/<change-name>/tasks.md` 保持同步。
-
-    运行：
+      - tech_stack: [<tech>]
+        status: active
+        summary: <规范摘要>
+        file: <tech>.md
     ```
-    diff <(grep '^- \[' openspec/changes/<change-name>/tasks.md) <(sed -n '/^## Tasks/,/^## /p' .omo/plans/<change-name>.md | grep '^- \[')
+
+    **3.3 创建参考文件**
+
+    对 constitution.yaml 中每个 items 条目，创建对应的 .md 文件，写入规则内容。
+
+    ```bash
+    # 创建 universal.md（通用规范）
+    cat > docs/constitution/<dimension>/universal.md << 'EOF'
+    ...
+
+    # 创建 tech-specific 文件（如 python.md）
+    cat > docs/constitution/<dimension>/python.md << 'EOF'
+    ...
     ```
-    验证状态一致。
+
+    **3.4 更新 AGENTS.md（仅根目录）**
+
+    只修改项目根目录的 `AGENTS.md`。子目录的 AGENTS.md 不维护宪法内容。
+
+    委托 category="write" 处理：
+
+    task(category="write", load_skills=[], run_in_background=false,
+        prompt="更新 AGENTS.md 的 Constitution 区域。
+
+        需要追加的维度：<dimension>
+        格式模板（参考 schemas/constitution/templates/section.md）：
+        - **<dimension>** → `docs/constitution/<dimension>/`
+
+        操作：
+        1. 读取根目录的 AGENTS.md
+        2. 找到 `<!-- constitution-start -->` 和 `<!-- constitution-end -->` 之间的内容
+        3. APPEND 模式：在现有条目后追加新维度（保留已有条目）
+        4. INIT 模式：创建全新的 ## Constitution 区域（含 constitution-start/end 标记）
+        5. 写回 AGENTS.md
+
+        不要修改 Constitution 区域之外的任何内容。不要修改子目录的 AGENTS.md。")
+
+    === Step 4：自检 ===
+
+    ```bash
+    # 1. constitution.yaml 存在且格式正确
+    test -f docs/constitution/<dimension>/constitution.yaml && echo "constitution.yaml exists"
+
+    # 2. 所有 .md 文件存在
+    ls docs/constitution/<dimension>/*.md
+
+    # 3. 根目录 AGENTS.md 包含新维度条目
+    grep -q '<dimension>' AGENTS.md && echo "AGENTS.md updated"
+    ```
+
+    如果任何检查失败，警告用户并提供修复选项。
+
+    === Step 5：报告结果 ===
+
+    向用户展示：
+    - 创建了哪些文件
+    - AGENTS.md 更新内容
+    - 验证结果
+
+    如果失败，提供修复命令。
