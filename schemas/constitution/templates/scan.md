@@ -30,8 +30,8 @@
 # 检查 docs/constitution/ 是否存在
 ls docs/constitution/ 2>/dev/null || echo "docs/constitution/ does not exist"
 
-# 如果存在，检查该维度的 constitution.yaml
-cat docs/constitution/<dimension>/constitution.yaml 2>/dev/null || echo "No constitution.yaml found"
+# 如果存在，读取 AGENTS.md 的 Constitution 区域查看已有条目
+test -f AGENTS.md && awk '/constitution-start/,/constitution-end/' AGENTS.md 2>/dev/null || echo "No constitution section found"
 ```
 
 ## Step 3: 确认用户选择
@@ -42,7 +42,7 @@ cat docs/constitution/<dimension>/constitution.yaml 2>/dev/null || echo "No cons
 
 ### 该维度已有内容（如果存在）
 
-<!-- 从 docs/constitution/<dimension>/constitution.yaml 读取已有条目 -->
+<!-- 从 AGENTS.md 的 Constitution 区域读取已有维度列表 -->
 
 ### 用户特定需求
 
@@ -68,10 +68,10 @@ cat docs/constitution/<dimension>/constitution.yaml 2>/dev/null || echo "No cons
 
 ### 已有条目冲突检查
 
-| 检查项                                | 结果                     |
-| ------------------------------------- | ------------------------ |
-| 该维度是否已存在于 docs/constitution/ | <!-- 是/否 -->           |
-| 是否有重复的技术栈约束                | <!-- 是/否，具体说明 --> |
+| 检查项                                            | 结果                     |
+| ------------------------------------------------- | ------------------------ |
+| 该维度是否已存在于 AGENTS.md 的 Constitution 区域 | <!-- 是/否 -->           |
+| 是否有重复的技术栈约束                            | <!-- 是/否，具体说明 --> |
 
 ## Step 5: 决策汇总
 

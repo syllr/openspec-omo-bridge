@@ -6,6 +6,7 @@ artifacts:
     generates: scan.md
     description: Ask user to select constitution dimension(s) and gather requirements
     template: scan.md
+    tracks: scan.md
     instruction: |
       __LANG_PLACEHOLDER__
 
@@ -31,55 +32,45 @@ artifacts:
       请告诉我要添加哪个维度的宪法（可以说序号或名称）。
       ```
 
-      === Step 2：检查是否已存在 ===
+      === Step 2：粗检 — 维度是否存在 ===
 
-      根据用户选择的维度，运行以下命令检查是否已存在该维度的宪法：
+      运行以下命令检查该维度是否已存在：
 
       ```bash
-      # 检查 docs/constitution/<dimension>/ 目录是否存在
-      ls docs/constitution/<dimension>/ 2>/dev/null || echo "docs/constitution/<dimension>/ does not exist"
+      # 检查 docs/constitution/<dimension>/ 目录
+      ls docs/constitution/<dimension>/ 2>/dev/null || echo "DIR: NOT_EXISTS"
+
+      # 读取 AGENTS.md 中 Constitution 区域
+      test -f AGENTS.md && awk '/constitution-start/,/constitution-end/' AGENTS.md 2>/dev/null || echo "AGENTS: NOT_EXISTS"
       ```
 
-      如果该维度目录已存在，读取其中的 constitution.yaml：
-      ```bash
-      cat docs/constitution/<dimension>/constitution.yaml 2>/dev/null || echo "No constitution.yaml found"
-      ```
+      **比对两个来源的一致性**：
+      - 如果目录存在（DIR）且 AGENTS.md 也有该维度（AGENTS）→ ✅ 一致，维度已存在
+      - 如果目录存在但 AGENTS.md 没有对应条目 → ⚠️ 不一致（可能是之前 apply 中断导致），告知用户，**以 AGENTS.md 为准**
+      - 如果 AGENTS.md 有条目但目录不存在 → ⚠️ 不一致，同样以 AGENTS.md 为准
+      - 两者都没有 → ✅ 干净，新维度
 
-      **constitution.yaml 是每个维度的元数据文件**，记录了该维度下已有哪些条目（按 tech_stack 分组）。它的结构如下：
-      ```yaml
-      dimension: <维度名>
-      description: <维度说明>
-      items:
-        - tech_stack: []             # 空 = 所有技术栈通用的规则
-          status: active
-          summary: <规则摘要>
-          file: universal.md         # 具体内容写在这个文件里
-
-        - tech_stack: [python]       # 特定技术栈的规则
-          status: active
-          summary: <规则摘要>
-          file: python.md
-      ```
-
-      通过读取 constitution.yaml，你可以判断：
-      - 用户要添加的 tech_stack 是否已有条目 → **重复**，告知用户
-      - 是同一个维度但不同 tech_stack → **可以追加**
-      - 同一维度且同一 tech_stack → **询问用户是覆盖还是跳过**
-
-      如果该维度已存在：
-      - 告知用户该维度已存在，展示已有条目
-      - 询问用户是要更新（UPDATE）还是跳过（SKIP）
-      - 如果是 UPDATE，基于 constitution.yaml 确定是追加新 tech_stack 还是覆盖已有条目
+      记录粗检结果（维度是否存在）。
 
       === Step 3：确认用户需求 ===
 
-      通过对话了解用户的具体需求：
+      通过对话了解用户的具体需求，获取**技术栈信息**：
+
+      ```text
       - 如果是 code-conventions：需要支持哪些语言？有什么特殊要求？
       - 如果是 integration：需要集成哪些外部系统？
       - 如果是 api：主要对外暴露哪些接口？
       - 如果是其他维度：用户想约束什么？
+      ```
 
       记录用户确认的内容和不确定的点（标记 [NEEDS RESEARCH]）。
+
+      获取到 tech_stack 后，执行**精检 — 精确去重判断**：
+
+      1. 查看 AGENTS.md 中 `**<dimension>**` 下是否有 `` `<tech_stack>` `` 的条目
+      2. 如果有 → **完全重复**（同一维度 + 同一 tech_stack），询问用户是要 UPDATE（覆盖）还是 SKIP
+      3. 如果没有但维度已存在 → **追加模式**（同一维度 + 新 tech_stack），确认后继续
+      4. 如果维度不存在 → **新增维度**，确认后继续
 
       === Step 4：生成 scan.md ===
 
@@ -95,15 +86,17 @@ artifacts:
           - 用户选择的维度：[填入用户选择的维度名称]
           - 适用技术栈：[填入用户确认的技术栈，或"通用"]
           - 用户需求摘要：[填入用户描述的具体需求]
-          - 该维度是否已存在：[是/否]
-          - 已有条目：[从 constitution.yaml 读取的内容，如果没有则填"无"]
+          - 操作类型：[INIT 新增维度 / APPEND 追加 tech_stack / UPDATE 覆盖已有条目]（来自精检去重结果）
+          - 已有维度列表：[从 AGENTS.md 中读取的已有维度列表]
+          - 精确去重结果：[完全重复/可以追加/新增维度]
 
-          按模板结构输出。所有维度中，只聚焦用户选择的维度，其他维度留空或标注'非本次聚焦'。")
+          按模板结构输出。只聚焦用户选择的维度。")
     requires: [ ]
   - id: design
     generates: design.md
     description: Research best practices for the selected dimension and design reference structure
     template: design.md
+    tracks: design.md
     instruction: |
       __LANG_PLACEHOLDER__
 
@@ -145,35 +138,7 @@ artifacts:
 
       向用户展示调研结果，确认或修改。
 
-      === Step 4：确定 constitution.yaml 结构 ===
-
-      在生成 design.md 之前，先确定本次要生成的 constitution.yaml 结构：
-
-      **constitution.yaml 是每个维度的元数据文件**，生成在 `docs/constitution/<dimension>/` 下。
-      tasks 阶段会根据 design 结果创建这个文件，因此 design 时需要明确它的内容。
-
-      结构示例：
-      ```yaml
-      dimension: <维度名>            # 必填
-      description: <维度说明>         # 必填
-      items:                         # 条目列表
-        - tech_stack: []             # 空 = 所有技术栈通用的规则
-          status: active             # active / proposed / under_review
-          summary: <规则摘要>         # 简短描述，显示在 AGENTS.md 中
-          file: universal.md         # 具体规范写入这个文件
-
-        - tech_stack: [python]       # Python 特有规则
-          status: active
-          summary: <规则摘要>
-          file: python.md
-      ```
-
-      根据调研结果和用户确认，确定：
-      - 有哪些通用规则（tech_stack: []）→ 写入 universal.md
-      - 有哪些技术栈特有规则 → 按 tech_stack 分文件
-      - 如果是 UPDATE 模式，需要参照现有 constitution.yaml 决定是追加还是覆盖
-
-      === Step 5：生成 design.md ===
+      === Step 4：生成 design.md ===
 
       task(category="write", load_skills=[], run_in_background=false,
           prompt="生成 design.md 文件。
@@ -186,10 +151,12 @@ artifacts:
           直接传入的上下文：
           - 聚焦维度：[填入本次聚焦的维度]
           - 用户确认内容：[填入用户批准的规则]
-          - constitution.yaml 结构设计（已确认）：
-            [填入 Step 4 确认的 constitution.yaml 结构]
 
-          按模板结构输出。只聚焦用户选择的维度，其他 9 个维度保持占位符（标注'非本次聚焦'）。")
+          design.md 需要包含以下信息：
+          1. 该维度的最终规则列表（按 tech_stack 分组）
+          2. 写入 docs/constitution/<dimension>/<file>.md 的规范内容
+
+          按模板结构输出。")
     requires:
       - scan
   # tasks 和 critic 阶段已删除：对于 constitution 场景，
@@ -204,120 +171,128 @@ apply:
 
     **重要：tasks 和 critic 阶段已删除。apply 直接基于 design 输出创建文件。**
 
-    === Step 1：读取上下文 ===
+      === Step 1：读取上下文 ===
 
-    读取 `openspec/changes/<change-name>/scan.md` 和 `openspec/changes/<change-name>/design.md`，确认：
-    - 聚焦哪个维度
-    - 该维度是否已存在
-    - constitution.yaml 结构（items 列表、tech_stack 分组）
-    - 每个文件的规范内容
+      读取 `openspec/changes/<change-name>/scan.md` 和 `openspec/changes/<change-name>/design.md`，确认：
+      - 聚焦哪个维度
+      - 操作类型（来自 scan.md）：INIT 新增维度 / APPEND 追加 tech_stack / UPDATE 覆盖已有条目
+      - 该维度的规则列表（按 tech_stack 分组）
+      - 每个文件的规范内容
+      - 该维度的目录是否已存在
 
-    === Step 2：检测运行模式 ===
+      === Step 2：检测全局运行模式 ===
 
-    ```bash
-    # 检查 docs/constitution/ 是否存在
-    ls docs/constitution/ 2>/dev/null && echo "docs/constitution/ exists" || echo "docs/constitution/ does not exist"
+      ```bash
+      # 检查 docs/constitution/ 是否存在
+      ls docs/constitution/ 2>/dev/null && echo "docs/constitution/ exists" || echo "docs/constitution/ does not exist"
 
-    # 检查根目录 AGENTS.md 是否有 Constitution 内容
-    test -f AGENTS.md && grep -q 'constitution-start' AGENTS.md && echo "AGENTS.md has constitution content" || echo "AGENTS.md has no constitution content"
-    ```
+      # 检查根目录 AGENTS.md 是否有 Constitution 内容
+      test -f AGENTS.md && grep -q 'constitution-start' AGENTS.md && echo "AGENTS.md has constitution content" || echo "AGENTS.md has no constitution content"
+      ```
 
-    - docs/constitution/ 存在 且 AGENTS.md 有 constitution 内容 → **APPEND 模式**
-    - 两者都不存在 → **INIT 模式**
-    - 只有其中之一存在 → **不完整模式**：警告用户
+      - 两者都有 → **APPEND 模式**（已有宪法，本次是追加或更新）
+      - 两者都无 → **INIT 模式**（第一次运行，从头创建）
+      - 只有其中之一存在 → **不完整模式**：警告用户"宪法数据不完整（路径 A 有但路径 B 无）"，让用户选择：1) 覆盖重建  2) 以 AGENTS.md 为准补全  3) 中止
 
-    === Step 3：直接创建文件 ===
+      === Step 3：按操作类型执行 ===
 
-    **不需要 /start-work，不需要 plan 文件。直接按 design 产出创建文件。**
+      `操作类型` 来自 scan.md 中 Step 3 的精检去重结果，分为三种：
 
-    **3.1 创建目录**
+      ---
 
-    ```bash
-    mkdir -p docs/constitution/<dimension>/
-    ```
+      **场景 A：INIT — 新增维度（维度不存在，首次添加）**
 
-    **3.2 创建 / 更新 constitution.yaml**
+      ```bash
+      mkdir -p docs/constitution/<dimension>/
+      ```
 
-    APPEND 模式：
-    1. 读取现有的 `docs/constitution/<dimension>/constitution.yaml`
-    2. 在 items 列表中追加新条目（保留已有条目，不要覆盖）
-    3. 写回文件
+      对 design 中确认的每个条目（通用规则 / tech_stack 特有规则），创建对应的 .md 文件，写入规范内容。
 
-    INIT 模式：
-    直接按 design 中确认的结构创建。
+      委托 category="write" 在 AGENTS.md 中创建 `## Constitution` 区域（含 constitution-start/end 标记），插入新维度条目。
 
-    constitution.yaml 格式：
-    ```yaml
-    dimension: <dimension>
-    description: <维度说明>
-    items:
-      - tech_stack: []              # 空 = 通用规则
-        status: active
-        summary: <规范摘要>
-        file: universal.md
+      ---
 
-      - tech_stack: [<tech>]
-        status: active
-        summary: <规范摘要>
-        file: <tech>.md
-    ```
+      **场景 B：APPEND — 追加 tech_stack（维度已存在，在已有维度下加新条目）**
 
-    **3.3 创建参考文件**
+      ```bash
+      # 目录已存在，无需创建
+      ```
 
-    对 constitution.yaml 中每个 items 条目，创建对应的 .md 文件，写入规则内容。
+      只创建新增的 .md 文件（如 python.md），不覆盖已有的 universal.md。
 
-    ```bash
-    # 创建 universal.md（通用规范）
-    cat > docs/constitution/<dimension>/universal.md << 'EOF'
-    ...
+      委托 category="write" 更新 AGENTS.md：
+      - 找到 `**<dimension>**` 所在行
+      - 在该维度块下追加新 tech_stack 条目
+      - 不要创建重复的维度标题
 
-    # 创建 tech-specific 文件（如 python.md）
-    cat > docs/constitution/<dimension>/python.md << 'EOF'
-    ...
-    ```
+      ---
 
-    **3.4 更新 AGENTS.md（仅根目录）**
+      **场景 C：UPDATE — 覆盖已有条目（维度 + tech_stack 都已存在）**
 
-    只修改项目根目录的 `AGENTS.md`。子目录的 AGENTS.md 不维护宪法内容。
+      ```bash
+      # 目录已存在，覆盖对应的 .md 文件
+      ```
 
-    委托 category="write" 处理：
+      覆盖对应的 .md 文件（用 design 产出的新内容替换）。其他文件不动。
 
-    task(category="write", load_skills=[], run_in_background=false,
-        prompt="更新 AGENTS.md 的 Constitution 区域。
+      委托 category="write" 更新 AGENTS.md：
+      - 找到 `**<dimension>**` 下对应的 `` `<tech_stack>` `` 行
+      - 替换为一行的描述
+      - 保留该维度下其他条目不动
 
-        需要追加的维度：<dimension>
-        格式模板（参考 schemas/constitution/templates/section.md）：
-        - **<dimension>** → `docs/constitution/<dimension>/`
+      ---
 
-        操作：
-        1. 读取根目录的 AGENTS.md
-        2. 找到 `<!-- constitution-start -->` 和 `<!-- constitution-end -->` 之间的内容
-        3. APPEND 模式：在现有条目后追加新维度（保留已有条目）
-        4. INIT 模式：创建全新的 ## Constitution 区域（含 constitution-start/end 标记）
-        5. 写回 AGENTS.md
+      **统一的 write agent prompt（请根据上述场景选择对应的操作部分）：**
 
-        不要修改 Constitution 区域之外的任何内容。不要修改子目录的 AGENTS.md。")
+      task(category="write", load_skills=[], run_in_background=false,
+          prompt="更新 AGENTS.md 的 Constitution 区域。
 
-    === Step 4：自检 ===
+          操作类型：{INIT / APPEND / UPDATE}
+          目标维度：<dimension>
+          目标 tech_stack：<tech_stack>
+          新增/更新的条目描述：<条目描述>
 
-    ```bash
-    # 1. constitution.yaml 存在且格式正确
-    test -f docs/constitution/<dimension>/constitution.yaml && echo "constitution.yaml exists"
+          AGENTS.md 中 Constitution 区域格式：
+          ```markdown
+          ## Constitution
+          <!-- constitution-start -->
+          - **code-conventions** — 代码风格/命名/注释规范
+            - `通用` 格式化/命名/注释规范
+            - `python` PEP 8, type hints
+          - **architecture** — 分层/模块/依赖方向
+            - `通用` 分层架构约束
+          <!-- constitution-end -->
+          ```
 
-    # 2. 所有 .md 文件存在
-    ls docs/constitution/<dimension>/*.md
+          根据操作类型执行：
+          - INIT：在 AGENTS.md 末尾创建 ## Constitution 区域（含标记），写入新维度条目
+          - APPEND：找到 `**<dimension>**` 块，在其条目列表末尾追加 `- <tech_stack> <描述>`
+          - UPDATE：找到 `**<dimension>**` 下对应的 `` `<tech_stack>` `` 行，替换描述部分
+          不要修改 Constitution 区域之外的任何内容。不要修改子目录的 AGENTS.md。")
 
-    # 3. 根目录 AGENTS.md 包含新维度条目
-    grep -q '<dimension>' AGENTS.md && echo "AGENTS.md updated"
-    ```
+      === Step 4：自检 ===
 
-    如果任何检查失败，警告用户并提供修复选项。
+      ```bash
+      # 1. 文件已创建
+      ls docs/constitution/<dimension>/
 
-    === Step 5：报告结果 ===
+      # 2. AGENTS.md 结构完整
+      grep -q 'constitution-start' AGENTS.md && echo "start tag exists"
+      grep -q 'constitution-end' AGENTS.md && echo "end tag exists"
+      grep -q '<dimension>' AGENTS.md && echo "dimension entry exists"
 
-    向用户展示：
-    - 创建了哪些文件
-    - AGENTS.md 更新内容
-    - 验证结果
+      # 3. 如为 APPEND 或 UPDATE，验证没有重复的维度标题
+      test "$(grep -c '\*\*<dimension>\*\*' AGENTS.md)" -le 1 && echo "no duplicate dimension title"
+      ```
 
-    如果失败，提供修复命令。
+      如果任何检查失败，警告用户并提供修复选项。建议先备份 AGENTS.md（cp AGENTS.md AGENTS.md.bak）。
+
+      === Step 5：报告结果 ===
+
+      向用户展示：
+      - 操作类型（INIT / APPEND / UPDATE）
+      - 创建或修改了哪些文件
+      - AGENTS.md 更新内容
+      - 验证结果
+
+      如果失败，提供修复命令。

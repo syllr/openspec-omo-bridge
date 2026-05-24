@@ -56,29 +56,22 @@
 
 ```
 docs/constitution/<dimension>/
-├── constitution.yaml      # 元数据表
 ├── universal.md          # 通用规范（所有技术栈共用）
 ├── python.md             # Python 特有规范（如果适用）
 ├── go.md                # Go 特有规范（如果适用）
 └── typescript.md        # TypeScript 特有规范（如果适用）
 ```
 
-### constitution.yaml 结构
+### AGENTS.md 中该维度的展示内容
 
-```yaml
-dimension: <dimension>
-description: <维度说明>
-items:
-  - tech_stack: [] # 空 = 通用
-    status: active # active / proposed / under_review
-    summary: <规范摘要>
-    file: universal.md
+本次新增的维度将在 AGENTS.md 的 Constitution 区域中以以下格式展示：
 
-  - tech_stack: [python]
-    status: active
-    summary: <规范摘要>
-    file: python.md
 ```
+- **<dimension>** — <维度描述>
+  - `<tech_stack>` <条目描述>
+```
+
+每个条目对应一个 .md 文件。
 
 ---
 
