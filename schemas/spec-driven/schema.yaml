@@ -6,6 +6,7 @@ artifacts:
     generates: proposal.md
     description: Initial proposal document outlining the change
     template: proposal.md
+    tracks: proposal.md
     instruction: |
       __LANG_PLACEHOLDER__
 
@@ -113,9 +114,17 @@ artifacts:
       2. 读取 Metis 输出 → 列出所有 🔴/🟡/⚪ 发现
       3. **自检**：确认两个 agent 的结果都已成功读取。如有遗漏，回到步骤 1 重新读取
       4. 合并发现：同一问题多个 agent 都发现时取更高严重程度
-      5. 分类判定：
-         - 有任何 🔴 → BLOCKED，修复 proposal.md 后重新运行 PHASE 3（最多 3 轮）
-         - 仅 🟡/⚪ → 展示给用户，让用户评估决定是否修复
+       5. 分类判定：
+          - 有任何 🔴 → BLOCKED，委托 agent 修复 proposal.md：
+            task(category="write", load_skills=[], run_in_background=false,
+                 prompt="根据以下审查结果，修复 proposal.md 中被指出的问题。
+
+                 只修复标记为 🔴 的问题，不要修改其他内容。
+
+                 Oracle + Metis 审查发现的所有问题：
+                 [将 Oracle/Metis 输出的所有 🔴 问题及修复建议以文本形式填入此处]")
+            修复完成后重新运行 PHASE 3（最多 3 轮）
+          - 仅 🟡/⚪ → 展示给用户，让用户评估决定是否修复
 
       **Fast fail：** 如果任一 agent 调用失败（超时、不可用、出错）：
       - 立即停止工作流
@@ -133,6 +142,7 @@ artifacts:
     generates: design.md
     description: Technical design document with implementation details (generated before specs)
     template: design.md
+    tracks: design.md
     instruction: |
       __LANG_PLACEHOLDER__
 
@@ -164,10 +174,12 @@ artifacts:
           ```
           task(subagent_type="librarian", run_in_background=false, prompt="调研 plugin.xml 配置声明格式...")
           task(subagent_type="librarian", run_in_background=false, prompt="调研 OAuth2 PKCE 流程...")
-          # ...N 个 topic，全部并发
-          ```
+           # ...N 个 topic，全部并发
+           ```
 
-          等待所有 librarian 完成后，将每个结果保存到 `spectest/<topic>/notes.md`
+           等待所有 librarian 完成后，将每个结果保存到 `spectest/<topic>/notes.md`
+
+           **Fast fail**：如果任一 librarian 调用失败（超时、不可用、出错），立即停止工作流，向用户报告：「🔴 技术调研中断：librarian 调用失败。[错误信息]」，等待用户介入。不得跳过调研直接生成 design.md。
 
           **第二波 — 所有 agent 并发**：所有 librarian 完成后，在同一条消息中发起所有主题的分析任务。每个 agent 阅读 librarian 的调研结果，编写使用真实 API/接口调用的验证脚本。
 
@@ -177,12 +189,14 @@ artifacts:
           给出完整的代码示例和调用方式。将脚本和结果保存到 spectest/plugin-config/。")
           task(category="write", load_skills=[], run_in_background=false, prompt="基于 spectest/pkce-flow/notes.md 的调研结果，
           写一个脚本来验证 PKCE code_challenge 生成流程...")
-          # ...N 个 topic，全部并发
-          ```
+           # ...N 个 topic，全部并发
+           ```
 
-          等待所有 agent 完成后，将每个结果保存到 `spectest/<topic>/`
+           等待所有 agent 完成后，将每个结果保存到 `spectest/<topic>/`
 
-       3. **用户确认**：向用户展示所有调研结果的摘要。用户确认后，将每个 `spectest/<topic>/` 目录移动到 `openspec/changes/<change-name>/research/<topic>/`
+           **Fast fail**：如果任一 write agent 调用失败，按同一规则停止工作流并报告用户。
+
+        3. **用户确认**：向用户展示所有调研结果的摘要。如果用户 5 分钟内无回复，自动确认结果并继续（防止流程阻塞）。用户确认后，将每个 `spectest/<topic>/` 目录移动到 `openspec/changes/<change-name>/research/<topic>/`
 
           确认后的最终结构：
 
@@ -230,6 +244,8 @@ artifacts:
            - 解释每个技术决策背后的"为什么"
            - 保持聚焦和可执行")
 
+      **Fast fail**：如果 `task(category="write")` 调用失败（超时、不可用、出错），立即停止工作流，向用户报告：「🔴 design.md 生成中断：write agent 调用失败。[错误信息]」，等待用户介入。不得自行生成 design.md。
+
       生成后验证 design.md 是否覆盖所有必需部分。如果 research/ 存在，确认调研发现已在 Decisions 中被引用。
     requires:
       - proposal
@@ -237,6 +253,7 @@ artifacts:
     generates: specs/**/*.md
     description: Detailed specifications for the change (generated after design)
     template: spec.md
+    tracks: specs/**/*.md
     instruction: |
       __LANG_PLACEHOLDER__
 
@@ -250,6 +267,8 @@ artifacts:
       - `openspec/changes/<change-name>/research/` — 技术调研结论（如果存在）
 
       如果 proposal 没有列出任何 Capabilities（New 和 Modified 部分都为空），跳过 spec 文件生成。创建一个空的 `specs/` 目录并继续下一个 artifact。
+
+      **Modified Capability 路径检查**：对 proposal 中列出的每个 Modified Capability，检查 `openspec/specs/<capability>/spec.md` 是否存在。如果不存在，停止工作流，列出所有缺失路径，询问用户是否改为 New Capability 或先创建基础 spec。
 
       === PHASE 2：通过 Agent 生成 ===
 
@@ -301,7 +320,9 @@ artifacts:
            #### Scenario: Successful export
            - **WHEN** user clicks "Export" button
            - **THEN** system downloads a CSV file with all user data
-           ```")
+            ```")
+
+       **Fast fail**：如果 `task(category="write")` 调用失败，立即停止工作流，向用户报告：「🔴 spec 文件生成中断：write agent 调用失败。[错误信息]」，等待用户介入。不得自行生成 spec 文件。
 
       === PHASE 3：验证 ===
 
@@ -315,6 +336,7 @@ artifacts:
     generates: tasks.md
     description: Implementation checklist with trackable tasks
     template: tasks.md
+    tracks: tasks.md
     instruction: |
       __LANG_PLACEHOLDER__
 
@@ -417,7 +439,7 @@ artifacts:
 
             任务清单必须：
             - 使用 `## Tasks` 作为部分标题
-            - 使用 `### Wave N: Group Name` 子分组，每个 Wave 5-8 个 task，不少于 3 个
+             - 使用 `### Wave N: Group Name` 子分组，每个 Wave 2-8 个 task，Wave 总数按实际 task 数量灵活决定
             - 每个 task 以 `- [ ] N.M Description` 开头
 
             每个 task 必须包含以下 9 个子字段：
@@ -440,6 +462,7 @@ artifacts:
             覆盖所有 spec requirement 和 design decisions，按逻辑依赖关系组织 wave。")
     requires:
       - specs
+      - design
   - id: critic
     generates: critic.md
     description: >
@@ -447,6 +470,7 @@ artifacts:
       .omo/plans/<change-name>.md (OMO plan) and critic.md
       (review report with verdict).
     template: critic.md
+    tracks: critic.md
     instruction: |
       __LANG_PLACEHOLDER__
 
@@ -496,7 +520,7 @@ artifacts:
          Agent Profile 的 category 是否匹配任务类型？
        □ QA Scenarios 质量——每个 QA Scenario 是否包含五要素（Tool/Preconditions/Steps/Expected/Evidence）？
          是否至少覆盖 1 个成功场景（happy path）+ 1 个异常场景？
-       □ Wave 结构——Wave 分组是否合理？命名清晰？数量合理（5-8 个，不少于 3）？
+       □ Wave 结构——Wave 分组是否合理？命名清晰？每组 2-8 个 task？
         □ 并发依赖——同 Wave 内 task 是否互不依赖？不同 Wave 依赖是否真实？有无虚假依赖？
         □ 描述质量——task 描述是否有模糊、空洞、歧义？Must NOT do 是否提供了有效的守卫栏？
         □ Evidence/Commit——Evidence 路径是否可采集？Commit Message 是否描述 task 本质变更？
@@ -534,6 +558,8 @@ artifacts:
       生成 `.omo/plans/<change-name>.md` — 包含 9 个部分的 OMO 兼容执行计划。
 
       Delegate plan generation via category="write":
+
+      **Fast fail**：如果以下 task(category="write") 调用失败（超时、不可用、出错），立即停止工作流，向用户报告：「🔴 plan 生成中断：write agent 调用失败。[错误信息]」，等待用户介入。不得自行生成 plan。
 
       task(category="write", load_skills=[], run_in_background=false,
            prompt="为以下变更生成 OMO 兼容的执行计划，保存到 .omo/plans/<change-name>.md。
@@ -672,8 +698,8 @@ artifacts:
            PHASE 3（tasks.md 审查）的未解决问题：
            [将 PHASE 3 中 Oracle+Metis 审查后仍未被解决的 🟡/⚪ 清单填入此处；如果全部已修复则填"无"]
 
-           PHASE 6（plan 审查）的未解决问题：
-           [将 PHASE 6 中 Oracle+Metis+Momus 审查后仍未被解决的 🟡/⚪ 清单填入此处；如果全部已修复则填"无"]
+            PHASE 5（plan 审查）的未解决问题：
+            [将 PHASE 5 中 Oracle+Metis+Momus 审查后仍未被解决的 🟡/⚪ 清单填入此处；如果全部已修复则填"无"]
 
            如果所有问题都已修复（无未解决的 🟡/⚪），critic.md 内容仅为：**ALL DONE**
            如果仍有未解决的 🟡/⚪，critic.md 必须：
@@ -691,6 +717,9 @@ artifacts:
       - 用户确认后进入 apply 阶段
     requires:
       - tasks
+      - proposal
+      - design
+      - specs
 apply:
   requires:
     - critic
@@ -709,14 +738,19 @@ apply:
       2. 如果 critic.md 包含未解决问题的清单（⚠️ CONDITIONAL）→ 列出 🟡 项，要求用户确认后再继续
       3. 其他情况 → 停止，提示用户修复后重新运行 critic
 
-    VERDICT 确认后，调用：
-    ```
-    /start-work .omo/plans/<change-name>.md
-    ```
+     VERDICT 确认后，调用：
+     ```
+     /start-work .omo/plans/<change-name>.md
+     ```
 
-    这会调用 OMO 内置的计划执行器（Atlas），读取计划文件并执行任务，包含委托、验证和会话连续性。
+     这会调用 OMO 内置的计划执行器（Atlas），读取计划文件并执行任务，包含委托、验证和会话连续性。
 
-    `/start-work` 完成后，捕获变更文件列表：
+     **处理 `/start-work` 的三种结果：**
+     1. **ALL_DONE**（完成）：所有 task 执行完毕 → 继续 Oracle 验证
+     2. **PAUSE**（暂停）：部分 task 完成，用户暂停 → 继续 Oracle 验证，告知用户后续可重新运行 /start-work 继续
+     3. **FAILED**（失败）：/start-work 本身崩溃或 Atlas 不可用 → 立即停止，向用户报告：「🔴 /start-work 执行失败。[错误信息]」，等待用户介入
+
+     成功（ALL_DONE 或 PAUSE）后，捕获变更文件列表：
     ```
     git diff --name-only HEAD
     ```
