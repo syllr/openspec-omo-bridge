@@ -10,21 +10,21 @@ files during the `critic` artifact phase.
 
 ## Key files
 
-| Path                               | Purpose                                                                                     |
-| ---------------------------------- | ------------------------------------------------------------------------------------------- |
-| `schemas/spec-driven/schema.yaml`  | Schema definition. 5 artifacts (proposal → specs → design → tasks → critic) + apply phase   |
-| `schemas/spec-driven/templates/`   | 5 template files (proposal.md, spec.md, design.md, tasks.md, critic.md)                     |
-| `schemas/constitution/schema.yaml` | Independent constitution schema. 4 artifacts (scan → design → tasks → critic) + apply phase |
-| `schemas/constitution/templates/`  | 4 template files (scan.md, constitution-design.md, tasks.md, critic.md)                     |
-| `scripts/sync-schemas.sh`          | Syncs repo schemas to `~/.local/share/openspec/schemas/`                                    |
-| `.opencode/opencode.json`          | OpenCode project config — allows external directory access                                  |
+| Path                               | Purpose                                                                                   |
+| ---------------------------------- | ----------------------------------------------------------------------------------------- |
+| `schemas/spec-driven/schema.yaml`  | Schema definition. 5 artifacts (proposal → design → specs → tasks → critic) + apply phase |
+| `schemas/spec-driven/templates/`   | 5 template files (proposal.md, spec.md, design.md, tasks.md, critic.md)                   |
+| `schemas/constitution/schema.yaml` | Simplified 3-stage constitution schema. 3 artifacts (scan → design → apply)               |
+| `schemas/constitution/templates/`  | 2 template files (scan.md, design.md)                                                     |
+| `scripts/sync-schemas.sh`          | Syncs repo schemas to `~/.local/share/openspec/schemas/`                                  |
+| `.opencode/opencode.json`          | OpenCode project config — allows external directory access                                |
 
 ## Schema architecture
 
 ```
-proposal ──┬──► specs ──┐
-           │            ├──► tasks ──► critic ──► apply
-           └──► design ──┘
+proposal → design ──┬──► specs ──┐
+                    │            ├──► tasks ──► critic ──► apply
+                    └─────────────┘
 ```
 
 - `tasks.instruction` generates `tasks.md` (simple checkbox list)
@@ -49,7 +49,7 @@ The following gates apply to the **spec-driven** schema. Constitution schema has
 
 ## Language support
 
-Schema uses `__LANG_PLACEHOLDER__` markers in all 5 artifact + 1 apply instructions (6 for spec-driven, 5 for constitution). The `sync-schemas.sh` script replaces them:
+Schema uses `__LANG_PLACEHOLDER__` markers in all 5 artifact + 1 apply instructions (6 for spec-driven, 3 for constitution). The `sync-schemas.sh` script replaces them:
 
 ```bash
 scripts/sync-schemas.sh --lang zh    # 中文: "所有生成的文档必须使用中文"
@@ -82,19 +82,19 @@ A standalone `constitution` schema is available alongside the default `spec-driv
 
 **Purpose**: Manage project-level metadata — tech stack, coding standards, architecture constraints, and testing conventions — that exist independently of individual changes.
 
-**Artifact chain** (5 steps):
+**Artifact chain** (3 steps):
 
 ```
-scan → design → tasks → critic → apply
+scan → design → apply
 ```
 
-- **scan**: Tech stack analysis with 3-phase process (config detection → user conversation → summary). Identifies uncertainties for design-phase research.
-- **design**: Multi-agent research for best practices per technology, `/summarize-research` to generate reference docs, optional code sync question.
-- **tasks**: Simple checkbox list (2 base tasks: update AGENTS.md + create skill files; 1 optional: fix violations).
-- **critic**: Multi-agent plan review (Oracle + Metis + Momus). Reuses spec-driven's critic mechanism with adaptations.
-- **apply**: Writes AGENTS.md (`## Constitution` section) + `docs/constitution/` (reference files). Init/update/incomplete detection via `docs/constitution/` and AGENTS.md section. Output quality validation: references existence, AGENTS.md section integrity.
+- **scan**: Ask user to select a constitution dimension (code-conventions, architecture, domain, integration, api, security, testing, observability, release, documentation). Checks existing entries in AGENTS.md for deduplication.
+- **design**: Multi-agent research for best practices per dimension. Designs the constitution.yaml output structure.
+- **apply**: Creates `docs/constitution/<dimension>/` with reference files and appends entries to AGENTS.md `## Constitution` section. Supports INIT (new), APPEND (new tech_stack), and UPDATE (overwrite existing) modes.
 
-**Output**: AGENTS.md (`## Constitution` section) + `docs/constitution/` with reference files organized by domain.
+**Output**: AGENTS.md (`## Constitution` section with dimension index) + `docs/constitution/<dimension>/` with reference files.
+
+**Simplification note**: Tasks and critic artifacts were removed because constitution only generates a few documentation files — complex plan generation and multi-agent review (Oracle + Metis + Momus) were overkill. Apply directly creates files based on design output, bypassing `/start-work`.
 
 **Re-entrant design**: Re-run `openspec new change --schema constitution <name>` at any time. Apply detects existing files to determine init/update/incomplete mode.
 

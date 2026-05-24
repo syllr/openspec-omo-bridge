@@ -76,6 +76,8 @@ artifacts:
 
       打包上下文，委托 category="write" 生成 scan.md：
 
+      **Fast fail**：如果以下 task(category="write") 调用失败（超时、不可用、出错），立即停止工作流，向用户报告：「🔴 scan.md 生成失败。[错误信息]」，等待用户介入。
+
       task(category="write", load_skills=[], run_in_background=false,
           prompt="生成 scan.md 文件。
 
@@ -134,13 +136,17 @@ artifacts:
 
            将结果保存到 openspec/changes/<change-name>/research/<dimension>/")
 
+       **Fast fail**：如果以上 librarian 调用失败，立即停止工作流，向用户报告：「🔴 最佳实践调研失败。[错误信息]」，等待用户介入。不得跳过调研直接生成 design.md。
+
       === Step 3：展示调研结果 ===
 
       向用户展示调研结果，确认或修改。
 
-      === Step 4：生成 design.md ===
+       === Step 4：生成 design.md ===
 
-      task(category="write", load_skills=[], run_in_background=false,
+       **Fast fail**：如果以下 task(category="write") 调用失败，立即停止工作流，向用户报告：「🔴 design.md 生成失败。[错误信息]」，等待用户介入。
+
+       task(category="write", load_skills=[], run_in_background=false,
           prompt="生成 design.md 文件。
 
           输入文件（请直接读取）：
@@ -243,6 +249,8 @@ apply:
       ---
 
       **统一的 write agent prompt（请根据上述场景选择对应的操作部分）：**
+
+      **Fast fail**：如果以下 task(category="write") 调用失败，立即停止工作流，向用户报告：「🔴 AGENTS.md 更新失败。[错误信息]」，等待用户介入。不得手动修改 AGENTS.md。
 
       task(category="write", load_skills=[], run_in_background=false,
           prompt="更新 AGENTS.md 的 Constitution 区域。
