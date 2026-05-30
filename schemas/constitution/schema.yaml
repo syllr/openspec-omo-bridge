@@ -78,7 +78,7 @@ artifacts:
 
       **Fast fail**：如果以下 task(category="write") 调用失败（超时、不可用、出错），立即停止工作流，向用户报告：「🔴 scan.md 生成失败。[错误信息]」，等待用户介入。
 
-      task(category="write", load_skills=[], run_in_background=false,
+      task(category="write", load_skills=[],
           prompt="生成 scan.md 文件。
 
           输入文件（请直接读取）：
@@ -115,7 +115,7 @@ artifacts:
 
       根据用户选择的维度，启动 librarian agent 调研该维度的业界最佳实践：
 
-      task(subagent_type="librarian", run_in_background=false,
+      task(subagent_type="librarian",
            prompt="调研项目章程中【{dimension}】维度的业界最佳实践。
 
            已确认的信息：
@@ -146,8 +146,8 @@ artifacts:
 
        **Fast fail**：如果以下 task(category="write") 调用失败，立即停止工作流，向用户报告：「🔴 design.md 生成失败。[错误信息]」，等待用户介入。
 
-       task(category="write", load_skills=[], run_in_background=false,
-          prompt="生成 design.md 文件。
+       task(category="write", load_skills=[],
+           prompt="生成 design.md 文件。
 
           输入文件（请直接读取）：
           - 模板：schemas/constitution/templates/design.md
@@ -252,7 +252,7 @@ apply:
 
       **Fast fail**：如果以下 task(category="write") 调用失败，立即停止工作流，向用户报告：「🔴 AGENTS.md 更新失败。[错误信息]」，等待用户介入。不得手动修改 AGENTS.md。
 
-      task(category="write", load_skills=[], run_in_background=false,
+      task(category="write", load_skills=[],
           prompt="更新 AGENTS.md 的 Constitution 区域。
 
           操作类型：{INIT / APPEND / UPDATE}

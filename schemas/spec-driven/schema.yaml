@@ -63,7 +63,7 @@ artifacts:
       调用前将占位符替换为实际内容。
 
        **Oracle prompt 和 Metis prompt 使用相同内容：**
-       task(subagent_type="oracle", run_in_background=false, prompt="
+       task(subagent_type="oracle", prompt="
        你正在审查一个 OpenSpec 变更提案。请逐一检查以下所有检查项：
 
        PHASE 1 的上下文提取结果：
@@ -86,8 +86,8 @@ artifacts:
        输出格式：按严重程度列出发现，对每个 🔴/🟡 给出具体修改建议
        ")
 
-       task(subagent_type="metis", run_in_background=false, prompt="
-        你正在审查一个 OpenSpec 变更提案。请逐一检查以下所有检查项：
+       task(subagent_type="metis", prompt="
+         你正在审查一个 OpenSpec 变更提案。请逐一检查以下所有检查项：
 
         PHASE 1 的上下文提取结果：
         [将 PHASE 1 的提取输出粘贴此处]
@@ -116,7 +116,7 @@ artifacts:
       4. 合并发现：同一问题多个 agent 都发现时取更高严重程度
        5. 分类判定：
           - 有任何 🔴 → BLOCKED，委托 agent 修复 proposal.md：
-            task(category="write", load_skills=[], run_in_background=false,
+            task(category="write", load_skills=[],
                  prompt="根据以下审查结果，修复 proposal.md 中被指出的问题。
 
                  只修复标记为 🔴 的问题，不要修改其他内容。
@@ -172,8 +172,8 @@ artifacts:
           **第一波 — 所有 librarian 并发**：在同一条消息中发起所有主题的 librarian 任务。每个 librarian 调研其主题的文档或源代码。
 
           ```
-          task(subagent_type="librarian", run_in_background=false, prompt="调研 plugin.xml 配置声明格式...")
-          task(subagent_type="librarian", run_in_background=false, prompt="调研 OAuth2 PKCE 流程...")
+           task(subagent_type="librarian", prompt="调研 plugin.xml 配置声明格式...")
+           task(subagent_type="librarian", prompt="调研 OAuth2 PKCE 流程...")
            # ...N 个 topic，全部并发
            ```
 
@@ -184,11 +184,11 @@ artifacts:
           **第二波 — 所有 agent 并发**：所有 librarian 完成后，在同一条消息中发起所有主题的分析任务。每个 agent 阅读 librarian 的调研结果，编写使用真实 API/接口调用的验证脚本。
 
           ```
-          task(category="write", load_skills=[], run_in_background=false, prompt="基于 spectest/plugin-config/notes.md 的调研结果，
-          写一个脚本来实际测试 plugin.xml 配置声明格式。调用真实接口验证签名方式，
-          给出完整的代码示例和调用方式。将脚本和结果保存到 spectest/plugin-config/。")
-          task(category="write", load_skills=[], run_in_background=false, prompt="基于 spectest/pkce-flow/notes.md 的调研结果，
-          写一个脚本来验证 PKCE code_challenge 生成流程...")
+           task(category="write", load_skills=[], prompt="基于 spectest/plugin-config/notes.md 的调研结果，
+           写一个脚本来实际测试 plugin.xml 配置声明格式。调用真实接口验证签名方式，
+           给出完整的代码示例和调用方式。将脚本和结果保存到 spectest/plugin-config/。")
+           task(category="write", load_skills=[], prompt="基于 spectest/pkce-flow/notes.md 的调研结果，
+           写一个脚本来验证 PKCE code_challenge 生成流程...")
            # ...N 个 topic，全部并发
            ```
 
@@ -221,8 +221,8 @@ artifacts:
 
       打包所有上下文和研究发现（如果存在）到完整 prompt 中，委托 agent 生成设计文档：
 
-      task(category="write", load_skills=[], run_in_background=false,
-           prompt="为以下变更生成技术设计文档（design.md）。
+       task(category="write", load_skills=[],
+            prompt="为以下变更生成技术设计文档（design.md）。
 
            输入文件（请直接读取以下文件获取完整内容）：
            - `openspec/changes/<change-name>/proposal.md` — 动机和能力
@@ -274,8 +274,8 @@ artifacts:
 
       将 proposal 和 design 的关键内容打包，委托 agent 生成 spec 文件：
 
-      task(category="write", load_skills=[], run_in_background=false,
-           prompt="根据以下输入生成 spec 文件。
+       task(category="write", load_skills=[],
+            prompt="根据以下输入生成 spec 文件。
 
            输入文件（请直接读取以下文件获取完整内容）：
            - `openspec/changes/<change-name>/proposal.md` — 动机和 Capabilities
@@ -400,8 +400,8 @@ artifacts:
       严重程度：🔴 阻塞 / 🟡 警告 / ⚪ 建议
       输出格式：按严重程度列出发现，对每个 🔴/🟡 给出具体修改建议"
 
-      task(subagent_type="oracle", run_in_background=false, prompt=TASKS_GAP_PROMPT)
-      task(subagent_type="metis", run_in_background=false, prompt=TASKS_GAP_PROMPT)
+       task(subagent_type="oracle", prompt=TASKS_GAP_PROMPT)
+       task(subagent_type="metis", prompt=TASKS_GAP_PROMPT)
 
       **收集评审结果：**
       1. 读取 Oracle 输出 → 列出所有 🔴/🟡/⚪ 发现
@@ -413,8 +413,8 @@ artifacts:
            **说明**：此循环是内容质量改进机制（审查 agent 已成功完成分析 → subagent 修复 → 重新审查），
            不是 agent 调用失败的降级处理。如审查 agent 调用本身失败 → 按 fast fail 规则立即停住报错。
            将所有 🔴 问题打包，调用 agent 一次性修复：
-           task(category="write", load_skills=[], run_in_background=false,
-                prompt="根据以下差距分析结果，一次性修复所有被指出的问题。
+            task(category="write", load_skills=[],
+                 prompt="根据以下差距分析结果，一次性修复所有被指出的问题。
 
                 只修复标记为 🔴 的问题，不要修改其他内容。
 
@@ -428,7 +428,7 @@ artifacts:
 
         将所有 artifacts 的文件路径传给 agent，由其直接读取后生成 tasks.md：
 
-       task(category="write", load_skills=[], run_in_background=false,
+       task(category="write", load_skills=[],
             prompt="为以下变更生成任务清单（tasks.md）。
 
             输入文件（请直接读取以下文件获取完整内容）：
@@ -528,8 +528,8 @@ artifacts:
        严重程度：🔴 阻塞 / 🟡 警告 / ⚪ 建议
        输出格式：逐项检查，然后汇总问题清单，每个问题标注 severity。"
 
-      task(subagent_type="oracle", run_in_background=false, prompt=REVIEW_PROMPT)
-      task(subagent_type="metis", run_in_background=false, prompt=REVIEW_PROMPT)
+       task(subagent_type="oracle", prompt=REVIEW_PROMPT)
+       task(subagent_type="metis", prompt=REVIEW_PROMPT)
       ```
 
       **收集评审结果（以下步骤不可跳过）**：
@@ -542,16 +542,16 @@ artifacts:
            **说明**: 此循环是内容质量改进机制（审查 agent 已成功完成分析 → subagent 修复 → 重新审查），
            不是 agent 调用失败的降级处理。如审查 agent 调用本身失败 → 按 fast fail 规则立即停住报错。
            将所有 🔴 问题打包，调用 agent 一次性修复：
-           task(category="write", load_skills=[], run_in_background=false,
-                prompt="根据以下审查结果，一次性修复所有被指出的问题。
+            task(category="write", load_skills=[],
+                 prompt="根据以下审查结果，一次性修复所有被指出的问题。
 
-                只修复标记为 🔴 的问题，不要修改其他内容。
+                 只修复标记为 🔴 的问题，不要修改其他内容。
 
-                Oracle + Metis 审查发现的所有问题：
-                [将 Oracle/Metis 输出的所有 🔴 问题及修复建议以文本形式填入此处]")
-           修复完成后重新运行审查（**最多 3 轮**，超限后汇总给用户）
-         - 仅 🟡/⚪ → 展示给用户，让用户评估决定是否修复
-        6. 产出合并清单：将合并后的发现清单写入输出，供后续 PHASE 引用
+                 Oracle + Metis 审查发现的所有问题：
+                 [将 Oracle/Metis 输出的所有 🔴 问题及修复建议以文本形式填入此处]")
+            修复完成后重新运行审查（**最多 3 轮**，超限后汇总给用户）
+          - 仅 🟡/⚪ → 展示给用户，让用户评估决定是否修复
+         6. 产出合并清单：将合并后的发现清单写入输出，供后续 PHASE 引用
 
       === PHASE 4：生成计划 ===
 
@@ -561,7 +561,7 @@ artifacts:
 
       **Fast fail**：如果以下 task(category="write") 调用失败（超时、不可用、出错），立即停止工作流，向用户报告：「🔴 plan 生成中断：write agent 调用失败。[错误信息]」，等待用户介入。不得自行生成 plan。
 
-      task(category="write", load_skills=[], run_in_background=false,
+      task(category="write", load_skills=[],
            prompt="为以下变更生成 OMO 兼容的执行计划，保存到 .omo/plans/<change-name>.md。
 
            输入文件摘要（已读取）：
@@ -661,9 +661,9 @@ artifacts:
       输出格式：先按 Part A / Part B 分别分析，最后给出综合判定。所有发现使用 🔴/🟡/⚪ 标注严重程度。"
 
       # Oracle（内容）+ Metis（结构）+ Momus（门禁）
-      task(subagent_type="oracle", run_in_background=false, prompt=ORACLE_PLAN_REVIEW_PROMPT)
-      task(subagent_type="metis", run_in_background=false, prompt=METIS_PLAN_REVIEW_PROMPT)
-      task(subagent_type="momus", run_in_background=false, prompt=MOMUS_PLAN_REVIEW_PROMPT)
+       task(subagent_type="oracle", prompt=ORACLE_PLAN_REVIEW_PROMPT)
+       task(subagent_type="metis", prompt=METIS_PLAN_REVIEW_PROMPT)
+       task(subagent_type="momus", prompt=MOMUS_PLAN_REVIEW_PROMPT)
       ```
 
       **收集评审结果（以下步骤不可跳过）**：
@@ -677,22 +677,22 @@ artifacts:
            **说明**: 此循环是内容质量改进机制（审查 agent 已成功完成分析 → subagent 修复 → 重新审查），
            不是 agent 调用失败的降级处理。如审查 agent 调用本身失败 → 按 fast fail 规则立即停住报错。
            将所有 🔴 问题打包，调用 agent 一次性修复：
-           task(category="write", load_skills=[], run_in_background=false,
-                prompt="根据以下审查结果，一次性修复所有被指出的问题。
+            task(category="write", load_skills=[],
+                 prompt="根据以下审查结果，一次性修复所有被指出的问题。
 
-                只修复标记为 🔴 的问题，不要修改其他内容。
+                 只修复标记为 🔴 的问题，不要修改其他内容。
 
-                Oracle + Metis + Momus 审查发现的所有问题：
-                [将三个 agent 输出的所有 🔴 问题及修复建议以文本形式填入此处]")
-           修复完成后重新运行审查（**最多 3 轮**，超限后汇总给用户）
-         - 仅 🟡/⚪ → 展示给用户，让用户评估决定是否修复
-       7. 产出合并清单：将合并后的发现清单写入输出，供后续 PHASE 引用
+                 Oracle + Metis + Momus 审查发现的所有问题：
+                 [将三个 agent 输出的所有 🔴 问题及修复建议以文本形式填入此处]")
+            修复完成后重新运行审查（**最多 3 轮**，超限后汇总给用户）
+          - 仅 🟡/⚪ → 展示给用户，让用户评估决定是否修复
+        7. 产出合并清单：将合并后的发现清单写入输出，供后续 PHASE 引用
 
       === PHASE 6：通过 Agent 生成 critic.md ===
 
       Package the review findings into a prompt. Delegate to agent to generate critic.md：
 
-      task(category="write", load_skills=[], run_in_background=false,
+             task(category="write", load_skills=[],
            prompt="生成 critic.md 文件。
 
            PHASE 3（tasks.md 审查）的未解决问题：
@@ -763,7 +763,7 @@ apply:
      - 等待用户介入
 
     ```
-    task(subagent_type="oracle", run_in_background=false, prompt="你正在验证实现产出与 OpenSpec change artifacts 的一致性。
+        task(subagent_type="oracle", prompt="你正在验证实现产出与 OpenSpec change artifacts 的一致性。
     请检查所有实现产出（代码、配置、文档等）是否按 proposal、spec、design 的要求正确实现。
     按严重程度输出发现（🔴阻塞 / 🟡警告 / ⚪建议）。
 
@@ -816,8 +816,8 @@ apply:
       1. 如果 ✅ PASS → 继续
       2. 如果 🔴 BLOCKED：
            将所有 🔴 问题打包，调用 agent 一次性修复：
-           task(category="write", load_skills=[], run_in_background=false,
-                prompt="根据以下验证结果修复实现产出。只修复标记为 🔴 的问题，不要修改其他内容。
+            task(category="write", load_skills=[],
+                 prompt="根据以下验证结果修复实现产出。只修复标记为 🔴 的问题，不要修改其他内容。
 
                 Oracle 验证结果中的所有 🔴 问题：
                 [将 Oracle 输出的 🔴 问题列表及修复建议填入此处]")
