@@ -1,83 +1,9 @@
 ## Tasks
 
-### Wave 1: <!-- Task Group Name -->
+> 本文件是 OpenSpec ↔ OMO 的桥接引用。实际任务定义和状态在 OMO plan 中。
 
-- [ ] 1.1 <!-- Task title -->
-      **What to do**:
-  <!-- Implementation steps -->
+**OMO Plan**: `.omo/plans/<change-name>.md`
 
-  **Must NOT do**:
-  <!-- Things to avoid -->
+---
 
-  **Recommended Agent Profile**: category="<!-- category -->", load_skills=["<!-- skill -->"]
-
-  **References**:
-  <!-- File:line references -->
-
-  **Acceptance Criteria**:
-  <!-- Executable verification command -->
-
-  **QA Scenarios**:
-  <!-- Tool: / Preconditions: / Steps: / Expected: / Evidence path -->
-
-  **Parallelization**: Can Run In Parallel: YES | NO | Parallel Group: Wave N | Blocked By: <!-- task ref -->
-
-  **Evidence**: .omo/evidence/task-1.1-<!-- slug -->.<!-- ext -->
-
-  **Commit**: YES | NO
-  - Message: `type(scope): description`
-  - Files: `path/to/file`
-
-### Wave 2: <!-- Task Group Name -->
-
-- [ ] 2.1 <!-- Task title -->
-      **What to do**:
-  <!-- Implementation steps -->
-
-  **Must NOT do**:
-  <!-- Things to avoid -->
-
-  **Recommended Agent Profile**: category="<!-- category -->", load_skills=["<!-- skill -->"]
-
-  **References**:
-  <!-- File:line references -->
-
-  **Acceptance Criteria**:
-  <!-- Executable verification command -->
-
-  **QA Scenarios**:
-  <!-- Tool: / Preconditions: / Steps: / Expected: / Evidence path -->
-
-  **Parallelization**: Can Run In Parallel: YES | NO | Parallel Group: Wave N | Blocked By: <!-- task ref -->
-
-  **Evidence**: .omo/evidence/task-2.1-<!-- slug -->.<!-- ext -->
-
-  **Commit**: YES | NO
-  - Message: `type(scope): description`
-  - Files: `path/to/file`
-
-- [ ] 2.2 <!-- Task title -->
-      **What to do**:
-  <!-- Implementation steps -->
-
-  **Must NOT do**:
-  <!-- Things to avoid -->
-
-  **Recommended Agent Profile**: category="<!-- category -->", load_skills=["<!-- skill -->"]
-
-  **References**:
-  <!-- File:line references -->
-
-  **Acceptance Criteria**:
-  <!-- Executable verification command -->
-
-  **QA Scenarios**:
-  <!-- Tool: / Preconditions: / Steps: / Expected: / Evidence path -->
-
-  **Parallelization**: Can Run In Parallel: YES | NO | Parallel Group: Wave N | Blocked By: <!-- task ref -->
-
-  **Evidence**: .omo/evidence/task-2.2-<!-- slug -->.<!-- ext -->
-
-  **Commit**: YES | NO
-  - Message: `type(scope): description`
-  - Files: `path/to/file`
+<!-- 本文件由 OpenSpec 追踪完成状态，不要手动编辑 -->

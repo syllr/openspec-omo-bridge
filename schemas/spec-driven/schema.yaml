@@ -334,48 +334,96 @@ artifacts:
       - design
   - id: tasks
     generates: tasks.md
-    description: Implementation checklist with trackable tasks
+    description: Bridge reference to OMO plan (for OpenSpec tracking only)
     template: tasks.md
     tracks: tasks.md
     instruction: |
       __LANG_PLACEHOLDER__
 
-      **范围限制：不要修改任何源代码。仅生成 tasks.md。**
+      **范围限制：不要修改任何源代码。仅生成 tasks.md 桥接引用文件。**
 
-      创建任务列表（tasks.md）。
+      === 核心概念 ===
 
-      **你必须创建一个文件：**
+      tasks.md 是 OpenSpec ↔ OMO 的**桥接引用文件**，不包含实际任务定义。
+      实际任务内容在 critic 阶段生成的 `.omo/plans/<change-name>.md` 中。
+      任务完成状态通过解析 plan 文件中的 checkbox 判断（`- [ ]` vs `- [x]`）。
 
-      `openspec/changes/<change-name>/tasks.md` — 标准 checkbox 任务清单
+      tasks.md 的作用：
+      1. OpenSpec 的 `detectCompleted()` 追踪文件（`tracks: tasks.md`）
+      2. 指向 OMO plan 的路径引用
 
-      === PHASE 1：读取输入 ===
+      === PHASE 1：生成 tasks.md 桥接文件 ===
 
-      读取以下文件，提取生成 tasks.md 所需的关键信息：
+      生成简化的 tasks.md，只包含对 OMO plan 的引用。
+
+      task(category="write", load_skills=[],
+           prompt="生成 tasks.md 桥接引用文件。
+
+           这是 OpenSpec ↔ OMO 的桥接文件，不包含实际任务定义。
+           实际任务内容和完成状态在 `.omo/plans/<change-name>.md` 中。
+
+           文件结构：
+           ```markdown
+           ## Tasks
+
+           > 本文件是 OpenSpec ↔ OMO 的桥接引用。实际任务定义和状态在 OMO plan 中。
+
+           **OMO Plan**: `.omo/plans/<change-name>.md`
+
+           ---
+
+           <!-- 本文件由 OpenSpec 追踪完成状态，不要手动编辑 -->
+           ```
+
+           直接使用上述模板生成 tasks.md，不需要读取其他文件。")
+    requires:
+      - specs
+      - design
+  - id: critic
+    generates: critic.md
+    description: >
+      Plan generation and multi-agent review. Generates
+      .omo/plans/<change-name>.md (OMO plan) and updates tasks.md
+      (bridge reference with checkbox sync).
+    template: critic.md
+    tracks: critic.md
+    instruction: |
+      __LANG_PLACEHOLDER__
+
+      **范围限制：不要修改任何源代码。仅生成 critic.md 和 .omo/plans/<change-name>.md。**
+
+      === 核心架构 ===
+
+      tasks.md 是 OpenSpec ↔ OMO 的**桥接引用文件**，不包含实际任务定义。
+      实际任务内容在 `.omo/plans/<change-name>.md` 中。
+      critic 阶段负责：生成 plan → 更新 tasks.md 桥接引用。
+
+      === PHASE 1：读取上下文 ===
+
+      读取以下文件（**注意：不再读取 tasks.md 的内容，它只是桥接引用**）：
       - `openspec/changes/<change-name>/proposal.md` — 动机和能力
       - `openspec/changes/<change-name>/specs/` — 需求和验收场景
       - `openspec/changes/<change-name>/design.md` — 技术方案、决策、风险
       - `openspec/changes/<change-name>/research/` — 技术调研（如果存在）
 
+      === PHASE 2：Spec 验证（强制） ===
 
-      **Step 1：快速 artifact 审查**
+      运行 `openspec validate <change-name>` 检查 spec 格式。
 
-      生成前，快速检查：
-      1. 每个 proposal 的 Capability 是否都有对应的 spec？
-      2. task 是否覆盖了所有 spec 的关键 Requirement？
-      3. 有无矛盾？
-      → 如果发现问题：停止，列出具体问题，等待用户处理。
-      → 如果全部正常：继续。
+      如果验证通过 → 继续。
+      如果验证失败 → 显示错误信息给用户，由用户决定如何修复。不得自行修复格式问题。
 
-      **Step 2：Oracle + Metis 并行差距分析（强制）**
+      === PHASE 3：Oracle + Metis 并行差距分析（强制） ===
 
-      调用 Oracle 和 Metis 同时做差距分析，两者使用相同的审查维度。调用前先读取所有 artifacts。
+      在生成 plan 之前，调用 Oracle 和 Metis 同时做差距分析，确保 artifacts 完整性和一致性。
 
       **Fast fail 保护**: 如果任一 agent 调用失败（超时、不可用、出错），立即停止工作流（**fast fail，不得降级**）：
       - 向用户报告：「🔴 差距分析中断：[agent name] 调用失败。[错误信息]」
-      - 不得自行分析 gap，不得自行生成 tasks.md
+      - 不得自行分析 gap，不得自行生成 plan
       - 等待用户介入
 
-      TASKS_GAP_PROMPT = "你正在审查一个 OpenSpec change 的产物，为生成 tasks.md 做准备。
+      ```
+      GAP_ANALYSIS_PROMPT = "你正在审查一个 OpenSpec change 的产物，为生成 OMO plan 做准备。
       请逐一检查以下所有检查项：
 
       审查文件：
@@ -391,17 +439,18 @@ artifacts:
       □ 缺失的验收标准——每个 requirement 是否有明确的验收方式？
       □ 未覆盖的边界情况——错误路径、并发、权限等是否被考虑？
       □ artifacts 一致性——specs 和 design 之间是否有矛盾？（spec 说 A，design 说 B）
-       □ 表达模糊——是否有表述不清、可能产生歧义的地方？
-       □ research 完整性——proposal 中标记 [NEEDS INVESTIGATION] 的不确定点是否都有对应的 research/ 产出？结论是否在 design 中被引用？
-       □ decision 理由——design 中的关键技术决策是否都有明确的选型理由？有无"选 X 但没说为什么"的情况？
-       □ task 可衍生性——每个 requirement 是否能自然拆分为一个或多个可执行的 task？
+      □ 表达模糊——是否有表述不清、可能产生歧义的地方？
+      □ research 完整性——proposal 中标记 [NEEDS INVESTIGATION] 的不确定点是否都有对应的 research/ 产出？结论是否在 design 中被引用？
+      □ decision 理由——design 中的关键技术决策是否都有明确的选型理由？有无"选 X 但没说为什么"的情况？
+      □ task 可衍生性——每个 requirement 是否能自然拆分为一个或多个可执行的 task？
       □ 依赖隐含——是否有隐含的先后依赖关系未被明确声明？
 
       严重程度：🔴 阻塞 / 🟡 警告 / ⚪ 建议
       输出格式：按严重程度列出发现，对每个 🔴/🟡 给出具体修改建议"
 
-       task(subagent_type="oracle", prompt=TASKS_GAP_PROMPT)
-       task(subagent_type="metis", prompt=TASKS_GAP_PROMPT)
+      task(subagent_type="oracle", prompt=GAP_ANALYSIS_PROMPT)
+      task(subagent_type="metis", prompt=GAP_ANALYSIS_PROMPT)
+      ```
 
       **收集评审结果：**
       1. 读取 Oracle 输出 → 列出所有 🔴/🟡/⚪ 发现
@@ -409,166 +458,29 @@ artifacts:
       3. **自检**：确认两个 agent 的结果都已成功读取。如有遗漏，回到步骤 1 重新读取
       4. 合并发现：同一问题多个 agent 都发现时取更高严重程度
       5. 分类判定：
-         - 有任何 🔴 → BLOCKED
-           **说明**：此循环是内容质量改进机制（审查 agent 已成功完成分析 → subagent 修复 → 重新审查），
-           不是 agent 调用失败的降级处理。如审查 agent 调用本身失败 → 按 fast fail 规则立即停住报错。
-           将所有 🔴 问题打包，调用 agent 一次性修复：
-            task(category="write", load_skills=[],
-                 prompt="根据以下差距分析结果，一次性修复所有被指出的问题。
-
+         - 有任何 🔴 → BLOCKED，委托 agent 修复 artifacts：
+           task(category="write", load_skills=[],
+                prompt="根据以下差距分析结果，修复 proposal/specs/design 中被指出的问题。
                 只修复标记为 🔴 的问题，不要修改其他内容。
-
-               Oracle + Metis 审查发现的所有问题：
-               [将 Oracle/Metis 输出的所有 🔴 问题及修复建议以文本形式填入此处]")
-           修复完成后重新运行审查（**最多 3 轮**，超限后汇总给用户）
+                Oracle + Metis 审查发现的所有问题：
+                [将 Oracle/Metis 输出的所有 🔴 问题及修复建议以文本形式填入此处]")
+           修复完成后重新运行 PHASE 3（最多 3 轮）
          - 仅 🟡/⚪ → 展示给用户，让用户评估决定是否修复
-
-
-       === PHASE 2：通过 Agent 生成 ===
-
-        将所有 artifacts 的文件路径传给 agent，由其直接读取后生成 tasks.md：
-
-       task(category="write", load_skills=[],
-            prompt="为以下变更生成任务清单（tasks.md）。
-
-            输入文件（请直接读取以下文件获取完整内容）：
-            - `openspec/changes/<change-name>/proposal.md` — 动机和能力
-            - `openspec/changes/<change-name>/specs/` — 需求和验收场景
-            - `openspec/changes/<change-name>/design.md` — 技术方案、决策、风险
-            - `openspec/changes/<change-name>/research/` — 技术调研（如果存在）
-
-            任务清单必须：
-            - 使用 `## Tasks` 作为部分标题
-             - 使用 `### Wave N: Group Name` 子分组，每个 Wave 2-8 个 task，Wave 总数按实际 task 数量灵活决定
-            - 每个 task 以 `- [ ] N.M Description` 开头
-
-            每个 task 必须包含以下 9 个子字段：
-            - **What to do**（做什么）：可执行的实施步骤
-            - **Must NOT do**（不做什么）：明确的排除项/守卫栏
-            - **Recommended Agent Profile**（推荐 agent）：category + skills
-            - **References**（参考）：代码模式参考（文件路径+行号）
-            - **Acceptance Criteria**（验收标准）：可执行的验证命令（如 `bun test`、`curl`）
-            - **QA Scenarios**（QA 场景）：至少 1 个成功场景（happy path）+ 1 个异常场景，每个场景包含五要素（Tool / Preconditions / Steps / Expected / Evidence）
-            - **Parallelization**（并行）：并行组、阻塞关系
-            - **Evidence**（证据）：验证证据路径（.omo/evidence/）
-            - **Commit**（提交）：是否提交及提交信息
-
-            Wave 规则：
-            - 同一 Wave 内 task 默认并发执行
-            - 不同 Wave 之间串行
-            - 只有两种情况下需要串行：Input dependency（Task B 读 Task A 的输出）或 File conflict（两个 task 修改同一文件）
-            - 没有文件读写关系的 task 不应有依赖关系
-
-            覆盖所有 spec requirement 和 design decisions，按逻辑依赖关系组织 wave。")
-    requires:
-      - specs
-      - design
-  - id: critic
-    generates: critic.md
-    description: >
-      Plan generation and multi-agent review. Generates
-      .omo/plans/<change-name>.md (OMO plan) and critic.md
-      (review report with verdict).
-    template: critic.md
-    tracks: critic.md
-    instruction: |
-      __LANG_PLACEHOLDER__
-
-      **范围限制：不要修改任何源代码。仅生成 critic.md 和 .omo/plans/<change-name>.md。**
-
-      === PHASE 1：读取上下文 ===
-
-      读取以下文件：
-      - `openspec/changes/<change-name>/tasks.md` — checkbox 任务清单
-      - `openspec/changes/<change-name>/specs/` — 需求和验收场景
-      - `openspec/changes/<change-name>/design.md` — 技术方案、决策、风险
-      - `openspec/changes/<change-name>/proposal.md` — 动机和能力
-      - `openspec/changes/<change-name>/research/` — 技术调研（如果存在）
-
-      === PHASE 2：Spec 验证（强制） ===
-
-      运行 `openspec validate <change-name>` 检查 spec 格式。
-
-      如果验证通过 → 继续。
-      如果验证失败 → 显示错误信息给用户，由用户决定如何修复。不得自行修复格式问题。
-
-      === PHASE 3：Oracle + Metis 并行审查 tasks.md ===
-
-      调用 Oracle 和 Metis 同时审查 tasks.md，两者使用相同的审查维度。
-
-      **Fast fail 保护**: 如果任一 agent 调用失败（超时、不可用、出错），立即停止工作流（**fast fail，不得降级**）：
-      - 向用户报告：「🔴 tasks.md 审查中断：[agent name] 调用失败。[错误信息]」
-      - 不得自行审查，不得跳过审查
-      - 等待用户介入
-
-      ```
-      REVIEW_PROMPT = "你正在审查一个 OpenSpec change 的任务清单（tasks.md）。请逐一检查以下所有检查项：
-
-       审查文件：
-        - `openspec/changes/<change-name>/tasks.md` — checkbox 任务清单
-        - `openspec/changes/<change-name>/proposal.md` — 动机和能力
-        - `openspec/changes/<change-name>/specs/` — 需求和验收场景
-        - `openspec/changes/<change-name>/design.md` — 技术方案、决策、风险
-        - `openspec/changes/<change-name>/research/` — 技术调研（如果存在）
-
-       □ 覆盖与 Scope——所有 spec/design 决策是否有对应 task 覆盖？有无多余 task（超出 proposal scope）或遗漏？
-       □ Task 粒度——每个 task 是否粒度合理？有无拆分过粗或过细？
-       □ 9 字段完整性与质量——每个 task 是否包含 What to do / Must NOT do / Agent Profile /
-         References / Acceptance Criteria / QA Scenarios / Parallelization / Evidence / Commit？
-         每个字段是否填写了有意义的内容（非占位符/非空白）？
-       □ 任务可执行性——Acceptance Criteria 是否是具体可执行的命令？
-         Agent Profile 的 category 是否匹配任务类型？
-       □ QA Scenarios 质量——每个 QA Scenario 是否包含五要素（Tool/Preconditions/Steps/Expected/Evidence）？
-         是否至少覆盖 1 个成功场景（happy path）+ 1 个异常场景？
-       □ Wave 结构——Wave 分组是否合理？命名清晰？每组 2-8 个 task？
-        □ 并发依赖——同 Wave 内 task 是否互不依赖？不同 Wave 依赖是否真实？有无虚假依赖？
-        □ 描述质量——task 描述是否有模糊、空洞、歧义？Must NOT do 是否提供了有效的守卫栏？
-        □ Evidence/Commit——Evidence 路径是否可采集？Commit Message 是否描述 task 本质变更？
-
-       严重程度：🔴 阻塞 / 🟡 警告 / ⚪ 建议
-       输出格式：逐项检查，然后汇总问题清单，每个问题标注 severity。"
-
-       task(subagent_type="oracle", prompt=REVIEW_PROMPT)
-       task(subagent_type="metis", prompt=REVIEW_PROMPT)
-      ```
-
-      **收集评审结果（以下步骤不可跳过）**：
-      1. 读取 Oracle 输出 → 列出所有 🔴/🟡/⚪ 发现
-      2. 读取 Metis 输出 → 列出所有 🔴/🟡/⚪ 发现
-      3. **自检**：确认两个 agent 结果都已读完。如有遗漏，回到步骤 1 重新读取
-      4. 合并发现：同一问题多个 agent 都发现时取更高严重程度
-      5. 分类判定：
-         - 有任何 🔴 → BLOCKED
-           **说明**: 此循环是内容质量改进机制（审查 agent 已成功完成分析 → subagent 修复 → 重新审查），
-           不是 agent 调用失败的降级处理。如审查 agent 调用本身失败 → 按 fast fail 规则立即停住报错。
-           将所有 🔴 问题打包，调用 agent 一次性修复：
-            task(category="write", load_skills=[],
-                 prompt="根据以下审查结果，一次性修复所有被指出的问题。
-
-                 只修复标记为 🔴 的问题，不要修改其他内容。
-
-                 Oracle + Metis 审查发现的所有问题：
-                 [将 Oracle/Metis 输出的所有 🔴 问题及修复建议以文本形式填入此处]")
-            修复完成后重新运行审查（**最多 3 轮**，超限后汇总给用户）
-          - 仅 🟡/⚪ → 展示给用户，让用户评估决定是否修复
-         6. 产出合并清单：将合并后的发现清单写入输出，供后续 PHASE 引用
 
       === PHASE 4：生成计划 ===
 
       生成 `.omo/plans/<change-name>.md` — 包含 9 个部分的 OMO 兼容执行计划。
-
-      Delegate plan generation via category="write":
+      **plan 是唯一的 task 定义来源**，tasks.md 只是桥接引用。
 
       **Fast fail**：如果以下 task(category="write") 调用失败（超时、不可用、出错），立即停止工作流，向用户报告：「🔴 plan 生成中断：write agent 调用失败。[错误信息]」，等待用户介入。不得自行生成 plan。
 
       task(category="write", load_skills=[],
            prompt="为以下变更生成 OMO 兼容的执行计划，保存到 .omo/plans/<change-name>.md。
 
-           输入文件摘要（已读取）：
+           输入文件（请直接读取以下文件获取完整内容）：
            - `openspec/changes/<change-name>/proposal.md` — 动机和能力
            - `openspec/changes/<change-name>/specs/` — 需求和验收场景
            - `openspec/changes/<change-name>/design.md` — 技术方案、决策、风险
-           - `openspec/changes/<change-name>/tasks.md` — checkbox 任务清单
            - `openspec/changes/<change-name>/research/` — 技术调研（如果存在）
 
            计划必须包含以下 9 个部分，使用 summary + link 格式：
@@ -577,15 +489,16 @@ artifacts:
            3. ## Work Objectives — 每个 capability 及关键 requirement（引用 specs/）
            4. ## Verification Strategy — 引用 specs 的 scenarios
            5. ## Execution Strategy — 引用 design.md 和 research/
-           6. ## Tasks — tasks.md 的 checkbox 展开，每个 task 含 What to do / Must NOT do / Agent Profile / References / Acceptance Criteria / QA Scenarios / Parallelization / Evidence / Commit
+           6. ## Tasks — **实际任务定义**，每个 task 含 What to do / Must NOT do / Agent Profile / References / Acceptance Criteria / QA Scenarios / Parallelization / Evidence / Commit
            7. ## Final Verification Wave — F1~F4
            8. ## Commit Strategy
            9. ## Success Criteria
 
            关键规则：
-           - Task 编号必须与 tasks.md 一致（N.M 格式）
+           - Task 编号使用 N.M 格式（如 1.1, 1.2, 2.1）
            - 不要复制 artifact 原文（Tasks 的 What to do 部分除外）
-           - Acceptance Criteria 必须是可执行的命令")
+           - Acceptance Criteria 必须是可执行的命令
+           - 这是**唯一的 task 定义来源**，tasks.md 只是桥接引用")
 
       === PHASE 5：Oracle + Metis + Momus 并行审查 Plan ===
 
@@ -593,14 +506,10 @@ artifacts:
       - `grep -c '^## ' .omo/plans/<change-name>.md` → 必须至少 9 个
       - `grep -q '## Tasks' .omo/plans/<change-name>.md` → Tasks 部分存在
       - `grep -q '## Final Verification Wave' .omo/plans/<change-name>.md` → FVW 存在
-      - checkbox 数量应与 tasks.md 一致
 
       如果结构检查不通过：停止，修复 plan 后重新验证。
 
       通过后，启动 Oracle + Metis + Momus agent 并行审查。
-
-      同时启动 1 个 Oracle + 1 个 Metis + 1 个 Momus agent 并行审查生成的 plan。
-      三者使用相同的审查维度。Momus 额外负责最终门禁判定。
 
       **Fast fail 保护**: 如果任一 agent 调用失败（超时、不可用、出错），立即停止工作流（**fast fail，不得降级**）：
       - 向用户报告：「🔴 plan 审查中断：[agent name] 调用失败。[错误信息]」
@@ -608,27 +517,27 @@ artifacts:
       - 等待用户介入
 
       ```
-       PLAN_REVIEW_PROMPT = "你正在审查 OMO plan。请逐一检查以下所有检查项：
+      PLAN_REVIEW_PROMPT = "你正在审查 OMO plan。请逐一检查以下所有检查项：
 
-        审查文件：
-        - plan:  .omo/plans/<change-name>.md
-        - `openspec/changes/<change-name>/specs/` — 需求和验收场景
-        - `openspec/changes/<change-name>/design.md` — 技术方案、决策、风险
-        - `openspec/changes/<change-name>/tasks.md` — checkbox 任务清单
-        - `openspec/changes/<change-name>/research/` — 技术调研（如果存在）
+      审查文件：
+      - plan: .omo/plans/<change-name>.md
+      - `openspec/changes/<change-name>/proposal.md` — 动机和能力
+      - `openspec/changes/<change-name>/specs/` — 需求和验收场景
+      - `openspec/changes/<change-name>/design.md` — 技术方案、决策、风险
+      - `openspec/changes/<change-name>/research/` — 技术调研（如果存在）
 
-        □ Design 对齐——Execution Strategy 是否准确反映了 design 的技术决策和风险缓解措施？
-        □ Verification 覆盖——Verification Strategy 是否覆盖了所有 spec 的 scenarios？
-        □ Success Criteria——是否可衡量？是否覆盖了所有 capability？
-        □ research 引用——research/ 的调研发现是否在 plan 中被正确引用？
-        □ 结构格式——所有 9 个 section 是否存在？是否使用 summary + link 模式？
-        □ Tasks 一致性——plan 的 Tasks section 是否准确镜像了 tasks.md 的内容（task 数量、编号一致）？
-        □ QA Scenarios 质量——每个 QA Scenario 是否有五要素？是否至少覆盖 1 个成功场景 + 1 个异常场景？
-        □ 可执行性——FVW 是否合理？执行策略是否可行？Wave 分组合理？依赖真实？
-        □ 潜在问题——是否有遗漏的边界场景？逻辑漏洞？矛盾？
+      □ Design 对齐——Execution Strategy 是否准确反映了 design 的技术决策和风险缓解措施？
+      □ Verification 覆盖——Verification Strategy 是否覆盖了 all spec 的 scenarios？
+      □ Success Criteria——是否可衡量？是否覆盖了所有 capability？
+      □ research 引用——research/ 的调研发现是否在 plan 中被正确引用？
+      □ 结构格式——所有 9 个 section 是否存在？是否使用 summary + link 模式？
+      □ Tasks 质量——每个 task 是否包含完整的 9 个子字段？内容是否有意义（非占位符）？
+      □ QA Scenarios 质量——每个 QA Scenario 是否有五要素？是否至少覆盖 1 个成功场景 + 1 个异常场景？
+      □ 可执行性——FVW 是否合理？执行策略是否可行？Wave 分组合理？依赖真实？
+      □ 潜在问题——是否有遗漏的边界场景？逻辑漏洞？矛盾？
 
-        严重程度：🔴 阻塞 / 🟡 警告 / ⚪ 建议
-        输出格式：逐项检查，然后汇总问题清单，每个问题标注 severity。"
+      严重程度：🔴 阻塞 / 🟡 警告 / ⚪ 建议
+      输出格式：逐项检查，然后汇总问题清单，每个问题标注 severity。"
 
       ORACLE_PLAN_REVIEW_PROMPT = PLAN_REVIEW_PROMPT
       METIS_PLAN_REVIEW_PROMPT = PLAN_REVIEW_PROMPT
@@ -650,8 +559,7 @@ artifacts:
       5. 如果 research/ 存在：是否有 research 发现未被 plan 覆盖？
 
       审查文件：
-      - plan:  .omo/plans/<change-name>.md
-      - `openspec/changes/<change-name>/tasks.md` — checkbox 任务清单
+      - plan: .omo/plans/<change-name>.md
       - `openspec/changes/<change-name>/research/` — 技术调研（如果存在）
 
       最终判定：
@@ -661,9 +569,9 @@ artifacts:
       输出格式：先按 Part A / Part B 分别分析，最后给出综合判定。所有发现使用 🔴/🟡/⚪ 标注严重程度。"
 
       # Oracle（内容）+ Metis（结构）+ Momus（门禁）
-       task(subagent_type="oracle", prompt=ORACLE_PLAN_REVIEW_PROMPT)
-       task(subagent_type="metis", prompt=METIS_PLAN_REVIEW_PROMPT)
-       task(subagent_type="momus", prompt=MOMUS_PLAN_REVIEW_PROMPT)
+      task(subagent_type="oracle", prompt=ORACLE_PLAN_REVIEW_PROMPT)
+      task(subagent_type="metis", prompt=METIS_PLAN_REVIEW_PROMPT)
+      task(subagent_type="momus", prompt=MOMUS_PLAN_REVIEW_PROMPT)
       ```
 
       **收集评审结果（以下步骤不可跳过）**：
@@ -673,33 +581,28 @@ artifacts:
       4. **自检**：确认所有 3 个 agent 结果都已读完。如有遗漏，回到步骤 1 重新读取
       5. 合并发现：同一问题多个 agent 都发现时取更高严重程度
       6. 分类判定：
-         - Momus 🔴 REJECT 或 任一 agent 有 🔴 → BLOCKED
-           **说明**: 此循环是内容质量改进机制（审查 agent 已成功完成分析 → subagent 修复 → 重新审查），
-           不是 agent 调用失败的降级处理。如审查 agent 调用本身失败 → 按 fast fail 规则立即停住报错。
-           将所有 🔴 问题打包，调用 agent 一次性修复：
-            task(category="write", load_skills=[],
-                 prompt="根据以下审查结果，一次性修复所有被指出的问题。
-
-                 只修复标记为 🔴 的问题，不要修改其他内容。
-
-                 Oracle + Metis + Momus 审查发现的所有问题：
-                 [将三个 agent 输出的所有 🔴 问题及修复建议以文本形式填入此处]")
-            修复完成后重新运行审查（**最多 3 轮**，超限后汇总给用户）
-          - 仅 🟡/⚪ → 展示给用户，让用户评估决定是否修复
-        7. 产出合并清单：将合并后的发现清单写入输出，供后续 PHASE 引用
+         - Momus 🔴 REJECT 或 任一 agent 有 🔴 → BLOCKED，委托 agent 修复 plan：
+           task(category="write", load_skills=[],
+                prompt="根据以下审查结果，一次性修复 plan 中被指出的问题。
+                只修复标记为 🔴 的问题，不要修改其他内容。
+                Oracle + Metis + Momus 审查发现的所有问题：
+                [将三个 agent 输出的所有 🔴 问题及修复建议以文本形式填入此处]")
+           修复完成后重新运行 PHASE 5（**最多 3 轮**，超限后汇总给用户）
+         - 仅 🟡/⚪ → 展示给用户，让用户评估决定是否修复
+      7. 产出合并清单：将合并后的发现清单写入输出，供后续 PHASE 引用
 
       === PHASE 6：通过 Agent 生成 critic.md ===
 
       Package the review findings into a prompt. Delegate to agent to generate critic.md：
 
-             task(category="write", load_skills=[],
+      task(category="write", load_skills=[],
            prompt="生成 critic.md 文件。
 
-           PHASE 3（tasks.md 审查）的未解决问题：
+           PHASE 3（差距分析）的未解决问题：
            [将 PHASE 3 中 Oracle+Metis 审查后仍未被解决的 🟡/⚪ 清单填入此处；如果全部已修复则填"无"]
 
-            PHASE 5（plan 审查）的未解决问题：
-            [将 PHASE 5 中 Oracle+Metis+Momus 审查后仍未被解决的 🟡/⚪ 清单填入此处；如果全部已修复则填"无"]
+           PHASE 5（plan 审查）的未解决问题：
+           [将 PHASE 5 中 Oracle+Metis+Momus 审查后仍未被解决的 🟡/⚪ 清单填入此处；如果全部已修复则填"无"]
 
            如果所有问题都已修复（无未解决的 🟡/⚪），critic.md 内容仅为：**ALL DONE**
            如果仍有未解决的 🟡/⚪，critic.md 必须：
@@ -730,40 +633,50 @@ apply:
     **重要：本指令覆盖 `/openspec-apply-change` 的执行逻辑。
     只能通过 `/start-work` 来执行计划。
     忽略任何要求从 tasks.md 逐一手动执行任务的指令
-    仅遵循本指令的流程：verdict 检查 → `/start-work` → Oracle 验证 → 同步。**
+    仅遵循本指令的流程：verdict 检查 → `/start-work` → Oracle 验证。**
 
-     先读取 `openspec/changes/<change-name>/critic.md`，检查 VERDICT：
+    === 核心架构 ===
 
-      1. 如果 critic.md 内容为 **ALL DONE**（✅ PASS）→ 继续
-      2. 如果 critic.md 包含未解决问题的清单（⚠️ CONDITIONAL）→ 列出 🟡 项，要求用户确认后再继续
-      3. 其他情况 → 停止，提示用户修复后重新运行 critic
+    tasks.md 是 OpenSpec ↔ OMO 的**桥接引用文件**，不包含实际任务定义。
+    实际任务内容在 `.omo/plans/<change-name>.md` 中。
+    `/start-work` 执行后，checkbox 状态从 plan 同步到 tasks.md。
 
-     VERDICT 确认后，调用：
-     ```
-     /start-work .omo/plans/<change-name>.md
-     ```
+    === Step 1：读取 critic.md 检查 VERDICT ===
 
-     这会调用 OMO 内置的计划执行器（Atlas），读取计划文件并执行任务，包含委托、验证和会话连续性。
+    读取 `openspec/changes/<change-name>/critic.md`，检查 VERDICT：
 
-     **处理 `/start-work` 的三种结果：**
-     1. **ALL_DONE**（完成）：所有 task 执行完毕 → 继续 Oracle 验证
-     2. **PAUSE**（暂停）：部分 task 完成，用户暂停 → 继续 Oracle 验证，告知用户后续可重新运行 /start-work 继续
-     3. **FAILED**（失败）：/start-work 本身崩溃或 Atlas 不可用 → 立即停止，向用户报告：「🔴 /start-work 执行失败。[错误信息]」，等待用户介入
+    1. 如果 critic.md 内容为 **ALL DONE**（✅ PASS）→ 继续
+    2. 如果 critic.md 包含未解决问题的清单（⚠️ CONDITIONAL）→ 列出 🟡 项，要求用户确认后再继续
+    3. 其他情况 → 停止，提示用户修复后重新运行 critic
 
-     成功（ALL_DONE 或 PAUSE）后，捕获变更文件列表：
+    === Step 2：执行 /start-work ===
+
+    VERDICT 确认后，调用：
+    ```
+    /start-work .omo/plans/<change-name>.md
+    ```
+
+    这会调用 OMO 内置的计划执行器（Atlas），读取计划文件并执行任务，包含委托、验证和会话连续性。
+
+    **处理 `/start-work` 的三种结果：**
+    1. **ALL_DONE**（完成）：所有 task 执行完毕 → 继续 Oracle 验证
+    2. **PAUSE**（暂停）：部分 task 完成，用户暂停 → 继续 Oracle 验证，告知用户后续可重新运行 /start-work 继续
+    3. **FAILED**（失败）：/start-work 本身崩溃或 Atlas 不可用 → 立即停止，向用户报告：「🔴 /start-work 执行失败。[错误信息]」，等待用户介入
+
+    === Step 3：Oracle 验证（最多 3 轮）===
+
+    成功（ALL_DONE 或 PAUSE）后，捕获变更文件列表：
     ```
     git diff --name-only HEAD
     ```
-    这告诉 Oracle 哪些文件被此变更创建或修改。
-    然后运行 Oracle 验证，最多 3 轮。
 
-     如果 Oracle task() 调用失败（超时、不可用、出错），立即停止工作流（**fast fail，不得降级**）：
-     - 向用户报告：「🔴 实现验证中断：Oracle 调用失败。[错误信息]」
-     - 不得自行分析 git diff，不得自行生成 verify.md，不得自行判定
-     - 等待用户介入
+    如果 Oracle task() 调用失败（超时、不可用、出错），立即停止工作流（**fast fail，不得降级**）：
+    - 向用户报告：「🔴 实现验证中断：Oracle 调用失败。[错误信息]」
+    - 不得自行分析 git diff，不得自行判定
+    - 等待用户介入
 
     ```
-        task(subagent_type="oracle", prompt="你正在验证实现产出与 OpenSpec change artifacts 的一致性。
+    task(subagent_type="oracle", prompt="你正在验证实现产出与 OpenSpec change artifacts 的一致性。
     请检查所有实现产出（代码、配置、文档等）是否按 proposal、spec、design 的要求正确实现。
     按严重程度输出发现（🔴阻塞 / 🟡警告 / ⚪建议）。
 
@@ -771,8 +684,7 @@ apply:
     - `openspec/changes/<change-name>/proposal.md` — 动机和能力
     - `openspec/changes/<change-name>/specs/` — 需求和验收场景
     - `openspec/changes/<change-name>/design.md` — 技术方案、决策、风险
-    - `openspec/changes/<change-name>/tasks.md` — checkbox 任务清单
-    - `.omo/plans/<change-name>.md` — OMO 执行计划
+    - `.omo/plans/<change-name>.md` — OMO 执行计划（唯一的 task 定义来源）
     - `openspec/changes/<change-name>/research/` — 技术调研（如果存在）
 
     变更文件清单（来自 git diff --name-only HEAD）：
@@ -794,40 +706,34 @@ apply:
     - 是否有超出 proposal 范围的 scope leak？
     - proposal 中的所有 Capability 是否都有对应实现？
 
-     维度 4 — Task 完成度：
-     - tasks.md 中的所有 task 是否都有对应的实现产出？
-     - plan 中每个 task 的 Evidence 路径是否存在？关键 task 的 evidence 内容是否与 Acceptance Criteria 匹配？
+    维度 4 — Task 完成度：
+    - plan 中的所有 task 是否都有对应的实现产出？
+    - plan 中每个 task 的 Evidence 路径是否存在？关键 task 的 evidence 内容是否与 Acceptance Criteria 匹配？
 
-     维度 5 — 非功能性合规性（如果 design/proposal 中有相关要求）：
-     - 性能要求（响应时间、吞吐量等）是否达标？
-     - 安全相关决策（认证、授权、加密）是否在实现中正确应用？
-     - 兼容性约束是否被遵守？
+    维度 5 — 非功能性合规性（如果 design/proposal 中有相关要求）：
+    - 性能要求（响应时间、吞吐量等）是否达标？
+    - 安全相关决策（认证、授权、加密）是否在实现中正确应用？
+    - 兼容性约束是否被遵守？
 
     输出格式：逐维度分析 + 问题汇总 + 总体结论。
 
     最终判定标准：
     - 🔴 BLOCKED：存在严重的实现偏离，必须修复才能继续
     - ⚠️ CONDITIONAL：实现基本正确但有 🟡/⚪ 瑕疵，可接受风险继续推进
-     注意：请谨慎区分 BLOCKED 和 CONDITIONAL。只有确实阻碍功能正确性的问题才标 🔴。
-     ")
+    - 注意：请谨慎区分 BLOCKED 和 CONDITIONAL。只有确实阻碍功能正确性的问题才标 🔴。
+    ")
     ```
 
-      读取 Oracle 输出中的最终判定：
-      1. 如果 ✅ PASS → 继续
-      2. 如果 🔴 BLOCKED：
-           将所有 🔴 问题打包，调用 agent 一次性修复：
-            task(category="write", load_skills=[],
-                 prompt="根据以下验证结果修复实现产出。只修复标记为 🔴 的问题，不要修改其他内容。
+    读取 Oracle 输出中的最终判定：
+    1. 如果 ✅ PASS → 完成
+    2. 如果 🔴 BLOCKED：
+         将所有 🔴 问题打包，调用 agent 一次性修复：
+         task(category="write", load_skills=[],
+              prompt="根据以下验证结果修复实现产出。只修复标记为 🔴 的问题，不要修改其他内容。
+              Oracle 验证结果中的所有 🔴 问题：
+              [将 Oracle 输出的 🔴 问题列表及修复建议填入此处]")
+         修复完成后重新运行 Oracle 验证（**最多 3 轮**，超限后汇总给用户）
+    3. 如果 ⚠️ CONDITIONAL → 汇总 🟡/⚪ 展示给用户，让用户决定是否接受
 
-                Oracle 验证结果中的所有 🔴 问题：
-                [将 Oracle 输出的 🔴 问题列表及修复建议填入此处]")
-           修复完成后重新运行 Oracle 验证（**最多 3 轮**，超限后汇总给用户）
-      3. 如果 ⚠️ CONDITIONAL → 汇总 🟡/⚪ 展示给用户，让用户决定是否接受
-
-    **同步协议**：
-    - plan 文件的 `## Tasks` 部分跟踪 `/start-work` 的 checkbox 状态
-    - `openspec/changes/<change-name>/tasks.md` 是 OpenSpec 的真实来源
-    - `/start-work` 完成或暂停后，将 `.omo/plans/<change-name>.md` 的 checkbox 状态复制到
-      `openspec/changes/<change-name>/tasks.md` 保持同步
-    - 运行以下命令验证暂停/完成时的状态一致性：
-      diff <(grep '^- \[' openspec/changes/<change-name>/tasks.md) <(sed -n '/^## Tasks/,/^## /p' .omo/plans/<change-name>.md | grep '^- \[')
+    **注意**：tasks.md 只是桥接引用，不需要复杂的同步协议。
+    `/start-work` 执行后，plan 中的 checkbox 状态会自动同步到 tasks.md。
