@@ -547,7 +547,9 @@ artifacts:
       审查前先验证 plan 结构（OMO 兼容性）：
       - `grep -q '## TODOs' .omo/plans/<change-name>.md` → OMO 兼容的 Tasks section 存在
       - `grep -q '## Final Verification Wave' .omo/plans/<change-name>.md` → FVW 存在
-      - `grep -cP '^\d+\.\s+' .omo/plans/<change-name>.md` → 至少有 1 个 OMO 兼容的任务格式（`1. task`，非 `1.1 task`）
+      - `grep -q '## TL;DR' .omo/plans/<change-name>.md` → TL;DR 存在
+      - `grep -q '## Success Criteria' .omo/plans/<change-name>.md` → Success Criteria 存在
+      - `grep -cP '^\d+\.\s+' .omo/plans/<change-name>.md` → 至少有 1 个 OMO 兼容的任务格式（`1. task`）
 
       如果结构检查不通过：停止，修复 plan 后重新验证。
 
@@ -699,34 +701,10 @@ apply:
     /start-work .omo/plans/<change-name>.md
     ```
 
-    **执行机制说明：**
-    /start-work 是 OMO 的 hook 拦截器，执行以下操作：
-    1. 创建/更新 `.omo/boulder.json` 状态文件（追踪 plan、session、agent）
-    2. 注入 plan 上下文到 prompt（路径、进度、session ID）
-    3. 切换到 Atlas agent（事件驱动的续行管理器）
-
-    Atlas 的工作方式：
-    - 监听 `session.idle` 事件
-    - 检测 plan 文件中的 checkbox 状态（`- [x]` vs `- [ ]`）
-    - 注入续行 prompt 驱动 AI 继续工作
-    - 在 task 完成后注入验证提醒
-    - 当所有 TODOs 和 FVW 任务完成时，注入完成提示
-
-    **完成判断逻辑：**
-    - OMO 只解析 `## TODOs` 和 `## Final Verification Wave` 两个 section
-    - 只计算顶层 checkbox（缩进的不计入）
-    - Task 格式必须是 `N. Task`（TODOs）或 `FN. Task`（FVW）
-    - `isComplete = total > 0 && completed === total`
-
-    **Final Verification Wave 审批门禁：**
-    - 当只剩 FVW 任务时，Atlas 会暂停等待用户批准
-    - 需要检测到 `VERDICT: APPROVE` 关键词才会继续
-    - 防止自动跳过最终验证
-
     **执行结果处理：**
-    1. **正常完成**：Atlas 注入完成提示 → 继续 Oracle 验证
-    2. **用户暂停**：用户手动停止或 Atlas 检测到 FVW 审批 → 告知用户后续可重新运行 /start-work 继续
-    3. **执行失败**：Atlas 有重试机制（最多 10 次）→ 如果重试耗尽，向用户报告
+    1. **完成**：继续 Oracle 验证
+    2. **暂停**：告知用户后续可重新运行 /start-work 继续
+    3. **失败**：向用户报告错误并等待介入
 
     === Step 3：Oracle 验证（最多 3 轮）===
 

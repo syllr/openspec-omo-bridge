@@ -41,7 +41,7 @@ The following gates apply to the **spec-driven** schema. Constitution schema has
 2. **Spec validation** (critic, mandatory) — runs `openspec validate`, if errors show to user and let user decide how to fix
 3. **1 parallel Oracle + 1 parallel Metis gap analysis** (critic, after spec validation) — concurrent review of proposal/specs/design coherence before plan generation; both Oracle and Metis use the same review dimensions for double-blind redundant validation
 4. **Plan generation** (critic, mandatory) — generate `.omo/plans/<name>.md` via `category="write"`
-5. **Plan structure validation** (critic, mandatory) — checks `## TODOs` section exists, `## Final Verification Wave` section exists, and OMO-compatible task format (`N. Task`)
+5. **Plan structure validation** (critic, mandatory) — checks `## TODOs` section exists, `## Final Verification Wave` section exists, `## TL;DR` exists, `## Success Criteria` exists, and OMO-compatible task format (`N. Task`)
 6. **1 parallel Oracle + 1 parallel Metis + 1 parallel Momus review** (critic, mandatory) — concurrent review of plan: Oracle + Metis use the same review dimensions for redundant validation; Momus gives final OKAY/REJECT verdict
 7. **Critic verdict** (critic, hard block) — if 🔴 BLOCKED, apply cannot proceed; if ⚠️ CONDITIONAL, user must acknowledge; if ✅ PASS, proceed
 8. **Oracle invocation** (critic, mandatory) — spec validation; 如果 Oracle 调用失败则按 fast fail 规则立即停住报错
