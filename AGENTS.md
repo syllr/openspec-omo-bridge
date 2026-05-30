@@ -27,9 +27,9 @@ proposal → design ──┬──► specs ──┐
                     └─────────────┘
 ```
 
-- `tasks.instruction` generates `tasks.md` (simple checkbox list)
+- `tasks.instruction` generates `tasks.md` (bridge reference to OMO plan, no actual task content)
 - `critic.instruction` generates `.omo/plans/<name>.md` (OMO plan with rich sub-fields) + `critic.md` (review report)
-- `.omo/plans/<name>.md` uses **9 sections** in spec-driven: TL;DR, Context, Work Objectives, Verification Strategy, Execution Strategy, Tasks, Final Verification Wave, Commit Strategy, Success Criteria (7 sections in constitution, skipping Verification Strategy and Commit Strategy per Design Decision 6)
+- `.omo/plans/<name>.md` uses **9 sections** in spec-driven: TL;DR, Context, Work Objectives, Verification Strategy, Execution Strategy, TODOs, Final Verification Wave, Commit Strategy, Success Criteria (7 sections in constitution, skipping Verification Strategy and Commit Strategy per Design Decision 6)
 - Non-Tasks sections use "summary + link" pattern (references `openspec/changes/<name>/` artifacts)
 - The plan is parsed by `/start-work` (OMO's Atlas agent)
 
@@ -37,15 +37,14 @@ proposal → design ──┬──► specs ──┐
 
 The following gates apply to the **spec-driven** schema. Constitution schema has its own quality mechanisms documented in the Constitution Schema section.
 
-1. **Basic structure check** (critic, mandatory) — checks spec dir, tasks.md, and task count (removed, no longer needed)
+1. **Basic structure check** (critic, mandatory) — checks spec dir (removed, no longer needed)
 2. **Spec validation** (critic, mandatory) — runs `openspec validate`, if errors show to user and let user decide how to fix
-3. **1 parallel Oracle + 1 parallel Metis review** (critic, after spec validation) — concurrent review of tasks.md: both Oracle and Metis use the same review dimensions for double-blind redundant validation
+3. **1 parallel Oracle + 1 parallel Metis gap analysis** (critic, after spec validation) — concurrent review of proposal/specs/design coherence before plan generation; both Oracle and Metis use the same review dimensions for double-blind redundant validation
 4. **Plan generation** (critic, mandatory) — generate `.omo/plans/<name>.md` via `category="write"`
-5. **Plan structure validation** (critic, mandatory) — 4 grep checks verify sections exist and checkbox counts match
+5. **Plan structure validation** (critic, mandatory) — checks `## TODOs` section exists, `## Final Verification Wave` section exists, and OMO-compatible task format (`N. Task`)
 6. **1 parallel Oracle + 1 parallel Metis + 1 parallel Momus review** (critic, mandatory) — concurrent review of plan: Oracle + Metis use the same review dimensions for redundant validation; Momus gives final OKAY/REJECT verdict
 7. **Critic verdict** (critic, hard block) — if 🔴 BLOCKED, apply cannot proceed; if ⚠️ CONDITIONAL, user must acknowledge; if ✅ PASS, proceed
-8. **Oracle + Metis invocation** (tasks, mandatory) — gap analysis on task list before generation; Oracle 按信源优先级（proposal.md > design.md > specs）分析冲突并给出修复建议，自动修复后循环调用直至仅剩用户判断项；同时校验 proposal 中的不确定点是否在 design 阶段有对应的 research/ 调研产出。Metis 使用相同的审查维度进行冗余验证。
-9. **Oracle invocation** (critic, mandatory) — spec validation; 如果 Oracle 调用失败则按 fast fail 规则立即停住报错
+8. **Oracle invocation** (critic, mandatory) — spec validation; 如果 Oracle 调用失败则按 fast fail 规则立即停住报错
 
 ## Language support
 
@@ -62,10 +61,12 @@ Arithmetic uses `$((var + 1))` syntax (not `((var++))`) to avoid `set -e` exit o
 
 ## Apply phase sync protocol
 
-`apply.instruction` has a Task State Sync Protocol:
+`apply.instruction` has a simplified sync approach:
 
-- **ON PAUSE / ON ALL_DONE**: After `/start-work` completes or pauses, copy checkbox states from `.omo/plans/<change-name>.md` to `tasks.md`. Then run `diff <(grep '^- \[' tasks.md) <(sed -n '/^## Tasks/,/^## /p' plan.md | grep '^- \[')` to verify consistency.
-- `diff` is scoped to `## Tasks` section only (excludes FVW/Success Criteria checkboxes)
+- **tasks.md** is a **bridge reference** file, not a checkbox source.
+  It points to `.omo/plans/<change-name>.md` where the actual task definitions and checkbox states live.
+- OMO's `/start-work` manages execution state via `.omo/boulder.json` and parses checkboxes directly from the plan file.
+- No need to copy checkbox states back to tasks.md — OMO tracks completion internally via `- [x]` in the plan file.
 
 ## Spec validation rules
 

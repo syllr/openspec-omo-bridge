@@ -383,8 +383,8 @@ artifacts:
     generates: critic.md
     description: >
       Plan generation and multi-agent review. Generates
-      .omo/plans/<change-name>.md (OMO plan) and updates tasks.md
-      (bridge reference with checkbox sync).
+      .omo/plans/<change-name>.md (OMO plan) and tasks.md
+      (bridge reference).
     template: critic.md
     tracks: critic.md
     instruction: |
@@ -469,7 +469,7 @@ artifacts:
 
       === PHASE 4：生成计划 ===
 
-      生成 `.omo/plans/<change-name>.md` — 包含 9 个部分的 OMO 兼容执行计划。
+      生成 `.omo/plans/<change-name>.md` — OMO 兼容的执行计划。
       **plan 是唯一的 task 定义来源**，tasks.md 只是桥接引用。
 
       **Fast fail**：如果以下 task(category="write") 调用失败（超时、不可用、出错），立即停止工作流，向用户报告：「🔴 plan 生成中断：write agent 调用失败。[错误信息]」，等待用户介入。不得自行生成 plan。
@@ -483,29 +483,71 @@ artifacts:
            - `openspec/changes/<change-name>/design.md` — 技术方案、决策、风险
            - `openspec/changes/<change-name>/research/` — 技术调研（如果存在）
 
-           计划必须包含以下 9 个部分，使用 summary + link 格式：
-           1. ## TL;DR — 1-2句概述（引用 proposal.md）
-           2. ## Context — 2-3句背景（引用 proposal.md）
-           3. ## Work Objectives — 每个 capability 及关键 requirement（引用 specs/）
-           4. ## Verification Strategy — 引用 specs 的 scenarios
-           5. ## Execution Strategy — 引用 design.md 和 research/
-           6. ## Tasks — **实际任务定义**，每个 task 含 What to do / Must NOT do / Agent Profile / References / Acceptance Criteria / QA Scenarios / Parallelization / Evidence / Commit
-           7. ## Final Verification Wave — F1~F4
-           8. ## Commit Strategy
-           9. ## Success Criteria
+           计划结构（OMO 兼容格式）：
 
-           关键规则：
-           - Task 编号使用 N.M 格式（如 1.1, 1.2, 2.1）
-           - 不要复制 artifact 原文（Tasks 的 What to do 部分除外）
-           - Acceptance Criteria 必须是可执行的命令
+           ```markdown
+           ## TL;DR
+           1-2句概述，引用 proposal.md
+
+           ## Context
+           2-3句背景，引用 proposal.md
+
+           ## Work Objectives
+           每个 capability 及关键 requirement，引用 specs/
+
+           ## Verification Strategy
+           引用 specs 的 scenarios
+
+           ## Execution Strategy
+           引用 design.md 和 research/
+
+           ## TODOs
+           **OMO 会解析此 section 中的 checkbox 来追踪进度**
+
+           1. [ ] Task 1 description
+              **What to do**: ...
+              **Must NOT do**: ...
+              **Recommended Agent Profile**: category="...", load_skills=["..."]
+              **References**: ...
+              **Acceptance Criteria**: `bun test` / `curl ...`
+              **QA Scenarios**: ...
+              **Parallelization**: ...
+              **Evidence**: .omo/evidence/...
+              **Commit**: YES/NO
+
+           2. [ ] Task 2 description
+              ...
+
+           ## Final Verification Wave
+           **OMO 会解析此 section 中的 checkbox 来判断是否完成**
+
+           F1. [ ] Final verification task 1
+              **Acceptance Criteria**: ...
+
+           F2. [ ] Final verification task 2
+              ...
+
+           ## Commit Strategy
+           提交策略说明
+
+           ## Success Criteria
+           成功标准说明
+           ```
+
+           关键规则（OMO 兼容性）：
+           - **必须使用 `## TODOs`**（不是 `## Tasks`），OMO 通过此 section 追踪进度
+           - **任务编号使用 `N.` 格式**（如 `1.`, `2.`, `3.`），不要用 `N.M` 格式
+           - **FVW 任务编号使用 `FN.` 格式**（如 `F1.`, `F2.`）
+           - 每个任务必须有 checkbox（`- [ ]` 未完成，`- [x]` 已完成）
+           - 非 Task sections 使用 summary + link 格式，引用其他 artifacts
            - 这是**唯一的 task 定义来源**，tasks.md 只是桥接引用")
 
       === PHASE 5：Oracle + Metis + Momus 并行审查 Plan ===
 
-      审查前先验证 plan 结构：
-      - `grep -c '^## ' .omo/plans/<change-name>.md` → 必须至少 9 个
-      - `grep -q '## Tasks' .omo/plans/<change-name>.md` → Tasks 部分存在
+      审查前先验证 plan 结构（OMO 兼容性）：
+      - `grep -q '## TODOs' .omo/plans/<change-name>.md` → OMO 兼容的 Tasks section 存在
       - `grep -q '## Final Verification Wave' .omo/plans/<change-name>.md` → FVW 存在
+      - `grep -cP '^\d+\.\s+' .omo/plans/<change-name>.md` → 至少有 1 个 OMO 兼容的任务格式（`1. task`，非 `1.1 task`）
 
       如果结构检查不通过：停止，修复 plan 后重新验证。
 
@@ -526,14 +568,15 @@ artifacts:
       - `openspec/changes/<change-name>/design.md` — 技术方案、决策、风险
       - `openspec/changes/<change-name>/research/` — 技术调研（如果存在）
 
+      □ OMO 兼容性——plan 是否使用 `## TODOs`（非 `## Tasks`）？任务格式是否为 `N. task`（非 `N.M task`）？
       □ Design 对齐——Execution Strategy 是否准确反映了 design 的技术决策和风险缓解措施？
       □ Verification 覆盖——Verification Strategy 是否覆盖了 all spec 的 scenarios？
       □ Success Criteria——是否可衡量？是否覆盖了所有 capability？
       □ research 引用——research/ 的调研发现是否在 plan 中被正确引用？
-      □ 结构格式——所有 9 个 section 是否存在？是否使用 summary + link 模式？
-      □ Tasks 质量——每个 task 是否包含完整的 9 个子字段？内容是否有意义（非占位符）？
+      □ 结构格式——是否使用 summary + link 模式？非 Task sections 是否引用了其他 artifacts？
+      □ Tasks 质量——每个 task 是否包含 What to do / Must NOT do / Agent Profile / References / Acceptance Criteria / QA Scenarios / Parallelization / Evidence / Commit？内容是否有意义（非占位符）？
       □ QA Scenarios 质量——每个 QA Scenario 是否有五要素？是否至少覆盖 1 个成功场景 + 1 个异常场景？
-      □ 可执行性——FVW 是否合理？执行策略是否可行？Wave 分组合理？依赖真实？
+      □ 可执行性——FVW 是否合理？执行策略是否可行？任务依赖真实？
       □ 潜在问题——是否有遗漏的边界场景？逻辑漏洞？矛盾？
 
       严重程度：🔴 阻塞 / 🟡 警告 / ⚪ 建议
@@ -639,7 +682,7 @@ apply:
 
     tasks.md 是 OpenSpec ↔ OMO 的**桥接引用文件**，不包含实际任务定义。
     实际任务内容在 `.omo/plans/<change-name>.md` 中。
-    `/start-work` 执行后，checkbox 状态从 plan 同步到 tasks.md。
+    任务完成状态通过解析 plan 文件中的 checkbox（`- [ ]` vs `- [x]`）判断，tasks.md 不参与状态判断。
 
     === Step 1：读取 critic.md 检查 VERDICT ===
 
@@ -649,19 +692,41 @@ apply:
     2. 如果 critic.md 包含未解决问题的清单（⚠️ CONDITIONAL）→ 列出 🟡 项，要求用户确认后再继续
     3. 其他情况 → 停止，提示用户修复后重新运行 critic
 
-    === Step 2：执行 /start-work ===
+     === Step 2：执行 /start-work ===
 
     VERDICT 确认后，调用：
     ```
     /start-work .omo/plans/<change-name>.md
     ```
 
-    这会调用 OMO 内置的计划执行器（Atlas），读取计划文件并执行任务，包含委托、验证和会话连续性。
+    **执行机制说明：**
+    /start-work 是 OMO 的 hook 拦截器，执行以下操作：
+    1. 创建/更新 `.omo/boulder.json` 状态文件（追踪 plan、session、agent）
+    2. 注入 plan 上下文到 prompt（路径、进度、session ID）
+    3. 切换到 Atlas agent（事件驱动的续行管理器）
 
-    **处理 `/start-work` 的三种结果：**
-    1. **ALL_DONE**（完成）：所有 task 执行完毕 → 继续 Oracle 验证
-    2. **PAUSE**（暂停）：部分 task 完成，用户暂停 → 继续 Oracle 验证，告知用户后续可重新运行 /start-work 继续
-    3. **FAILED**（失败）：/start-work 本身崩溃或 Atlas 不可用 → 立即停止，向用户报告：「🔴 /start-work 执行失败。[错误信息]」，等待用户介入
+    Atlas 的工作方式：
+    - 监听 `session.idle` 事件
+    - 检测 plan 文件中的 checkbox 状态（`- [x]` vs `- [ ]`）
+    - 注入续行 prompt 驱动 AI 继续工作
+    - 在 task 完成后注入验证提醒
+    - 当所有 TODOs 和 FVW 任务完成时，注入完成提示
+
+    **完成判断逻辑：**
+    - OMO 只解析 `## TODOs` 和 `## Final Verification Wave` 两个 section
+    - 只计算顶层 checkbox（缩进的不计入）
+    - Task 格式必须是 `N. Task`（TODOs）或 `FN. Task`（FVW）
+    - `isComplete = total > 0 && completed === total`
+
+    **Final Verification Wave 审批门禁：**
+    - 当只剩 FVW 任务时，Atlas 会暂停等待用户批准
+    - 需要检测到 `VERDICT: APPROVE` 关键词才会继续
+    - 防止自动跳过最终验证
+
+    **执行结果处理：**
+    1. **正常完成**：Atlas 注入完成提示 → 继续 Oracle 验证
+    2. **用户暂停**：用户手动停止或 Atlas 检测到 FVW 审批 → 告知用户后续可重新运行 /start-work 继续
+    3. **执行失败**：Atlas 有重试机制（最多 10 次）→ 如果重试耗尽，向用户报告
 
     === Step 3：Oracle 验证（最多 3 轮）===
 
@@ -735,5 +800,5 @@ apply:
          修复完成后重新运行 Oracle 验证（**最多 3 轮**，超限后汇总给用户）
     3. 如果 ⚠️ CONDITIONAL → 汇总 🟡/⚪ 展示给用户，让用户决定是否接受
 
-    **注意**：tasks.md 只是桥接引用，不需要复杂的同步协议。
-    `/start-work` 执行后，plan 中的 checkbox 状态会自动同步到 tasks.md。
+    **注意**：tasks.md 只是桥接引用，不包含 checkbox，不需要同步协议。
+    任务完成状态通过解析 plan 文件中的 checkbox 判断。
