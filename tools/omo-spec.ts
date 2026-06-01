@@ -340,6 +340,55 @@ export function validateOmoPlan(
   }
 }
 
+/**
+ * 9 个固定 section 的 OMO plan 内容。
+ * 顺序固定，与 buildOmoPlan 输出的 ## 标题一一对应。
+ */
+export interface OmoPlanSections {
+  tldr: string
+  context: string
+  workObjectives: string
+  verificationStrategy: string
+  executionStrategy: string
+  todos: string
+  finalVerificationWave: string
+  commitStrategy: string
+  successCriteria: string
+}
+
+/**
+ * 按固定 9-section 顺序组装 OMO plan markdown。
+ * 9 个 section 标题固定，AI 只需提供每节内容。
+ * 输出格式与 OpenCode/OMO 解析器期望完全一致。
+ */
+export function buildOmoPlan(sections: OmoPlanSections): string {
+  const parts: string[] = []
+
+  parts.push("## TL;DR", sections.tldr, "")
+  parts.push("## Context", sections.context, "")
+  parts.push("## Work Objectives", sections.workObjectives, "")
+  parts.push("## Verification Strategy", sections.verificationStrategy, "")
+  parts.push("## Execution Strategy", sections.executionStrategy, "")
+  parts.push(
+    "## TODOs",
+    "**OMO 会解析此 section 中的 checkbox 来追踪进度**",
+    "",
+    sections.todos,
+    ""
+  )
+  parts.push(
+    "## Final Verification Wave",
+    "**OMO 会解析此 section 中的 checkbox 来判断是否完成**",
+    "",
+    sections.finalVerificationWave,
+    ""
+  )
+  parts.push("## Commit Strategy", sections.commitStrategy, "")
+  parts.push("## Success Criteria", sections.successCriteria, "")
+
+  return parts.join("\n")
+}
+
 // ============================================================
 // OpenCode tool 入口
 // ============================================================
@@ -446,5 +495,80 @@ export const validate_omo_plan = tool({
     }
 
     return `✅ plan 结构检查通过（${validation.passedChecks}/${validation.totalChecks} 项全部通过）`
+  },
+})
+
+/**
+ * Tool: omo_spec_write_new_plan
+ * 作用：按 9-section 固定结构写入 OMO 兼容执行计划
+ */
+export const write_new_plan = tool({
+  description:
+    "写入 OMO 兼容执行计划到 .omo/plans/<change-name>.md。9 个参数对应 plan 的 9 个固定 section（顺序固定）：TL;DR、Context、Work Objectives、Verification Strategy、Execution Strategy、TODOs、Final Verification Wave、Commit Strategy、Success Criteria。Tool 负责组装 9 个 section 的标题和固定顺序，AI 只需提供各 section 的内容。",
+  args: {
+    change_name: tool.schema
+      .string()
+      .describe("OpenSpec change 名称。保存到 `.omo/plans/<change-name>.md`。"),
+    tldr: tool.schema
+      .string()
+      .describe("TL;DR section 内容（1-2 句，引用 proposal.md）"),
+    context: tool.schema
+      .string()
+      .describe("Context section 内容（2-3 句，引用 proposal.md）"),
+    work_objectives: tool.schema
+      .string()
+      .describe(
+        "Work Objectives section 内容（每个 capability 及关键 requirement，引用 specs/）"
+      ),
+    verification_strategy: tool.schema
+      .string()
+      .describe("Verification Strategy section 内容（引用 specs 的 scenarios）"),
+    execution_strategy: tool.schema
+      .string()
+      .describe("Execution Strategy section 内容（引用 design.md 和 research/）"),
+    todos: tool.schema
+      .string()
+      .describe(
+        "TODOs section 内容（OMO 格式：`#### N. [ ] title` + 9 个子字段：What to do / Must NOT do / Recommended Agent Profile / References / Acceptance Criteria / QA Scenarios / Parallelization / Evidence / Commit）"
+      ),
+    final_verification_wave: tool.schema
+      .string()
+      .describe(
+        "FVW section 内容（OMO 格式：`### FN. [ ] title` + Acceptance Criteria）"
+      ),
+    commit_strategy: tool.schema
+      .string()
+      .describe("Commit Strategy section 内容"),
+    success_criteria: tool.schema
+      .string()
+      .describe("Success Criteria section 内容"),
+  },
+  async execute(args, context) {
+    const projectRoot = context.directory
+    const planPath = resolve(
+      projectRoot,
+      ".omo",
+      "plans",
+      `${args.change_name}.md`
+    )
+
+    const sections: OmoPlanSections = {
+      tldr: args.tldr,
+      context: args.context,
+      workObjectives: args.work_objectives,
+      verificationStrategy: args.verification_strategy,
+      executionStrategy: args.execution_strategy,
+      todos: args.todos,
+      finalVerificationWave: args.final_verification_wave,
+      commitStrategy: args.commit_strategy,
+      successCriteria: args.success_criteria,
+    }
+
+    const planContent = buildOmoPlan(sections)
+    writeFileSync(planPath, planContent)
+
+    return `✅ plan 已写入：${planPath}
+   9 个 section 已按固定顺序组装
+   建议下一步：调用 \`omo_spec_validate_omo_plan\` 验证 plan 结构`
   },
 })

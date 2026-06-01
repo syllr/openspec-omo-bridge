@@ -466,6 +466,7 @@ artifacts:
 
       生成 `.omo/plans/<change-name>.md` — OMO 兼容的执行计划。
 
+      通过调用 `omo_spec_write_new_plan` OpenCode tool 完成。Tool 负责按 9-section 固定结构组装 plan，AI 只需提供每节内容。
 
       task(category="write", load_skills=[],
            prompt="为以下变更生成 OMO 兼容的执行计划，保存到 .omo/plans/<change-name>.md。
@@ -476,64 +477,15 @@ artifacts:
            - `openspec/changes/<change-name>/design.md` — 技术方案、决策、风险
            - `openspec/changes/<change-name>/research/` — 技术调研（如果存在）
 
-           计划结构（OMO 兼容格式）：
+           **执行流程**：
 
-           ```markdown
-           ## TL;DR
-           1-2句概述，引用 proposal.md
+           1. 读取上述 4 个输入文件
+           2. 为 9 个 section 分别准备内容（每个 section 的内容要求详见 tool 的 args 描述）
+           3. 调用 `omo_spec_write_new_plan` OpenCode tool，传入 9 个 section 的内容
 
-           ## Context
-           2-3句背景，引用 proposal.md
+           tool 会自动按固定顺序组装 9 个 section 标题和 hint 文本，保证 plan 格式 100% 一致。
 
-           ## Work Objectives
-           每个 capability 及关键 requirement，引用 specs/
-
-           ## Verification Strategy
-           引用 specs 的 scenarios
-
-           ## Execution Strategy
-           引用 design.md 和 research/
-
-           ## TODOs
-           **OMO 会解析此 section 中的 checkbox 来追踪进度**
-
-           #### 1. [ ] Task 1 description
-              **What to do**: ...
-              **Must NOT do**: ...
-              **Recommended Agent Profile**: category="...", load_skills=["..."]
-              **References**: ...
-              **Acceptance Criteria**: `bun test` / `curl ...`
-              **QA Scenarios**: ...
-              **Parallelization**: ...
-              **Evidence**: .omo/evidence/...
-              **Commit**: YES/NO
-
-           #### 2. [ ] Task 2 description
-              ...
-
-           ## Final Verification Wave
-           **OMO 会解析此 section 中的 checkbox 来判断是否完成**
-
-           ### F1. [ ] Final verification task 1
-              **Acceptance Criteria**: ...
-
-           ### F2. [ ] Final verification task 2
-              ...
-
-           ## Commit Strategy
-           提交策略说明
-
-           ## Success Criteria
-           成功标准说明
-           ```
-
-            关键规则（OMO 兼容性）：
-            - **必须使用 `## TODOs`**（不是 `## Tasks`），OMO 通过此 section 追踪进度
-            - **任务编号使用 `N.` 格式**（如 `1.`, `2.`, `3.`），不要用 `N.M` 格式
-            - **FVW 任务编号使用 `FN.` 格式**（如 `F1.`, `F2.`）
-            - 每个任务必须有 checkbox（`- [ ]` 未完成，`- [x]` 已完成）
-            - 非 Task sections 使用 summary + link 格式，引用其他 artifacts
-            - 这是**唯一的 task 定义来源**，tasks.md 由 sync tool 在 PHASE 5 镜像生成
+           **完成标志**：tool 返回 `✅ plan 已写入` 即可进入 PHASE 4。")
 
       === PHASE 4：Oracle + Metis + Momus 并行审查 Plan + Verdict 处理 ===
 

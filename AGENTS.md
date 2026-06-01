@@ -10,14 +10,14 @@ files during the `tasks` artifact phase.
 
 ## Key files
 
-| Path                               | Purpose                                                                          |
-| ---------------------------------- | -------------------------------------------------------------------------------- |
-| `schemas/spec-driven/schema.yaml`  | Schema definition. 4 artifacts (proposal → design → specs → tasks) + apply phase |
-| `schemas/spec-driven/templates/`   | 4 template files (proposal.md, spec.md, design.md, tasks.md)                     |
-| `schemas/constitution/schema.yaml` | Simplified 3-stage constitution schema. 3 artifacts (scan → design → apply)      |
-| `schemas/constitution/templates/`  | 2 template files (scan.md, design.md)                                            |
-| `scripts/sync-schemas.sh`          | Syncs repo schemas to `~/.local/share/openspec/schemas/`                         |
-| `.opencode/opencode.json`          | OpenCode project config — allows external directory access                       |
+| Path                               | Purpose                                                                                                               |
+| ---------------------------------- | --------------------------------------------------------------------------------------------------------------------- |
+| `schemas/spec-driven/schema.yaml`  | Schema definition. 4 artifacts (proposal → design → specs → tasks) + apply phase                                      |
+| `schemas/spec-driven/templates/`   | 4 template files (proposal.md, spec.md, design.md, tasks.md)                                                          |
+| `schemas/constitution/schema.yaml` | Simplified 3-stage constitution schema. 3 artifacts (scan → design → apply)                                           |
+| `schemas/constitution/templates/`  | 2 template files (scan.md, design.md)                                                                                 |
+| `scripts/sync.sh`                  | Unified sync: copies `tools/*.ts` to `~/.config/opencode/tools/` + `schemas/*/` to `~/.local/share/openspec/schemas/` |
+| `.opencode/opencode.json`          | OpenCode project config — allows external directory access                                                            |
 
 ## Schema architecture
 
@@ -47,12 +47,15 @@ The following gates apply to the **spec-driven** schema. Constitution schema has
 
 ## Language support
 
-Schema uses `__LANG_PLACEHOLDER__` markers in all 4 artifact + 1 apply instructions (5 for spec-driven, 3 for constitution). The `sync-schemas.sh` script replaces them:
+Schema uses `__LANG_PLACEHOLDER__` markers in all 4 artifact + 1 apply instructions (5 for spec-driven, 3 for constitution). The `sync.sh` script replaces them:
 
 ```bash
-scripts/sync-schemas.sh --lang zh    # 中文: "所有生成的文档必须使用中文"
-scripts/sync-schemas.sh --lang en    # English: "MUST be written in English"
-scripts/sync-schemas.sh              # No preference: remove placeholders
+scripts/sync.sh --lang zh            # 中文: "所有生成的文档必须使用中文"
+scripts/sync.sh --lang en            # English: "MUST be written in English"
+scripts/sync.sh                      # No preference: remove placeholders (default)
+scripts/sync.sh --tools-only        # 只同步 tools
+scripts/sync.sh --schemas-only      # 只同步 schemas
+scripts/sync.sh --dry-run           # 只显示，不实际复制
 ```
 
 The sync script uses `rm -rf + cp -R` (not `cp -R dir/ dest/` alone, which has macOS directory overwrite quirks).
@@ -158,13 +161,54 @@ AI 在 OpenCode 会话中直接调用：
 
 ---
 
+### omo_spec_write_new_plan tool
+
+**作用**：按 9-section 固定结构写入 OMO 兼容执行计划。**锁死 plan 格式** — AI 自由生成时容易漂移（标题错误、section 顺序错、缺字段），用 tool 后 100% 统一。
+
+**9 个固定 section**（顺序固定，tool 负责组装标题和 hint 文本）：
+
+| #   | Section                      | 内容来源                                           |
+| --- | ---------------------------- | -------------------------------------------------- |
+| 1   | `## TL;DR`                   | proposal.md（1-2 句）                              |
+| 2   | `## Context`                 | proposal.md（2-3 句）                              |
+| 3   | `## Work Objectives`         | specs/（每个 capability + 关键 requirement）       |
+| 4   | `## Verification Strategy`   | specs/ 的 scenarios                                |
+| 5   | `## Execution Strategy`      | design.md + research/                              |
+| 6   | `## TODOs`                   | OMO 格式 `#### N. [ ] title` + 9 子字段            |
+| 7   | `## Final Verification Wave` | OMO 格式 `### FN. [ ] title` + Acceptance Criteria |
+| 8   | `## Commit Strategy`         | 提交策略                                           |
+| 9   | `## Success Criteria`        | 成功标准                                           |
+
+**调用方式**：
+
+- tool 名：`omo_spec_write_new_plan`
+- 参数：10 个 string 参数（`change_name` + 9 个 section 内容）
+
+**关键收益**：
+
+- **格式 100% 一致**：tool 锁死 9-section 结构和顺序，AI 不会写错
+- **关键 hint 文本不遗漏**：tool 自动插入 `**OMO 会解析此 section 中的 checkbox 来追踪进度**` 等关键提示
+- **AI 简化**：AI 只需生成 9 个 section 的内容，不用记格式
+
+**集成点**：
+
+- `tasks.instruction` PHASE 3：生成 plan 时调用（替代之前 70+ 行的自由生成 prompt）
+- 写完后建议紧接调用 `omo_spec_validate_omo_plan` 验证
+
+**配套工具**：
+
+- `omo_spec_validate_omo_plan`：写完后立即验证 7 项 OMO 兼容性
+- `omo_spec_sync_tasks_from_plan`：plan 审查通过后镜像到 tasks.md
+
+---
+
 **通用设计原则**：
 
 - **单向 / 只读**：sync tool 是单向写（plan → tasks.md），validate tool 是只读
 - **可重入**：sync tool 每次调用都完整覆盖 tasks.md，幂等
 - **OpenCode 规范**：使用 `tool()` helper、`export const`（多 tool 模式）、`context.directory`、`async execute(args, context)` 签名
-- **同步分发**：`scripts/sync-tools.sh` 把 `tools/*.ts` 复制到 `~/.config/opencode/tools/`，OpenCode 重启后生效
-- **过滤非入口文件**：`sync-tools.sh` 跳过 `*-core.ts` / `*-test.ts` 等后缀，避免 OpenCode 误加载非 tool 文件
+- **同步分发**：`scripts/sync.sh` 把 `tools/*.ts` 复制到 `~/.config/opencode/tools/`，OpenCode 重启后生效
+- **过滤非入口文件**：`sync.sh` 跳过 `*-core.ts` / `*-test.ts` 等后缀，避免 OpenCode 误加载非 tool 文件
 
 **格式转换规则**：
 
