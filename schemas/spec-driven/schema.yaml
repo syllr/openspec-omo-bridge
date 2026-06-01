@@ -21,8 +21,6 @@ artifacts:
       2. 向用户报告：「🔴 [PHASE 名] 中断：[agent/tool/skill 名] 调用失败。[错误信息]」
       3. 等待用户介入
 
-      本规则覆盖本指令所有 PHASE，不再重复说明。
-
       === PHASE 1：上下文提取 ===
 
       在编写 proposal 之前，系统性地回顾当前对话，提取所有与本变更相关的信息。
@@ -136,8 +134,6 @@ artifacts:
       1. 立即停止当前 PHASE
       2. 向用户报告：「🔴 [PHASE 名] 中断：[agent/tool/skill 名] 调用失败。[错误信息]」
       3. 等待用户介入
-
-      本规则覆盖本指令所有 PHASE，不再重复说明。
 
       === PHASE 1：读取输入 ===
 
@@ -256,8 +252,6 @@ artifacts:
       2. 向用户报告：「🔴 [PHASE 名] 中断：[agent/tool/skill 名] 调用失败。[错误信息]」
       3. 等待用户介入
 
-      本规则覆盖本指令所有 PHASE，不再重复说明。
-
       === PHASE 1：读取输入 ===
 
       读取以下文件，提取 spec 所需的关键信息：
@@ -267,11 +261,6 @@ artifacts:
 
       **Capabilities 必填检查**：如果 proposal 没有列出任何 Capabilities（New 和 Modified 部分都为空），**停止工作流**。
 
-      这是不合法状态，因为：
-      - proposal 的核心作用就是声明「这次变更涉及什么 capability」
-      - 0 capabilities = 0 变更 = 不该创建 change
-      - 跳过 spec 生成会留下空 specs/ 目录，无意义
-      - 后续 tasks 阶段也无法生成可执行任务
 
       向用户报告：「🔴 proposal 没有列出任何 Capabilities，无法继续。请补充 proposal 的 New 或 Modified Capabilities。如果此次变更不涉及代码（如纯文档/重构），请考虑其他流程。」
 
@@ -361,8 +350,6 @@ artifacts:
       2. 向用户报告：「🔴 [PHASE 名] 中断：[agent/tool/skill 名] 调用失败。[错误信息]」
       3. 等待用户介入
 
-      本规则覆盖本指令所有 PHASE，不再重复说明。
-
       === 核心架构：本阶段做 5 件事 ===
 
       | PHASE | 工作 | 产出 |
@@ -444,7 +431,7 @@ artifacts:
 
       生成 `.omo/plans/<change-name>.md` — OMO 兼容的执行计划。
 
-      由当前 AI 直接执行（不委派写 subagent，因为任务机械：读 4 个文件 + 填 9 个 section + 调 tool）。**但先咨询 Metis**（Plan Consultant 角色），再写 plan。
+      由当前 AI 直接执行，**但先咨询 Metis**（Plan Consultant 角色），再写 plan。
 
       **执行流程**：
 
@@ -453,7 +440,6 @@ artifacts:
          - 输入：4 个 artifacts 内容（proposal/specs/design/research）
          - 输出：plan 应该包含哪些关键 task、Wave 划分建议、潜在风险与依赖、Acceptance Criteria 重点
          - **用法**：AI 拿到 Metis 建议后**融入**自己生成的 9 个 section 内容中（不机械照抄）
-         - 这次调用是 Metis 在本 schema 中**唯一正确位置**——pre-plan 策略咨询
 
          ```
          METIS_PLAN_CONSULT_PROMPT = "你是一个 Plan Consultant，正在为一个 OpenSpec change 提供 plan 策略建议。
@@ -627,8 +613,6 @@ apply:
     1. 立即停止当前 PHASE/Step
     2. 向用户报告：「🔴 [步骤名] 中断：[agent/tool/skill 名] 调用失败。[错误信息]」
     3. 等待用户介入
-
-    本规则覆盖本指令所有步骤，不再重复说明。
 
     === 关键：与 openspec-apply-change skill 的冲突 ===
 
