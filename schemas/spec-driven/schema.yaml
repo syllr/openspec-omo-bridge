@@ -341,9 +341,9 @@ artifacts:
   - id: tasks
     generates: tasks.md
     description: >
-      Plan generation, multi-agent review, and tasks.md mirroring.
-      Generates .omo/plans/<change-name>.md (OMO plan), reviews it
-      via Oracle+Metis+Momus, and syncs to tasks.md via
+      Plan generation (with Metis consultation), multi-agent review,
+      and tasks.md mirroring. Generates .omo/plans/<name>.md (OMO
+      plan), reviews it via Oracle+Momus, and syncs to tasks.md via
       omo_spec_sync_tasks_from_plan tool.
     template: tasks.md
     tracks: tasks.md
@@ -368,8 +368,8 @@ artifacts:
       | PHASE | 工作 | 产出 |
       |-------|------|------|
       | 1 | 读取上下文 + Spec 验证 | 通过/失败 |
-      | 2 | Oracle + Metis 并行差距分析 | 修复 proposal/specs/design 中的 🔴 |
-      | 3 | AI 直接生成 OMO plan（调 write_new_plan tool） | `.omo/plans/<change-name>.md` |
+      | 2 | Oracle 差距分析 | 修复 proposal/specs/design 中的 🔴 |
+      | 3 | Metis 咨询 + AI 直接生成 OMO plan（write_new_plan tool） | `.omo/plans/<change-name>.md` |
       | 4 | Oracle + Momus 并行审查 | Verdict（内联处理：🟡/⚪ 问用户，🔴 修复） |
       | 5 | 调用 omo_spec_sync_tasks_from_plan tool | `tasks.md`（plan 镜像，**仅在审查通过后**） |
 
@@ -394,10 +394,9 @@ artifacts:
       - 通过 → 继续
       - 失败 → 显示错误给用户，由用户决定如何修复。不得自行修复。
 
-      === PHASE 2：Oracle + Metis 并行差距分析（强制） ===
+      === PHASE 2：Oracle 差距分析（强制） ===
 
-      在生成 plan 之前，调用 Oracle 和 Metis 同时做差距分析。
-
+      在生成 plan 之前，调用 Oracle 做差距分析（Metis 不在此阶段使用——它应在 change 开始前用于澄清意图，artifacts 都已写完时它没有 pre-plan 价值）。
 
       ```
       GAP_ANALYSIS_PROMPT = "你正在审查一个 OpenSpec change 的产物，为生成 OMO plan 做准备。
@@ -422,25 +421,22 @@ artifacts:
       9. task 可衍生性——每个 requirement 是否能自然拆分为一个或多个可执行的 task？
       10. 依赖隐含——是否有隐含的先后依赖关系未被明确声明？
 
-      严重程度：🔴 阻塞 / 🟡 警告 / ⚪ 建议
+      严重程度：🔴 阻塞 / 🟡警告 / ⚪ 建议
       输出格式：按严重程度列出发现，对每个 🔴/🟡 给出具体修改建议"
 
       task(subagent_type="oracle", prompt=GAP_ANALYSIS_PROMPT)
-      task(subagent_type="metis", prompt=GAP_ANALYSIS_PROMPT)
       ```
 
       **收集评审结果：**
       1. 读取 Oracle 输出 → 列出所有 🔴/🟡/⚪ 发现
-      2. 读取 Metis 输出 → 列出所有 🔴/🟡/⚪ 发现
-      3. **自检**：确认两个 agent 的结果都已成功读取。如有遗漏，回到步骤 1 重新读取
-      4. 合并发现：同一问题多个 agent 都发现时取更高严重程度
-      5. 分类判定：
+      2. **自检**：确认 Oracle 结果已成功读取。如有遗漏，回到步骤 1 重新读取
+      3. 分类判定：
          - 有任何 🔴 → BLOCKED，委托 agent 修复 artifacts：
            task(category="write", load_skills=[],
                 prompt="根据以下差距分析结果，修复 proposal/specs/design 中被指出的问题。
                 只修复标记为 🔴 的问题，不要修改其他内容。
-                Oracle + Metis 审查发现的所有问题：
-                [将 Oracle/Metis 输出的所有 🔴 问题及修复建议以文本形式填入此处]")
+                Oracle 审查发现的所有问题：
+                [将 Oracle 输出的所有 🔴 问题及修复建议以文本形式填入此处]")
            修复完成后重新运行 PHASE 2（最多 3 轮）
          - 仅 🟡/⚪ → 记录清单，**留到 PHASE 4 末尾统一问用户**
 
@@ -448,19 +444,48 @@ artifacts:
 
       生成 `.omo/plans/<change-name>.md` — OMO 兼容的执行计划。
 
-      由当前 AI 直接执行（不委派 subagent，因为任务机械：读 4 个文件 + 填 9 个 section + 调 tool）。
+      由当前 AI 直接执行（不委派写 subagent，因为任务机械：读 4 个文件 + 填 9 个 section + 调 tool）。**但先咨询 Metis**（Plan Consultant 角色），再写 plan。
 
       **执行流程**：
 
-      1. 读取以下 4 个输入文件：
+      1. **Plan Consultant 咨询**（先于 plan 生成）：
+         - 调用 Metis agent 提供 plan 策略咨询
+         - 输入：4 个 artifacts 内容（proposal/specs/design/research）
+         - 输出：plan 应该包含哪些关键 task、Wave 划分建议、潜在风险与依赖、Acceptance Criteria 重点
+         - **用法**：AI 拿到 Metis 建议后**融入**自己生成的 9 个 section 内容中（不机械照抄）
+         - 这次调用是 Metis 在本 schema 中**唯一正确位置**——pre-plan 策略咨询
+
+         ```
+         METIS_PLAN_CONSULT_PROMPT = "你是一个 Plan Consultant，正在为一个 OpenSpec change 提供 plan 策略建议。
+         你的输出会被 AI 用来生成 9-section OMO 计划。
+
+         输入文件（请直接读取以下文件获取完整内容）：
+         - `openspec/changes/<change-name>/proposal.md`
+         - `openspec/changes/<change-name>/specs/`
+         - `openspec/changes/<change-name>/design.md`
+         - `openspec/changes/<change-name>/research/`（如果存在）
+
+         请输出**简短、聚焦**的策略建议（不要写完整 plan，只给方向）：
+         1. **关键 task 清单**：列出 3-8 个最关键的任务（含编号建议 N./FN.）
+         2. **Wave 划分建议**：如何分组（按依赖/按能力/按并行度）
+         3. **风险与依赖**：最值得关注的 2-3 个风险点
+         4. **Acceptance Criteria 重点**：哪些场景必须覆盖
+
+         严重程度：🔴 阻塞 / 🟡警告 / ⚪ 建议
+         输出格式：按以上 4 个小节分点列出"
+         ```
+
+         task(subagent_type="metis", prompt=METIS_PLAN_CONSULT_PROMPT)
+
+      2. 读取以下 4 个输入文件：
          - `openspec/changes/<change-name>/proposal.md` — 动机和能力
          - `openspec/changes/<change-name>/specs/` — 需求和验收场景
          - `openspec/changes/<change-name>/design.md` — 技术方案、决策、风险
          - `openspec/changes/<change-name>/research/` — 技术调研（如果存在）
 
-      2. 为 9 个 section 分别准备内容（每个 section 的内容要求详见 `omo_spec_write_new_plan` tool 的 args 描述）
+      3. 为 9 个 section 分别准备内容（每个 section 的内容要求详见 `omo_spec_write_new_plan` tool 的 args 描述，参考 Metis 策略建议）
 
-      3. 调用 `omo_spec_write_new_plan` OpenCode tool，传入 9 个 section 的内容
+      4. 调用 `omo_spec_write_new_plan` OpenCode tool，传入 9 个 section 的内容
 
       tool 会自动按固定顺序组装 9 个 section 标题和 hint 文本，保证 plan 格式 100% 一致。
 
