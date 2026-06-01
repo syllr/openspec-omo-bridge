@@ -202,6 +202,35 @@ AI 在 OpenCode 会话中直接调用：
 
 ---
 
+### omo_spec_verify_implementation tool
+
+**作用**：准备 OpenSpec 实现验证的完整上下文。读取所有 artifacts + 捕获 git diff + 组装 5 维度验证清单。替换 apply Step 3 的长 Oracle 验证 prompt。
+
+**调用方式**：
+
+- tool 名：`omo_spec_verify_implementation`
+- 参数：`change_name: string`
+
+**返回**：结构化验证上下文（`VerificationContext`）：
+
+- `artifacts`: `{ proposal, design, specs, plan }` —— 全部内容
+- `changedFiles`: `string[]` —— git diff 捕获的变更文件（fallback 到 untracked）
+- `dimensions`: 5 维度检查清单（Spec 合规性 / Design 对齐 / Proposal 范围 / Task 完成度 / 非功能性合规性）
+- `verdictRules`: BLOCKED / CONDITIONAL / 注意 三类判定规则
+
+**工作流**：
+
+1. AI 调 `omo_spec_verify_implementation` 拿完整上下文
+2. AI 把上下文传给 `task(subagent_type="oracle", ...)` 审查
+3. Oracle 按 5 维度输出发现（🔴/🟡/⚪）
+4. AI 根据 verdict 决定 PASS / BLOCKED / CONDITIONAL
+
+**集成点**：
+
+- `apply.instruction` Step 3：实现验证
+
+---
+
 **通用设计原则**：
 
 - **单向 / 只读**：sync tool 是单向写（plan → tasks.md），validate tool 是只读

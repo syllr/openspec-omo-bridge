@@ -572,3 +572,225 @@ export const write_new_plan = tool({
    建议下一步：调用 \`omo_spec_validate_omo_plan\` 验证 plan 结构`
   },
 })
+
+// ============================================================
+// verify_implementation（替换 apply Step 3 的 5 维度 Oracle 验证）
+// ============================================================
+
+export interface VerificationDimension {
+  name: string
+  description: string
+  checks: string[]
+}
+
+export interface VerificationContext {
+  changeName: string
+  artifacts: {
+    proposal: string | null
+    design: string | null
+    specs: string | null
+    plan: string | null
+  }
+  changedFiles: string[]
+  dimensions: VerificationDimension[]
+  verdictRules: {
+    blocked: string
+    conditional: string
+    note: string
+  }
+}
+
+export const VERIFICATION_DIMENSIONS: VerificationDimension[] = [
+  {
+    name: "Spec 合规性",
+    description: "每个 spec requirement 的 scenario 是否在实现中有对应体现",
+    checks: [
+      "实现行为是否满足 spec 中 WHEN/THEN 的条件？",
+      "每个 requirement 的 scenario 是否有对应代码/配置/文档？",
+    ],
+  },
+  {
+    name: "Design 对齐",
+    description: "实现方案是否符合 design.md 的技术决策",
+    checks: [
+      "实现方案是否符合 design.md 的技术决策？",
+      "design 中明确排除的 Non-Goals 是否在实现中出现？",
+      "research/ 中的调研结论是否在实现中得到正确应用？",
+    ],
+  },
+  {
+    name: "Proposal 范围",
+    description: "实现内容是否在 proposal 定义的 Capabilities 范围内",
+    checks: [
+      "实现内容是否在 proposal 定义的 Capabilities 范围内？",
+      "是否有超出 proposal 范围的 scope leak？",
+      "proposal 中的所有 Capability 是否都有对应实现？",
+    ],
+  },
+  {
+    name: "Task 完成度",
+    description: "plan 中的所有 task 是否都有对应的实现产出",
+    checks: [
+      "plan 中的所有 task 是否都有对应的实现产出？",
+      "plan 中每个 task 的 Evidence 路径是否存在？",
+      "关键 task 的 evidence 内容是否与 Acceptance Criteria 匹配？",
+    ],
+  },
+  {
+    name: "非功能性合规性",
+    description: "性能/安全/兼容性等非功能性要求是否达标",
+    checks: [
+      "性能要求（响应时间、吞吐量等）是否达标？",
+      "安全相关决策（认证、授权、加密）是否在实现中正确应用？",
+      "兼容性约束是否被遵守？",
+    ],
+  },
+]
+
+export const VERDICT_RULES = {
+  blocked: "存在严重的实现偏离，必须修复才能继续",
+  conditional: "实现基本正确但有 🟡/⚪ 瑕疵，可接受风险继续推进",
+  note: "请谨慎区分 BLOCKED 和 CONDITIONAL。只有确实阻碍功能正确性的问题才标 🔴。",
+}
+
+export function prepareVerificationContext(
+  changeName: string,
+  artifacts: {
+    proposal: string | null
+    design: string | null
+    specs: string | null
+    plan: string | null
+  },
+  changedFiles: string[]
+): VerificationContext {
+  return {
+    changeName,
+    artifacts,
+    changedFiles,
+    dimensions: VERIFICATION_DIMENSIONS,
+    verdictRules: VERDICT_RULES,
+  }
+}
+
+// ============================================================
+// 工具实现
+// ============================================================
+
+function readIfExists(path: string): string | null {
+  if (!existsSync(path)) return null
+  return readFileSync(path, "utf-8")
+}
+
+async function captureGitDiff(projectRoot: string): Promise<string[]> {
+  try {
+    const proc = Bun.spawn(
+      ["git", "diff", "--name-only", "HEAD"],
+      { cwd: projectRoot, stderr: "ignore" }
+    )
+    const output = await new Response(proc.stdout).text()
+    const files = output.trim().split("\n").filter(Boolean)
+    if (files.length > 0) return files
+    // 兼容空仓库：fallback 到 untracked
+    const proc2 = Bun.spawn(
+      ["git", "ls-files", "--others", "--exclude-standard"],
+      { cwd: projectRoot, stderr: "ignore" }
+    )
+    const output2 = await new Response(proc2.stdout).text()
+    return output2.trim().split("\n").filter(Boolean)
+  } catch {
+    return []
+  }
+}
+
+/**
+ * Tool: omo_spec_verify_implementation
+ * 作用：准备实现验证上下文（artifacts + git diff + 5 维度检查清单）
+ */
+export const verify_implementation = tool({
+  description:
+    "准备 OpenSpec 实现验证的完整上下文。读取所有 artifacts（proposal/specs/design/plan），捕获 git diff，组装 5 维度验证清单（Spec 合规性 / Design 对齐 / Proposal 范围 / Task 完成度 / 非功能性合规性）+ 严重程度规则。AI/Oracle 用此上下文做实现验证。",
+  args: {
+    change_name: tool.schema
+      .string()
+      .describe("OpenSpec change 名称。"),
+  },
+  async execute(args, context) {
+    const projectRoot = context.directory
+    const changeDir = resolve(
+      projectRoot,
+      "openspec",
+      "changes",
+      args.change_name
+    )
+
+    // 读 artifacts
+    const proposal = readIfExists(resolve(changeDir, "proposal.md"))
+    const design = readIfExists(resolve(changeDir, "design.md"))
+    const plan = readIfExists(
+      resolve(projectRoot, ".omo", "plans", `${args.change_name}.md`)
+    )
+
+    // 读 specs（拼接）
+    let specs: string | null = null
+    const specsDir = resolve(changeDir, "specs")
+    if (existsSync(specsDir)) {
+      const { readdirSync } = await import("node:fs")
+      const parts: string[] = []
+      for (const capDir of readdirSync(specsDir, { withFileTypes: true })) {
+        if (!capDir.isDirectory()) continue
+        const specFile = resolve(specsDir, capDir.name, "spec.md")
+        const content = readIfExists(specFile)
+        if (content) parts.push(`### ${capDir.name}\n\n${content}`)
+      }
+      if (parts.length > 0) specs = parts.join("\n\n")
+    }
+
+    // 捕获 git diff
+    const changedFiles = await captureGitDiff(projectRoot)
+
+    const ctx = prepareVerificationContext(
+      args.change_name,
+      { proposal, design, specs, plan },
+      changedFiles
+    )
+
+    // 格式化输出
+    const out: string[] = [
+      `=== 实现验证上下文已准备 (change: ${ctx.changeName}) ===`,
+      "",
+      `Changed files: ${ctx.changedFiles.length}`,
+      ...ctx.changedFiles.map((f) => `  - ${f}`),
+      "",
+      "=== Artifacts ===",
+      "",
+    ]
+    if (ctx.artifacts.proposal)
+      out.push(`## Proposal\n\n${ctx.artifacts.proposal}\n`)
+    if (ctx.artifacts.design)
+      out.push(`## Design\n\n${ctx.artifacts.design}\n`)
+    if (ctx.artifacts.specs)
+      out.push(`## Specs\n\n${ctx.artifacts.specs}\n`)
+    if (ctx.artifacts.plan)
+      out.push(`## Plan\n\n${ctx.artifacts.plan}\n`)
+
+    out.push("=== 验证维度（5 维度）===")
+    out.push("")
+    ctx.dimensions.forEach((dim, i) => {
+      out.push(`${i + 1}. ${dim.name} — ${dim.description}`)
+      for (const check of dim.checks) {
+        out.push(`   - ${check}`)
+      }
+    })
+
+    out.push("")
+    out.push("=== Verdict Rules ===")
+    out.push(`- 🔴 BLOCKED: ${ctx.verdictRules.blocked}`)
+    out.push(`- ⚠️ CONDITIONAL: ${ctx.verdictRules.conditional}`)
+    out.push(`- ${ctx.verdictRules.note}`)
+
+    out.push("")
+    out.push("--- 下一步：将本上下文传给 Oracle 审查，按 5 维度输出发现 ---")
+
+    return out.join("\n")
+  },
+})
