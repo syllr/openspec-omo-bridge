@@ -79,12 +79,13 @@ x
 x
 `
 
-describe("validateOmoPlan - 7 项检查", () => {
-  test("完整 plan 通过全部 7 项", () => {
+describe("validateOmoPlan - 9 项 section + 2 项 task 格式 = 11 项", () => {
+  test("完整 plan 通过全部 11 项", () => {
     const result = validateOmoPlan(FULL_PLAN, "test")
     expect(result.valid).toBe(true)
-    expect(result.totalChecks).toBe(7)
-    expect(result.passedChecks).toBe(7)
+    // A10 修复：从 5 项扩展到 9 项 section + 2 项 task 格式 = 11 项
+    expect(result.totalChecks).toBe(11)
+    expect(result.passedChecks).toBe(11)
     expect(result.results.every((r) => r.passed)).toBe(true)
   })
 
@@ -92,8 +93,8 @@ describe("validateOmoPlan - 7 项检查", () => {
     const result = validateOmoPlan(PLAN_MISSING_TODOS, "test")
     expect(result.valid).toBe(false)
     // 失败：TODOs section + OMO TODO 任务格式 + OMO FVW 任务格式 = 3
-    // 通过：TL;DR + FVW + Success Criteria + Commit Strategy = 4
-    expect(result.passedChecks).toBe(4)
+    // 通过：9 section - 1 缺失 TODOs = 8
+    expect(result.passedChecks).toBe(8)
     const failed = result.results.filter((r) => !r.passed)
     expect(failed.length).toBe(3)
     expect(failed.map((r) => r.name)).toContain("TODOs section")

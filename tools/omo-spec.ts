@@ -13,8 +13,14 @@
  * - 测试（bridge 本地 bun test）：无 plugin，chainable stub 兜底
  */
 
-import { readFileSync, writeFileSync, existsSync } from "node:fs"
-import { resolve } from "node:path"
+import {
+  readFileSync,
+  writeFileSync,
+  existsSync,
+  mkdirSync,
+  readdirSync,
+} from "node:fs"
+import { resolve, dirname } from "node:path"
 
 // 懒加载 plugin：生产用真实实现，测试用 chainable stub
 // `tool` 是可调用对象（用于 `tool(config)` 包裹 tool 定义）
@@ -97,7 +103,12 @@ function stripSectionNumber(rawTitle: string): string {
 }
 
 export function parseOmoPlan(content: string, changeName: string): OmoPlan {
-  const lines = content.split(/\r?\n/)
+  // 防御性 null/undefined 检查（A6）
+  if (!content) {
+    return { changeName, sections: [], tasks: [] }
+  }
+  // 支持 \r\n, \n, 单独 \r（A32）
+  const lines = content.split(/\r\n|\r|\n/)
   const sections: OmoSection[] = []
   const tasks: OmoTask[] = []
 
@@ -131,7 +142,7 @@ export function parseOmoPlan(content: string, changeName: string): OmoPlan {
     }
 
     const waveMatch = line.match(
-      /^###\s+(?:\d+\.\d+\s+)?Wave\s+(\d+):\s*(.*)$/
+      /^###\s+(?:\d+(?:\.\d+)*\s+)?Wave\s+(\d+)[:：]\s*(.*)$/
     )
     if (waveMatch && currentSection.title.toLowerCase() === "todos") {
       currentWave = `Wave ${waveMatch[1]}: ${waveMatch[2].trim()}`.trim()
@@ -150,9 +161,7 @@ export function parseOmoPlan(content: string, changeName: string): OmoPlan {
       currentTask = {
         number: fvwTaskMatch[1],
         title: fvwTaskMatch[3].trim(),
-        completed:
-          fvwTaskMatch[2].toLowerCase() === "x" &&
-          fvwTaskMatch[2].trim() !== "",
+        completed: fvwTaskMatch[2].trim().toLowerCase() === "x",
         wave: "Final Verification Wave",
         isFvw: true,
         fields: [],
@@ -163,12 +172,10 @@ export function parseOmoPlan(content: string, changeName: string): OmoPlan {
     }
 
     const todoTaskMatch = line.match(
-      /^####\s+(\d+(?:\.\d+)?)\.\s*\[\s*([ xX])\s*\]\s*(.+)$/
+      /^####\s+(\d+)\.\s*\[\s*([ xX])\s*\]\s*(.+)$/
     )
     if (currentSection.title.toLowerCase() === "todos" && todoTaskMatch) {
-      const completed =
-        todoTaskMatch[2].toLowerCase() === "x" &&
-        todoTaskMatch[2].trim() !== ""
+      const completed = todoTaskMatch[2].trim().toLowerCase() === "x"
       currentTask = {
         number: todoTaskMatch[1],
         title: todoTaskMatch[3].trim(),
@@ -236,7 +243,9 @@ export function generateOpenSpecTasks(plan: OmoPlan): string {
   let waveIndex = 0
   for (const [wave, tasks] of waveGroups) {
     waveIndex++
-    lines.push(`### ${wave}`)
+    // 空 wave 标签处理（A9）：用 "Unassigned" 代替空字符串
+    const waveLabel = wave.trim() || "Unassigned"
+    lines.push(`### ${waveLabel}`)
     lines.push("")
 
     let subCounter = 0
@@ -288,7 +297,7 @@ export function generateOpenSpecTasks(plan: OmoPlan): string {
 
 /**
  * 验证 OMO plan 结构是否符合 OMO 兼容性要求。
- * 7 项检查：5 个核心 section 存在 + 2 个任务格式。
+ * 11 项检查：9 个 section 存在 + 2 个任务格式（A10 扩展）。
  */
 export function validateOmoPlan(
   content: string,
@@ -296,13 +305,17 @@ export function validateOmoPlan(
 ): OmoPlanValidation {
   const results: OmoPlanCheck[] = []
 
-  // 1-5. Section 存在性检查
+  // 1-9. Section 存在性检查（A10）：从 5 项扩展到 9 项，覆盖全部 plan sections
   const sectionChecks: Array<{ name: string; pattern: RegExp }> = [
+    { name: "TL;DR section", pattern: /^##\s+TL;DR\s*$/m },
+    { name: "Context section", pattern: /^##\s+Context\s*$/m },
+    { name: "Work Objectives section", pattern: /^##\s+Work Objectives\s*$/m },
+    { name: "Verification Strategy section", pattern: /^##\s+Verification Strategy\s*$/m },
+    { name: "Execution Strategy section", pattern: /^##\s+Execution Strategy\s*$/m },
     { name: "TODOs section", pattern: /^##\s+TODOs\s*$/m },
     { name: "Final Verification Wave section", pattern: /^##\s+Final Verification Wave\s*$/m },
-    { name: "TL;DR section", pattern: /^##\s+TL;DR\s*$/m },
-    { name: "Success Criteria section", pattern: /^##\s+Success Criteria\s*$/m },
     { name: "Commit Strategy section", pattern: /^##\s+Commit Strategy\s*$/m },
+    { name: "Success Criteria section", pattern: /^##\s+Success Criteria\s*$/m },
   ]
 
   for (const s of sectionChecks) {
@@ -437,6 +450,10 @@ export const sync_tasks_from_plan = tool({
     }
 
     const tasksContent = generateOpenSpecTasks(plan)
+
+    // 确保 openspec/changes/<change-name>/ 目录存在（首次同步时可能尚未创建）
+    mkdirSync(dirname(tasksPath), { recursive: true })
+
     writeFileSync(tasksPath, tasksContent)
 
     const completed = plan.tasks.filter((t) => t.completed).length
@@ -453,16 +470,16 @@ export const sync_tasks_from_plan = tool({
 
 /**
  * Tool: omo_spec_validate_omo_plan
- * 作用：验证 OMO plan 是否符合 OMO 兼容性（7 项检查）
+ * 作用：验证 OMO plan 是否符合 OMO 兼容性（11 项检查）
  */
 export const validate_omo_plan = tool({
   description:
-    "验证 OMO plan 结构是否符合 OMO 兼容性要求。7 项检查：5 个核心 section 存在（## TODOs、## Final Verification Wave、## TL;DR、## Success Criteria、## Commit Strategy）+ 2 个任务格式（至少 1 个 TODO 任务、至少 1 个 FVW 任务）。返回结构化结果：valid、totalChecks、passedChecks、results（每项检查的 name/description/passed）。",
+    "验证 OMO plan 结构是否符合 OMO 兼容性要求。11 项检查：9 个 section 存在（## TL;DR、## Context、## Work Objectives、## Verification Strategy、## Execution Strategy、## TODOs、## Final Verification Wave、## Commit Strategy、## Success Criteria）+ 2 个任务格式（至少 1 个 TODO 任务、至少 1 个 FVW 任务）。返回结构化结果：valid、totalChecks、passedChecks、results（每项检查的 name/description/passed）。",
   args: {
     change_name: tool.schema
       .string()
       .describe(
-        "OpenSpec change 名称。读取 `.omo/plans/<change-name>.md` 进行 7 项结构检查。"
+        "OpenSpec change 名称。读取 `.omo/plans/<change-name>.md` 进行 11 项结构检查（9 section + 2 task 格式）。"
       ),
   },
   async execute(args, context) {
@@ -482,16 +499,16 @@ export const validate_omo_plan = tool({
     const validation = validateOmoPlan(planContent, args.change_name)
 
     if (!validation.valid) {
+      // C17: 失败时 throw，与 sync_tasks_from_plan 错误处理风格统一
       const failed = validation.results.filter((r) => !r.passed)
-      const lines = [
-        `❌ plan 结构检查失败（${validation.passedChecks}/${validation.totalChecks} 通过）`,
-        "",
-        "失败项：",
-        ...failed.map((r) => `  - ${r.name}: ${r.description}`),
-        "",
-        "请修复 plan 后重新运行此检查。",
-      ]
-      return lines.join("\n")
+      const failedList = failed
+        .map((r) => `  - ${r.name}: ${r.description}`)
+        .join("\n")
+      throw new Error(
+        `❌ plan 结构检查失败（${validation.passedChecks}/${validation.totalChecks} 通过）\n\n` +
+          `失败项：\n${failedList}\n\n` +
+          `请修复 plan 后重新运行此检查。`
+      )
     }
 
     return `✅ plan 结构检查通过（${validation.passedChecks}/${validation.totalChecks} 项全部通过）`
@@ -565,6 +582,10 @@ export const write_new_plan = tool({
     }
 
     const planContent = buildOmoPlan(sections)
+
+    // 确保 .omo/plans/ 目录存在（首次生成 plan 时可能尚未创建）
+    mkdirSync(dirname(planPath), { recursive: true })
+
     writeFileSync(planPath, planContent)
 
     return `✅ plan 已写入：${planPath}
@@ -591,6 +612,10 @@ export interface VerificationContext {
     specs: string | null
     plan: string | null
   }
+  /**
+   * 变更文件列表 — 由 Oracle agent 自行执行 `git diff --name-only HEAD` 获取
+   * （不通过 tool，避免 Bun.spawn 跨运行时依赖，参见 Oracle review #22 的讨论）
+   */
   changedFiles: string[]
   dimensions: VerificationDimension[]
   verdictRules: {
@@ -681,34 +706,13 @@ function readIfExists(path: string): string | null {
   return readFileSync(path, "utf-8")
 }
 
-async function captureGitDiff(projectRoot: string): Promise<string[]> {
-  try {
-    const proc = Bun.spawn(
-      ["git", "diff", "--name-only", "HEAD"],
-      { cwd: projectRoot, stderr: "ignore" }
-    )
-    const output = await new Response(proc.stdout).text()
-    const files = output.trim().split("\n").filter(Boolean)
-    if (files.length > 0) return files
-    // 兼容空仓库：fallback 到 untracked
-    const proc2 = Bun.spawn(
-      ["git", "ls-files", "--others", "--exclude-standard"],
-      { cwd: projectRoot, stderr: "ignore" }
-    )
-    const output2 = await new Response(proc2.stdout).text()
-    return output2.trim().split("\n").filter(Boolean)
-  } catch {
-    return []
-  }
-}
-
 /**
  * Tool: omo_spec_verify_implementation
  * 作用：准备实现验证上下文（artifacts + git diff + 5 维度检查清单）
  */
 export const verify_implementation = tool({
   description:
-    "准备 OpenSpec 实现验证的完整上下文。读取所有 artifacts（proposal/specs/design/plan），捕获 git diff，组装 5 维度验证清单（Spec 合规性 / Design 对齐 / Proposal 范围 / Task 完成度 / 非功能性合规性）+ 严重程度规则。AI/Oracle 用此上下文做实现验证。",
+    "准备 OpenSpec 实现验证的 artifacts 上下文。读取所有 artifacts（proposal/specs/design/plan）+ 组装 5 维度验证清单（Spec 合规性 / Design 对齐 / Proposal 范围 / Task 完成度 / 非功能性合规性）+ 严重程度规则。**不捕获 git diff**——由 Oracle agent 自行执行 `git diff --name-only HEAD` 获取，避免 Bun.spawn 跨运行时依赖。",
   args: {
     change_name: tool.schema
       .string()
@@ -730,11 +734,10 @@ export const verify_implementation = tool({
       resolve(projectRoot, ".omo", "plans", `${args.change_name}.md`)
     )
 
-    // 读 specs（拼接）
+    // 读 specs（拼接，B21: 静态导入 readdirSync）
     let specs: string | null = null
     const specsDir = resolve(changeDir, "specs")
     if (existsSync(specsDir)) {
-      const { readdirSync } = await import("node:fs")
       const parts: string[] = []
       for (const capDir of readdirSync(specsDir, { withFileTypes: true })) {
         if (!capDir.isDirectory()) continue
@@ -745,21 +748,20 @@ export const verify_implementation = tool({
       if (parts.length > 0) specs = parts.join("\n\n")
     }
 
-    // 捕获 git diff
-    const changedFiles = await captureGitDiff(projectRoot)
-
+    // changedFiles 由 Oracle agent 自行执行 git diff 获取（不通过 tool）
     const ctx = prepareVerificationContext(
       args.change_name,
       { proposal, design, specs, plan },
-      changedFiles
+      []
     )
 
     // 格式化输出
     const out: string[] = [
       `=== 实现验证上下文已准备 (change: ${ctx.changeName}) ===`,
       "",
-      `Changed files: ${ctx.changedFiles.length}`,
-      ...ctx.changedFiles.map((f) => `  - ${f}`),
+      "ℹ️ 变更文件列表请由 Oracle 自行执行：",
+      "   git diff --name-only HEAD",
+      "   (空仓库时 fallback) git ls-files --others --exclude-standard",
       "",
       "=== Artifacts ===",
       "",
@@ -789,7 +791,7 @@ export const verify_implementation = tool({
     out.push(`- ${ctx.verdictRules.note}`)
 
     out.push("")
-    out.push("--- 下一步：将本上下文传给 Oracle 审查，按 5 维度输出发现 ---")
+    out.push("--- 下一步：Oracle 拿到此上下文后：(1) 自行执行 git diff 获取变更文件 (2) 按 5 维度输出发现 ---")
 
     return out.join("\n")
   },

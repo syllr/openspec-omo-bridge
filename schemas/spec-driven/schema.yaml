@@ -1,6 +1,19 @@
 name: spec-driven
 version: 1
 description: Default OpenSpec workflow - proposal → design → specs → tasks → apply
+
+# ============================================================
+# 全局约定：错误消息格式（Oracle review ⚪ #18）
+# ============================================================
+# 所有错误消息必须遵守以下格式：
+#   - 🔴 [步骤名] 中断：[详细说明]                  阻塞错误（必须修复）
+#   - ⚠️ [步骤名]：[详细说明]                       警告（用户决定是否处理）
+#   - ℹ️ [步骤名]：[详细说明]                       信息提示
+# 禁止：
+#   - 不带 emoji 的错误消息
+#   - 暴露内部 stack trace、库路径、版本号
+#   - 用 ⚪ 表示错误（⚪ 仅用于 Oracle 严重程度标识）
+# ============================================================
 artifacts:
   - id: proposal
     generates: proposal.md
@@ -46,6 +59,10 @@ artifacts:
 
       **这是思考步骤——不写入文件。**
 
+      **输入验证**：如果以下核心类别为空（"核心动机"或"变更范围"或"影响系统"任意一个为空），停止工作流，提示用户：「🔴 proposal 上下文不足。请补充：核心动机 / 变更范围 / 影响系统 至少一项，否则无法生成完整 proposal。」
+      - 这 3 类是 proposal.md 的**最低信息要求**，缺一不可
+      - 其他 3 类（显式约束、显式非目标、不确定信号）允许为空
+
       === PHASE 2：生成 ===
 
       读取模板文件 `schemas/spec-driven/templates/proposal.md`，了解确切的输出结构。
@@ -65,6 +82,14 @@ artifacts:
       提案应让技术和非技术读者都能理解。
 
       编写后验证输出是否完全遵循模板结构。
+
+      **模板结构验证**（AI 自检）：proposal.md 必须包含模板的 4 个部分：
+      - `## Why`（动机）
+      - `## What Changes`（变更内容）
+      - `## Capabilities`（能力清单，含 New/Modified/Removed）
+      - `## Impact`（影响）
+
+      缺少任一部分 → 重新生成。**不**进入 PHASE 3。
 
       === PHASE 3：Oracle 审查（强制） ===
 
@@ -183,7 +208,7 @@ artifacts:
 
         3. **用户确认**：向用户展示所有调研结果的摘要，**等待用户明确确认后才能继续**。未确认前不要移动 `spectest/<topic>/` 目录。
 
-           如果用户长时间未回复，提示用户：「调研结果已准备好，请确认后继续」。**不要自动确认**（避免未审视的调研结论被采纳）。
+           **超时处理**：如果用户超过 10 分钟未回复，提示用户：「⚠️ 调研结果已准备好超过 10 分钟未确认，请明确确认或拒绝」。**不要自动确认**（避免未审视的调研结论被采纳）。
 
           确认后的最终结构：
 
@@ -325,7 +350,12 @@ artifacts:
 
       编写完所有 spec 文件后，运行：
       `openspec validate <change-name>`
-      修复所有 ERROR 后再继续。
+
+      **结果分级处理**（E12）：
+      - 命令不存在 → 停止，提示用户：「🔴 OpenSpec CLI 未安装。请先运行 `npm install -g @fission-ai/openspec`。」
+      - 返回 ERROR → 修复所有 ERROR 后重新运行，直到通过
+      - 返回 WARNING → 展示给用户，由用户决定是否修复（不得自行决定忽略）
+      - 返回 OK → 继续
     requires:
       - proposal
       - design
@@ -477,16 +507,22 @@ artifacts:
 
       tool 会自动按固定顺序组装 9 个 section 标题和 hint 文本，保证 plan 格式 100% 一致。
 
-      **完成标志**：tool 返回 `✅ plan 已写入` 即可进入 PHASE 4。
+      **自检**（E8，强烈建议但非强制）：
+      调完 `omo_spec_write_new_plan` 后立即调 `omo_spec_validate_omo_plan` 验证 11 项 OMO 兼容性（9 section + 2 task 格式）。
+      - ✅ 通过 → 进入 PHASE 4
+      - ❌ 失败 → tool 会 throw 错误，按错误信息修复后重新生成 plan
+
+      **完成标志**：tool 返回 `✅ plan 已写入`（以及可选的 `✅ plan 结构检查通过 11/11`）即可进入 PHASE 4。
 
       === PHASE 4：Oracle + Momus 并行审查 Plan + Verdict 处理 ===
 
-      **4.1 plan 结构检查（OMO 兼容性）**：
+    **4.1 plan 结构检查（OMO 兼容性）**：
 
-      调用 `omo_spec_validate_omo_plan` OpenCode tool（参数：`change_name=<change-name>`）做 7 项 OMO 兼容性检查。检查项详见 tool 自身描述（5 个核心 section + 2 个任务格式）。
+    调用 `omo_spec_validate_omo_plan` OpenCode tool（参数：`change_name=<change-name>`）做 11 项 OMO 兼容性检查（9 个 section + 2 个任务格式）。检查项详见 tool 自身描述。
 
       tool 返回 `✅ 全部通过` → 进入 PHASE 4.2 启动 Oracle+Momus 审查。
-      tool 返回 `❌ 失败` → 停止，修复 plan（按 tool 输出的失败项）后重新验证（重新跑 PHASE 4.1 → 完整 PHASE 4 审查）。
+      tool 返回 `❌ 失败` → **AI 自动修复 plan**（按 tool 输出的失败项调整内容），修复后重新跑 PHASE 4.1 验证。
+         - 最多 3 轮。3 轮后仍有失败 → 停止，提示用户手动修复。
 
       **4.2 启动 Oracle + Momus 并行审查**：
 
@@ -651,8 +687,28 @@ apply:
     - `openspec/changes/<change-name>/tasks.md`
     - `.omo/plans/<change-name>.md`
 
-    1. 两个都存在 → 继续
-    2. 任一不存在 → 停止，提示用户：「🔴 tasks 阶段未完成。请先完成 tasks 阶段生成 plan + tasks.md。」
+    **tasks.md 格式验证**（防止用错 sync tool 或手动写入导致格式错误）：
+
+    tasks.md 必须由 `omo_spec_sync_tasks_from_plan` tool 生成，特征是：
+    1. 首行是 `## Tasks` 标题
+    2. 包含 `## Plan Reference` 附录（sync tool 自动生成）
+    3. checkbox 格式严格使用 `- [ ]` 或 `- [x]`
+
+    验证步骤：
+    1. 读取 `openspec/changes/<change-name>/tasks.md`
+    2. 检查上述 3 个特征是否都满足
+    3. 任一不满足 → 视为格式异常
+
+    **格式异常处理**（**不自动重新生成**，避免覆盖用户的合法修改）：
+    - 提示用户：「⚠️ tasks.md 格式异常。可能是：(1) 用错工具生成（如手动编辑或旧版 sync）；(2) OpenCode cache 未刷新。建议重新运行 tasks 阶段 PHASE 5 重新生成。」
+    - 询问用户选择：
+      1. **接受现状继续** → 进入 Step 2
+      2. **重新跑 tasks PHASE 5** → 退出 apply，让用户重跑 tasks 阶段
+      3. **停止** → 保留当前状态，用户手动处理
+
+    1. 两个文件都存在 + tasks.md 格式正确 → 继续
+    2. 任一文件不存在 → 停止，提示用户：「🔴 tasks 阶段未完成。请先完成 tasks 阶段生成 plan + tasks.md。如果尚未创建 change，请先运行 `openspec new change --schema spec-driven <change-name>`。」
+    3. tasks.md 格式异常 → 按上述 3 选 1 处理
 
     === Step 2：执行 /start-work ===
 
@@ -664,7 +720,10 @@ apply:
     **执行结果处理：**
     1. **完成**：继续 Oracle 验证
     2. **暂停**：告知用户后续可重新运行 /start-work 继续
-    3. **失败**：向用户报告错误并等待介入
+    3. **失败**：向用户报告错误，**仅展示错误信息本身**（**不暴露内部 stack trace、库路径、版本号等实现细节**），等待用户介入
+       - **plan 本身的问题**（如 task 引用不存在的文件、Acceptance Criteria 命令拼错）→ 建议重新跑 tasks 阶段修复 plan
+       - **OMO 工具问题**（如 Atlas 解析失败、task 执行超时）→ 建议查看 OMO 日志
+       - **OpenCode 环境问题**（如 tools 未加载、plugin 缺失）→ 建议重启 OpenCode 并运行 `bash scripts/sync.sh`
 
     === Step 2.5：同步 tasks.md 镜像 ===
 
@@ -672,11 +731,15 @@ apply:
 
     这样 OpenSpec apply skill（如果被加载）和后续状态检查能读到最新的任务进度。
 
+    **触发时机**（E3）：无论 /start-work 是「完成」还是「暂停」状态，都必须调用 sync tool 同步当前 checkbox 状态。「暂停」状态时部分 task 未完成，tasks.md 应反映部分进度而非 0% 完成。
+
     === Step 3：Oracle 验证（最多 3 轮）===
 
     /start-work 完成后，调用 `omo_spec_verify_implementation` OpenCode tool（参数：`change_name=<change-name>`）准备验证上下文。
 
-    tool 负责：读取所有 artifacts（proposal/specs/design/plan）+ 捕获 git diff + 组装 5 维度验证清单（Spec 合规性 / Design 对齐 / Proposal 范围 / Task 完成度 / 非功能性合规性）+ 严重程度规则。
+    tool 负责：读取所有 artifacts（proposal/specs/design/plan）+ 组装 5 维度验证清单（Spec 合规性 / Design 对齐 / Proposal 范围 / Task 完成度 / 非功能性合规性）+ 严重程度规则。
+
+    **不通过 tool 捕获 git diff**——由 Oracle 自行执行（避免 Bun.spawn 跨运行时依赖）。
 
     拿到 tool 返回的上下文后，将上下文传给 Oracle 审查：
 
@@ -684,6 +747,10 @@ apply:
     task(subagent_type="oracle", prompt="你正在验证实现产出与 OpenSpec change artifacts 的一致性。
     请根据以下验证上下文，按 5 维度（Spec 合规性 / Design 对齐 / Proposal 范围 / Task 完成度 / 非功能性合规性）输出发现。
     按严重程度标注（🔴阻塞 / 🟡警告 / ⚪建议），对每个 🔴 给出具体修复建议。
+
+    **步骤 1**：执行 `git diff --name-only HEAD` 获取变更文件列表（空仓库时 fallback `git ls-files --others --exclude-standard`）。
+
+    **步骤 2**：用变更文件列表 + 以下 artifacts 上下文做 5 维度审查。
 
     [将 omo_spec_verify_implementation tool 的完整输出填入此处]")
     ```

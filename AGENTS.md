@@ -40,7 +40,7 @@ The following gates apply to the **spec-driven** schema. Constitution schema has
 2. **1 Oracle gap analysis** (tasks PHASE 2, after spec validation) — review of proposal/specs/design coherence before plan generation (Metis **not** used here — Metis is for pre-plan consultation, used only in PHASE 3)
 3. **Plan generation with Metis consultation** (tasks PHASE 3, mandatory) — **Metis plan consultation** (pre-plan strategy advice) + AI directly generates `.omo/plans/<name>.md` via `omo_spec_write_new_plan` tool
 4. **Plan mirroring** (tasks PHASE 5, mandatory) — call `omo_spec_sync_tasks_from_plan` tool to mirror plan into tasks.md
-5. **Plan structure validation** (tasks PHASE 4.1, mandatory) — 7 checks: `## TODOs` section exists, `## Final Verification Wave` section exists, `## TL;DR` exists, `## Success Criteria` exists, `## Commit Strategy` exists, at least one `N. Task` format task in TODOs, at least one `FN. Task` format task in FVW
+5. **Plan structure validation** (tasks PHASE 4.1, mandatory) — 11 checks: 9 sections exist (`## TL;DR` / `## Context` / `## Work Objectives` / `## Verification Strategy` / `## Execution Strategy` / `## TODOs` / `## Final Verification Wave` / `## Commit Strategy` / `## Success Criteria`) + at least one `N. Task` format task in TODOs + at least one `FN. Task` format task in FVW
 6. **1 parallel Oracle + 1 parallel Momus review** (tasks PHASE 4.2, mandatory) — concurrent review of plan: Oracle reviews spec/design alignment + OMO compatibility; Momus gives final OKAY/REJECT verdict (Part A executable path + Part B risk matrix)
 7. **Verdict handling** (tasks PHASE 4.4, hard block) — if 🔴 BLOCKED, fix plan and re-review (max 3 rounds, after 3 rounds ask user to accept risk / manual fix / stop); if 🟡/⚪ remain, ask user to accept risk or fix more; no separate verdict file written
 8. **Oracle/Momus invocation** (tasks, mandatory, fast fail) — if any agent call fails (timeout, unavailable, error), immediately stop workflow and report to user; no retry, no degradation, no skip
@@ -94,6 +94,14 @@ Arithmetic uses `$((var + 1))` syntax (not `((var++))`) to avoid `set -e` exit o
 - **测试环境**（bridge 项目本地 `bun test`）：bridge 项目不依赖 `@opencode-ai/plugin`，stub 兜底
 - 测试 `import { parseOmoPlan, generateOpenSpecTasks, validateOmoPlan } from "../omo-spec"` 复用纯函数
 
+**5 个纯函数**（可独立 import，零 OpenCode 依赖）：
+
+1. `parseOmoPlan(content, changeName): OmoPlan` — 解析 OMO plan markdown 为结构化对象（sections + tasks + fields）
+2. `generateOpenSpecTasks(plan): string` — 从 OmoPlan 生成 OpenSpec tasks.md markdown（含 Wave 分组 + Plan Reference 附录）
+3. `validateOmoPlan(content, changeName): OmoPlanValidation` — 11 项 OMO 兼容性检查（9 个 section + 2 个任务格式）
+4. `buildOmoPlan(sections: OmoPlanSections): string` — 按 9-section 固定顺序组装 OMO plan markdown
+5. `prepareVerificationContext(changeName, artifacts, changedFiles): VerificationContext` — 准备实现验证上下文（artifacts + git diff + 5 维度 + verdict 规则）
+
 ---
 
 ### omo_spec_sync_tasks_from_plan tool
@@ -127,17 +135,21 @@ AI 在 OpenCode 会话中直接调用：
 
 ### omo_spec_validate_omo_plan tool
 
-**作用**：验证 OMO plan 结构是否符合 OMO 兼容性要求。**7 项检查**：
+**作用**：验证 OMO plan 结构是否符合 OMO 兼容性要求。**11 项检查**（9 个 section + 2 个任务格式）：
 
 | #   | 检查                                          | 类型     |
 | --- | --------------------------------------------- | -------- |
-| 1   | ## TODOs section 存在                         | section  |
-| 2   | ## Final Verification Wave section 存在       | section  |
-| 3   | ## TL;DR section 存在                         | section  |
-| 4   | ## Success Criteria section 存在              | section  |
-| 5   | ## Commit Strategy section 存在               | section  |
-| 6   | 至少 1 个 OMO TODO 任务（`#### N. [ ]` 格式） | 任务格式 |
-| 7   | 至少 1 个 OMO FVW 任务（`### FN. [ ]` 格式）  | 任务格式 |
+| 1   | ## TL;DR section 存在                         | section  |
+| 2   | ## Context section 存在                       | section  |
+| 3   | ## Work Objectives section 存在               | section  |
+| 4   | ## Verification Strategy section 存在         | section  |
+| 5   | ## Execution Strategy section 存在            | section  |
+| 6   | ## TODOs section 存在                         | section  |
+| 7   | ## Final Verification Wave section 存在       | section  |
+| 8   | ## Commit Strategy section 存在               | section  |
+| 9   | ## Success Criteria section 存在              | section  |
+| 10  | 至少 1 个 OMO TODO 任务（`#### N. [ ]` 格式） | 任务格式 |
+| 11  | 至少 1 个 OMO FVW 任务（`### FN. [ ]` 格式）  | 任务格式 |
 
 **调用方式**：
 
@@ -151,8 +163,8 @@ AI 在 OpenCode 会话中直接调用：
 
 **输出**：
 
-- ✅ 全部通过（`7/7`）：tool 返回成功消息，可进入下一步
-- ❌ 失败（N/7 通过）：tool 返回失败项列表，AI 修复 plan 后重跑
+- ✅ 全部通过（`11/11`）：tool 返回成功消息，可进入下一步
+- ❌ 失败（N/11 通过）：tool **抛错**（throw）返回失败项列表，AI 修复 plan 后重跑
 
 **集成点**：
 
@@ -197,33 +209,42 @@ AI 在 OpenCode 会话中直接调用：
 
 **配套工具**：
 
-- `omo_spec_validate_omo_plan`：写完后立即验证 7 项 OMO 兼容性
+- `omo_spec_validate_omo_plan`：写完后立即验证 11 项 OMO 兼容性
 - `omo_spec_sync_tasks_from_plan`：plan 审查通过后镜像到 tasks.md
 
 ---
 
 ### omo_spec_verify_implementation tool
 
-**作用**：准备 OpenSpec 实现验证的完整上下文。读取所有 artifacts + 捕获 git diff + 组装 5 维度验证清单。替换 apply Step 3 的长 Oracle 验证 prompt。
+**作用**：准备 OpenSpec 实现验证的 artifacts 上下文。**只读 artifacts + 组装模板**——不捕获 git diff（由 Oracle 自行执行，避免 Bun.spawn 跨运行时依赖）。
 
-**调用方式**：
+**调用方式**（OpenCode tool 格式）：
+
+AI 在 OpenCode 会话中直接调用：
 
 - tool 名：`omo_spec_verify_implementation`
-- 参数：`change_name: string`
+- 参数：`change_name: string`（OpenSpec change 名称）
 
-**返回**：结构化验证上下文（`VerificationContext`）：
+**返回**：artifacts 上下文（`VerificationContext`）：
 
 - `artifacts`: `{ proposal, design, specs, plan }` —— 全部内容
-- `changedFiles`: `string[]` —— git diff 捕获的变更文件（fallback 到 untracked）
+- `changedFiles`: `string[]` —— 始终为空数组（占位）
 - `dimensions`: 5 维度检查清单（Spec 合规性 / Design 对齐 / Proposal 范围 / Task 完成度 / 非功能性合规性）
 - `verdictRules`: BLOCKED / CONDITIONAL / 注意 三类判定规则
 
 **工作流**：
 
-1. AI 调 `omo_spec_verify_implementation` 拿完整上下文
+1. AI 调 `omo_spec_verify_implementation` 拿 artifacts + 维度模板
 2. AI 把上下文传给 `task(subagent_type="oracle", ...)` 审查
-3. Oracle 按 5 维度输出发现（🔴/🟡/⚪）
-4. AI 根据 verdict 决定 PASS / BLOCKED / CONDITIONAL
+3. **Oracle 自行执行 `git diff --name-only HEAD`**（agent 直接跑 shell，不通过 tool）
+4. Oracle 用变更文件 + artifacts + 5 维度输出发现（🔴/🟡/⚪）
+5. AI 根据 verdict 决定 PASS / BLOCKED / CONDITIONAL
+
+**为什么不通过 tool 捕获 git diff**：
+
+- Tool 用 `Bun.spawn` 只能跑在 Bun 环境
+- Oracle agent 本身就能跑 shell 命令（`Bun.spawn` / Node.js `child_process` 都行）
+- 让 agent 做副作用类操作、tool 做纯 I/O 是更清晰的职责分离
 
 **集成点**：
 
@@ -260,6 +281,33 @@ AI 在 OpenCode 会话中直接调用：
 - ❌ 不要手动编辑 tasks.md（会被下次同步覆盖）
 - ❌ 不要在 apply skill 中跳过同步步骤
 - ❌ 不要修改 tool 让它支持双向同步（破坏架构）
+
+## External dependencies
+
+Schema 在执行期间依赖以下外部系统和 agent。**所有调用遵循 Fast Fail Rule**（调用失败立即停止，不得重试/降级/跳过）：
+
+| 依赖                  | 类型                 | 用途                                                                                                                                    | 调用方式                                   |
+| --------------------- | -------------------- | --------------------------------------------------------------------------------------------------------------------------------------- | ------------------------------------------ |
+| `openspec`            | CLI                  | OpenSpec 工作流管理（new change / validate / archive / list / schema 等）                                                               | `openspec <subcommand>`                    |
+| `/start-work`         | OMO command          | 解析并执行 OMO plan（通过 Atlas agent）                                                                                                 | `/start-work .omo/plans/<change-name>.md`  |
+| Atlas agent           | OMO 内置 agent       | 解析 plan 中的 checkbox，调度 task 执行                                                                                                 | OMO 内部组件，无需 AI 显式调用             |
+| `oracle` agent        | Read-only 高 IQ 审查 | 差距分析（tasks PHASE 2）/ plan 审查（tasks PHASE 4.2）/ 实现验证（apply Step 3）                                                       | `task(subagent_type="oracle", ...)`        |
+| `metis` agent         | Pre-plan 咨询        | 提供 plan 策略建议（**仅**在 tasks PHASE 3 调用一次）                                                                                   | `task(subagent_type="metis", ...)`         |
+| `momus` agent         | Plan 评审            | 双重门禁审查 Part A（可执行性）+ Part B（风险矩阵）                                                                                     | `task(subagent_type="momus", ...)`         |
+| `omo-spec.ts` tools   | OpenCode tool        | 4 个工具：`omo_spec_write_new_plan` / `omo_spec_validate_omo_plan` / `omo_spec_sync_tasks_from_plan` / `omo_spec_verify_implementation` | OpenCode tool system 自动调用              |
+| `@opencode-ai/plugin` | NPM 包               | 提供 `tool()` helper 和 chainable schema builder                                                                                        | `require("@opencode-ai/plugin")`（懒加载） |
+
+**agent 数量限制**（基于实际成本）：
+
+- `oracle`：可并行（同一 PHASE 多个 review）
+- `metis`：每个 tasks 阶段**最多 1 次**（PHASE 3 咨询）
+- `momus`：每个 tasks 阶段**最多 1 次**（PHASE 4.2 审查，与 oracle 并行）
+
+**版本要求**（schema 不强制，由 OpenCode/OMO 自身负责）：
+
+- OpenSpec CLI ≥ 最新版（`openspec instructions` 命令支持 schema-specific 输出）
+- OpenCode ≥ 支持多 tool 模式的版本
+- OMO ≥ 支持 Atlas agent 和 `/start-work` 命令的版本
 
 ## Spec validation rules
 

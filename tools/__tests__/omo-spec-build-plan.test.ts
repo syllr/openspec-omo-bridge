@@ -149,7 +149,7 @@ describe("buildOmoPlan - 内容透传", () => {
 })
 
 describe("buildOmoPlan - 输出可被 parseOmoPlan 正确解析", () => {
-  test("完整 buildOmoPlan 输出通过 validateOmoPlan 7 项检查", () => {
+  test("完整 buildOmoPlan 输出通过 validateOmoPlan 11 项检查", () => {
     const sections = {
       tldr: "TL;DR",
       context: "Context",
@@ -164,7 +164,8 @@ describe("buildOmoPlan - 输出可被 parseOmoPlan 正确解析", () => {
     const out = buildOmoPlan(sections)
     const validation = validateOmoPlan(out, "test")
     expect(validation.valid).toBe(true)
-    expect(validation.passedChecks).toBe(7)
+    // A10 修复：从 7 项扩展到 11 项（9 sections + 2 task formats）
+    expect(validation.passedChecks).toBe(11)
   })
 
   test("buildOmoPlan 输出的 section 数 = 9", () => {

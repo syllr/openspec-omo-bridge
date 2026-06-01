@@ -1,6 +1,14 @@
 name: constitution
 version: 1
 description: Simplified 3-stage schema for project constitution - scan → design → apply
+
+# ============================================================
+# 共享约定：与 spec-driven schema 的引用关系（Oracle review ⚪ #6）
+# ============================================================
+# 本 schema 的 Constitution 区域格式详见 spec-driven schema 的 AGENTS.md 约定。
+# 两个 schema 共用 AGENTS.md 作为宪法元数据的存储位置，
+# constitution 用 <!-- constitution-start/end --> 标记隔离，spec-driven 用 ## Constitution 区域。
+# ============================================================
 artifacts:
   - id: scan
     generates: scan.md

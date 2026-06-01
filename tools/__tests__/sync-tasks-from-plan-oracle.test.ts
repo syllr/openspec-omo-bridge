@@ -35,16 +35,16 @@ describe("正则硬限制 (字段名含 *)", () => {
 })
 
 describe("Wave 标题中文标点", () => {
-  test("Wave 标题用中文冒号 ：", () => {
+  test("Wave 标题用中文冒号 ：（已修复，正常解析）", () => {
     const plan = parseOmoPlan(
       `## TODOs\n### 6.1 Wave 1：标题\n#### 1. [ ] t\n`,
       "t"
     )
-    // 当前正则要求英文 :，中文 ： 不匹配 → Wave 为空
-    expect(plan.tasks[0].wave).toBe("")
+    // Oracle review 🟡 #3 修复：正则 `[:：]` 同时匹配中英文冒号
+    expect(plan.tasks[0].wave).toBe("Wave 1: 标题")
   })
 
-  test("Wave 标题无冒号", () => {
+  test("Wave 标题无冒号（仍需为空，回归测试）", () => {
     const plan = parseOmoPlan(
       `## TODOs\n### 6.1 Wave 1 title\n#### 1. [ ] t\n`,
       "t"
@@ -52,31 +52,40 @@ describe("Wave 标题中文标点", () => {
     expect(plan.tasks[0].wave).toBe("")
   })
 
-  test("Wave 标题用全角冒号 ：（双字节）", () => {
+  test("Wave 标题用全角冒号 ：（双字节，已修复）", () => {
     const plan = parseOmoPlan(
       `## TODOs\n### 6.1 Wave 1：\n#### 1. [ ] t\n`,
       "t"
     )
-    expect(plan.tasks[0].wave).toBe("")
+    // 中文冒号 + 标题为空：仍能识别为 Wave 1（冒号被规范化）
+    expect(plan.tasks[0].wave).toBe("Wave 1:")
   })
 })
 
 describe("三级 sub-number", () => {
-  test("### 6.1.1 Wave 1: title（双层 sub-number）", () => {
+  test("### 6.1.1 Wave 1: title（双层 sub-number，已修复）", () => {
     const plan = parseOmoPlan(
       `## TODOs\n### 6.1.1 Wave 1: title\n#### 1. [ ] t\n`,
       "t"
     )
-    // 当前正则 (?:\d+\.\d+\s+)? 只匹配 N.M，不匹配 N.M.M
-    expect(plan.tasks[0].wave).toBe("")
+    // A2 修复：正则改为 (?:\d+(?:\.\d+)*\s+)?，支持任意层级
+    expect(plan.tasks[0].wave).toBe("Wave 1: title")
   })
 
-  test("### 6.10.1 Wave 1: title（三层编号）", () => {
+  test("### 6.10.1 Wave 1: title（三层编号，已修复）", () => {
     const plan = parseOmoPlan(
       `## TODOs\n### 6.10.1 Wave 1: title\n#### 1. [ ] t\n`,
       "t"
     )
-    expect(plan.tasks[0].wave).toBe("")
+    expect(plan.tasks[0].wave).toBe("Wave 1: title")
+  })
+
+  test("### 6.1.2.3 Wave 1: title（四层编号）", () => {
+    const plan = parseOmoPlan(
+      `## TODOs\n### 6.1.2.3 Wave 1: title\n#### 1. [ ] t\n`,
+      "t"
+    )
+    expect(plan.tasks[0].wave).toBe("Wave 1: title")
   })
 })
 
