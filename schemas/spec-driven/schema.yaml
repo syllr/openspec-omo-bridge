@@ -516,9 +516,9 @@ artifacts:
 
       === PHASE 4：Oracle + Momus 并行审查 Plan + Verdict 处理 ===
 
-    **4.1 plan 结构检查（OMO 兼容性）**：
+      **4.1 plan 结构检查（OMO 兼容性）**：
 
-    调用 `omo_spec_validate_omo_plan` OpenCode tool（参数：`change_name=<change-name>`）做 11 项 OMO 兼容性检查（9 个 section + 2 个任务格式）。检查项详见 tool 自身描述。
+      调用 `omo_spec_validate_omo_plan` OpenCode tool（参数：`change_name=<change-name>`）做 11 项 OMO 兼容性检查（9 个 section + 2 个任务格式）。检查项详见 tool 自身描述。
 
       tool 返回 `✅ 全部通过` → 进入 PHASE 4.2 启动 Oracle+Momus 审查。
       tool 返回 `❌ 失败` → **AI 自动修复 plan**（按 tool 输出的失败项调整内容），修复后重新跑 PHASE 4.1 验证。
