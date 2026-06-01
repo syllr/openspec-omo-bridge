@@ -150,9 +150,11 @@ sync_tools() {
       local filename="$(basename "${tool_file}" .ts)"
       # OpenCode 命名规则：filename 中的 hyphen → underscore
       local tool_prefix=$(echo "${filename}" | tr '-' '_')
-      # 提取所有 export const X = tool( 格式
-      local exports
-      exports=$(grep -oE '^export const [a-zA-Z_][a-zA-Z0-9_]*\s*=\s*tool\(' "${tool_file}" 2>/dev/null | sed -E 's/^export const ([a-zA-Z_][a-zA-Z0-9_]*).*/\1/' | tr '\n' ' ')
+    # 提取所有 export const X = tool( 格式
+    # ⚠️ || true 必需：grep 无匹配 + pipefail 让 pipeline 退出码非 0，
+    #    触发 set -e 静默退出整个脚本（搜不到 export 的 .ts 文件时如 searchweb.ts）
+    local exports
+    exports=$(grep -oE '^export const [a-zA-Z_][a-zA-Z0-9_]*\s*=\s*tool\(' "${tool_file}" 2>/dev/null | sed -E 's/^export const ([a-zA-Z_][a-zA-Z0-9_]*).*/\1/' | tr '\n' ' ' || true)
       if [[ -n "${exports}" ]]; then
         for exp in ${exports}; do
           echo "    - ${tool_prefix}_${exp}"
