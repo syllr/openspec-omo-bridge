@@ -68,74 +68,48 @@ artifacts:
 
       编写后验证输出是否完全遵循模板结构。
 
-      === PHASE 3：Oracle + Metis 并行审查（强制） ===
+      === PHASE 3：Oracle 审查（强制） ===
 
-      同时启动 1 个 Oracle + 1 个 Metis agent 审查生成的 proposal。
+      启动 1 个 Oracle agent 审查生成的 proposal。
       调用前将占位符替换为实际内容。
 
-       **Oracle prompt 和 Metis prompt 使用相同内容：**
-       task(subagent_type="oracle", prompt="
-       你正在审查一个 OpenSpec 变更提案。请逐一检查以下所有检查项：
+      ```
+      task(subagent_type="oracle", prompt="
+      你正在审查一个 OpenSpec 变更提案。请逐一检查以下所有检查项：
 
-       PHASE 1 的上下文提取结果：
-       [将 PHASE 1 的提取输出粘贴此处]
+      PHASE 1 的上下文提取结果：
+      [将 PHASE 1 的提取输出粘贴此处]
 
-       生成的 proposal.md 路径：openspec/changes/<change-name>/proposal.md
+      生成的 proposal.md 路径：openspec/changes/<change-name>/proposal.md
 
-       1. 内容完整性——PHASE 1 提取的所有要点是否在 proposal 中体现？
-       2. 范围控制——提案中是否有对话中未讨论的内容（范围蔓延）？
-       3. 结构完整性——所有必需的部分是否存在且格式正确？
-       4. 格式卫生——有无空部分、未替换占位符、[TODO]/[TBD] 标记？
-       5. 命名规范——Capabilities 是否使用 kebab-case？
-       6. Capability 粒度——每个 Capability 是否独立可测？有无过粗（应拆分为多个 spec）或过细（可合并）的情况？
-       7. 边界清晰——What Changes / Capabilities / Impact 是否没有混淆？
-       8. 可操作性——Capabilities 是否具体到可以衍生 specs？Impact 是否明确？
-       9. 模糊性——表达是否清晰？有无 AI-slop（模糊空洞的表述）？
-       10. 不确定信号——需要调研的点是否已用 [NEEDS INVESTIGATION] 标记？
+      1. 内容完整性——PHASE 1 提取的所有要点是否在 proposal 中体现？
+      2. 范围控制——提案中是否有对话中未讨论的内容（范围蔓延）？
+      3. 结构完整性——所有必需的部分是否存在且格式正确？
+      4. 格式卫生——有无空部分、未替换占位符、[TODO]/[TBD] 标记？
+      5. 命名规范——Capabilities 是否使用 kebab-case？
+      6. Capability 粒度——每个 Capability 是否独立可测？有无过粗（应拆分为多个 spec）或过细（可合并）的情况？
+      7. 边界清晰——What Changes / Capabilities / Impact 是否没有混淆？
+      8. 可操作性——Capabilities 是否具体到可以衍生 specs？Impact 是否明确？
+      9. 模糊性——表达是否清晰？有无 AI-slop（模糊空洞的表述）？
+      10. 不确定信号——需要调研的点是否已用 [NEEDS INVESTIGATION] 标记？
 
-       严重程度：🔴 阻塞 / 🟡 警告 / ⚪ 建议
-       输出格式：按严重程度列出发现，对每个 🔴/🟡 给出具体修改建议
-       ")
-
-       task(subagent_type="metis", prompt="
-         你正在审查一个 OpenSpec 变更提案。请逐一检查以下所有检查项：
-
-        PHASE 1 的上下文提取结果：
-        [将 PHASE 1 的提取输出粘贴此处]
-
-        生成的 proposal.md 路径：openspec/changes/<change-name>/proposal.md
-
-        1. 内容完整性——PHASE 1 提取的所有要点是否在 proposal 中体现？
-        2. 范围控制——提案中是否有对话中未讨论的内容（范围蔓延）？
-        3. 结构完整性——所有必需的部分是否存在且格式正确？
-        4. 格式卫生——有无空部分、未替换占位符、[TODO]/[TBD] 标记？
-        5. 命名规范——Capabilities 是否使用 kebab-case？
-        6. Capability 粒度——每个 Capability 是否独立可测？有无过粗（应拆分为多个 spec）或过细（可合并）的情况？
-        7. 边界清晰——What Changes / Capabilities / Impact 是否没有混淆？
-        8. 可操作性——Capabilities 是否具体到可以衍生 specs？Impact 是否明确？
-        9. 模糊性——表达是否清晰？有无 AI-slop（模糊空洞的表述）？
-        10. 不确定信号——需要调研的点是否已用 [NEEDS INVESTIGATION] 标记？
-
-        严重程度：🔴 阻塞 / 🟡 警告 / ⚪ 建议
-        输出格式：按严重程度列出发现，对每个 🔴/🟡 给出具体修改建议
-        ")
+      严重程度：🔴 阻塞 / 🟡警告 / ⚪ 建议
+      输出格式：按严重程度列出发现，对每个 🔴/🟡 给出具体修改建议
+      ")
+      ```
 
       **收集评审结果：**
       1. 读取 Oracle 输出 → 列出所有 🔴/🟡/⚪ 发现
-      2. 读取 Metis 输出 → 列出所有 🔴/🟡/⚪ 发现
-      3. **自检**：确认两个 agent 的结果都已成功读取。如有遗漏，回到步骤 1 重新读取
-      4. 合并发现：同一问题多个 agent 都发现时取更高严重程度
-       5. 分类判定：
-          - 有任何 🔴 → BLOCKED，委托 agent 修复 proposal.md：
-            task(category="write", load_skills=[],
-                 prompt="根据以下审查结果，修复 proposal.md 中被指出的问题。
-
-                 只修复标记为 🔴 的问题，不要修改其他内容。
-
-                 Oracle + Metis 审查发现的所有问题：
-                 [将 Oracle/Metis 输出的所有 🔴 问题及修复建议以文本形式填入此处]")
-            修复完成后重新运行 PHASE 3（最多 3 轮）
-          - 仅 🟡/⚪ → 展示给用户，让用户评估决定是否修复
+      2. **自检**：确认 Oracle 结果已成功读取。如有遗漏，回到步骤 1 重新读取
+      3. 分类判定：
+         - 有任何 🔴 → BLOCKED，委托 agent 修复 proposal.md：
+           task(category="write", load_skills=[],
+                prompt="根据以下审查结果，修复 proposal.md 中被指出的问题。
+                只修复标记为 🔴 的问题，不要修改其他内容。
+                Oracle 审查发现的所有问题：
+                [将 Oracle 输出的所有 🔴 问题及修复建议以文本形式填入此处]")
+           修复完成后重新运行 PHASE 3（最多 3 轮）
+         - 仅 🟡/⚪ → 展示给用户，让用户评估决定是否修复
 
 
       === PHASE 4：循环与继续 ===
@@ -396,7 +370,7 @@ artifacts:
       | 1 | 读取上下文 + Spec 验证 | 通过/失败 |
       | 2 | Oracle + Metis 并行差距分析 | 修复 proposal/specs/design 中的 🔴 |
       | 3 | AI 直接生成 OMO plan（调 write_new_plan tool） | `.omo/plans/<change-name>.md` |
-      | 4 | Oracle + Metis + Momus 并行审查 | Verdict（内联处理：🟡/⚪ 问用户，🔴 修复） |
+      | 4 | Oracle + Momus 并行审查 | Verdict（内联处理：🟡/⚪ 问用户，🔴 修复） |
       | 5 | 调用 omo_spec_sync_tasks_from_plan tool | `tasks.md`（plan 镜像，**仅在审查通过后**） |
 
       **关键概念**：
@@ -492,16 +466,16 @@ artifacts:
 
       **完成标志**：tool 返回 `✅ plan 已写入` 即可进入 PHASE 4。
 
-      === PHASE 4：Oracle + Metis + Momus 并行审查 Plan + Verdict 处理 ===
+      === PHASE 4：Oracle + Momus 并行审查 Plan + Verdict 处理 ===
 
       **4.1 plan 结构检查（OMO 兼容性）**：
 
       调用 `omo_spec_validate_omo_plan` OpenCode tool（参数：`change_name=<change-name>`）做 7 项 OMO 兼容性检查。检查项详见 tool 自身描述（5 个核心 section + 2 个任务格式）。
 
-      tool 返回 `✅ 全部通过` → 进入 PHASE 4.2 启动 Oracle+Metis+Momus 审查。
+      tool 返回 `✅ 全部通过` → 进入 PHASE 4.2 启动 Oracle+Momus 审查。
       tool 返回 `❌ 失败` → 停止，修复 plan（按 tool 输出的失败项）后重新验证（重新跑 PHASE 4.1 → 完整 PHASE 4 审查）。
 
-      **5.2 启动 Oracle + Metis + Momus 并行审查**：
+      **5.2 启动 Oracle + Momus 并行审查**：
 
       ```
       PLAN_REVIEW_PROMPT = "你正在审查 OMO plan。请逐一检查以下所有检查项：
@@ -528,7 +502,6 @@ artifacts:
       输出格式：逐项检查，然后汇总问题清单，每个问题标注 severity。"
 
       ORACLE_PLAN_REVIEW_PROMPT = PLAN_REVIEW_PROMPT
-      METIS_PLAN_REVIEW_PROMPT = PLAN_REVIEW_PROMPT
 
       MOMUS_PLAN_REVIEW_PROMPT = "你正在对 OMO plan 执行双重门禁审查（Momus 评审）。
 
@@ -556,24 +529,22 @@ artifacts:
       输出格式：先按 Part A / Part B 分别分析，最后给出综合判定。所有发现使用 🔴/🟡/⚪ 标注严重程度。"
 
       task(subagent_type="oracle", prompt=ORACLE_PLAN_REVIEW_PROMPT)
-      task(subagent_type="metis", prompt=METIS_PLAN_REVIEW_PROMPT)
       task(subagent_type="momus", prompt=MOMUS_PLAN_REVIEW_PROMPT)
       ```
 
       **5.3 收集评审结果（以下步骤不可跳过）**：
       1. 读取 Oracle 输出 → 列出所有 🔴/🟡/⚪ 发现
-      2. 读取 Metis 输出 → 列出所有 🔴/🟡/⚪ 发现
-      3. 读取 Momus 输出 → 列出所有 🔴/🟡/⚪ 发现
-      4. **自检**：确认所有 3 个 agent 结果都已读完。如有遗漏，回到步骤 1 重新读取
-      5. 合并发现：同一问题多个 agent 都发现时取更高严重程度
-      6. 分类判定：
-         - Momus 🔴 REJECT 或 任一 agent 有 🔴 → BLOCKED，委托 agent 修复 plan：
-           task(category="write", load_skills=[],
-                prompt="根据以下审查结果，一次性修复 plan 中被指出的问题。
-                只修复标记为 🔴 的问题，不要修改其他内容。
-                Oracle + Metis + Momus 审查发现的所有问题：
-                [将三个 agent 输出的所有 🔴 问题及修复建议以文本形式填入此处]")
-           修复完成后重新运行 PHASE 4（**最多 3 轮**，超限后汇总给用户）
+      2. 读取 Momus 输出 → 列出所有 🔴/🟡/⚪ 发现
+      3. **自检**：确认所有 2 个 agent 结果都已读完。如有遗漏，回到步骤 1 重新读取
+      4. 合并发现：同一问题多个 agent 都发现时取更高严重程度
+      5. 分类判定：
+          - Momus 🔴 REJECT 或 任一 agent 有 🔴 → BLOCKED，委托 agent 修复 plan：
+            task(category="write", load_skills=[],
+                 prompt="根据以下审查结果，一次性修复 plan 中被指出的问题。
+                 只修复标记为 🔴 的问题，不要修改其他内容。
+                 Oracle + Momus 审查发现的所有问题：
+                 [将两个 agent 输出的所有 🔴 问题及修复建议以文本形式填入此处]")
+            修复完成后重新运行 PHASE 4（**最多 3 轮**，超限后汇总给用户）
          - 仅 🟡/⚪ → 进入 5.4 verdict 处理
 
       **5.4 Verdict 处理（内联，替代原 critic.md）**：
