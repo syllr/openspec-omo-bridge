@@ -291,7 +291,15 @@ artifacts:
       - `openspec/changes/<change-name>/design.md` — 技术决策和设计细节
       - `openspec/changes/<change-name>/research/` — 技术调研结论（如果存在）
 
-      如果 proposal 没有列出任何 Capabilities（New 和 Modified 部分都为空），跳过 spec 文件生成。创建一个空的 `specs/` 目录并继续下一个 artifact。
+      **Capabilities 必填检查**：如果 proposal 没有列出任何 Capabilities（New 和 Modified 部分都为空），**停止工作流**。
+
+      这是不合法状态，因为：
+      - proposal 的核心作用就是声明「这次变更涉及什么 capability」
+      - 0 capabilities = 0 变更 = 不该创建 change
+      - 跳过 spec 生成会留下空 specs/ 目录，无意义
+      - 后续 tasks 阶段也无法生成可执行任务
+
+      向用户报告：「🔴 proposal 没有列出任何 Capabilities，无法继续。请补充 proposal 的 New 或 Modified Capabilities。如果此次变更不涉及代码（如纯文档/重构），请考虑其他流程。」
 
       **Modified Capability 路径检查**：对 proposal 中列出的每个 Modified Capability，检查 `openspec/specs/<capability>/spec.md` 是否存在。如果不存在，停止工作流，列出所有缺失路径，询问用户是否改为 New Capability 或先创建基础 spec。
 
@@ -387,7 +395,7 @@ artifacts:
       |-------|------|------|
       | 1 | 读取上下文 + Spec 验证 | 通过/失败 |
       | 2 | Oracle + Metis 并行差距分析 | 修复 proposal/specs/design 中的 🔴 |
-      | 3 | 生成 OMO plan（write agent） | `.omo/plans/<change-name>.md` |
+      | 3 | AI 直接生成 OMO plan（调 write_new_plan tool） | `.omo/plans/<change-name>.md` |
       | 4 | Oracle + Metis + Momus 并行审查 | Verdict（内联处理：🟡/⚪ 问用户，🔴 修复） |
       | 5 | 调用 omo_spec_sync_tasks_from_plan tool | `tasks.md`（plan 镜像，**仅在审查通过后**） |
 
@@ -466,26 +474,23 @@ artifacts:
 
       生成 `.omo/plans/<change-name>.md` — OMO 兼容的执行计划。
 
-      通过调用 `omo_spec_write_new_plan` OpenCode tool 完成。Tool 负责按 9-section 固定结构组装 plan，AI 只需提供每节内容。
+      由当前 AI 直接执行（不委派 subagent，因为任务机械：读 4 个文件 + 填 9 个 section + 调 tool）。
 
-      task(category="write", load_skills=[],
-           prompt="为以下变更生成 OMO 兼容的执行计划，保存到 .omo/plans/<change-name>.md。
+      **执行流程**：
 
-           输入文件（请直接读取以下文件获取完整内容）：
-           - `openspec/changes/<change-name>/proposal.md` — 动机和能力
-           - `openspec/changes/<change-name>/specs/` — 需求和验收场景
-           - `openspec/changes/<change-name>/design.md` — 技术方案、决策、风险
-           - `openspec/changes/<change-name>/research/` — 技术调研（如果存在）
+      1. 读取以下 4 个输入文件：
+         - `openspec/changes/<change-name>/proposal.md` — 动机和能力
+         - `openspec/changes/<change-name>/specs/` — 需求和验收场景
+         - `openspec/changes/<change-name>/design.md` — 技术方案、决策、风险
+         - `openspec/changes/<change-name>/research/` — 技术调研（如果存在）
 
-           **执行流程**：
+      2. 为 9 个 section 分别准备内容（每个 section 的内容要求详见 `omo_spec_write_new_plan` tool 的 args 描述）
 
-           1. 读取上述 4 个输入文件
-           2. 为 9 个 section 分别准备内容（每个 section 的内容要求详见 tool 的 args 描述）
-           3. 调用 `omo_spec_write_new_plan` OpenCode tool，传入 9 个 section 的内容
+      3. 调用 `omo_spec_write_new_plan` OpenCode tool，传入 9 个 section 的内容
 
-           tool 会自动按固定顺序组装 9 个 section 标题和 hint 文本，保证 plan 格式 100% 一致。
+      tool 会自动按固定顺序组装 9 个 section 标题和 hint 文本，保证 plan 格式 100% 一致。
 
-           **完成标志**：tool 返回 `✅ plan 已写入` 即可进入 PHASE 4。")
+      **完成标志**：tool 返回 `✅ plan 已写入` 即可进入 PHASE 4。
 
       === PHASE 4：Oracle + Metis + Momus 并行审查 Plan + Verdict 处理 ===
 
@@ -497,7 +502,6 @@ artifacts:
       tool 返回 `❌ 失败` → 停止，修复 plan（按 tool 输出的失败项）后重新验证（重新跑 PHASE 4.1 → 完整 PHASE 4 审查）。
 
       **5.2 启动 Oracle + Metis + Momus 并行审查**：
-
 
       ```
       PLAN_REVIEW_PROMPT = "你正在审查 OMO plan。请逐一检查以下所有检查项：
