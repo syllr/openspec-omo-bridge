@@ -32,15 +32,18 @@ try {
   const plugin = require("@opencode-ai/plugin") as { tool: ToolFactory }
   tool = plugin.tool
 } catch {
-  // 测试环境 fallback：chainable schema + 透传 config
-  const chainable: any = () => chainable
-  chainable.string = () => chainable
-  chainable.number = () => chainable
-  chainable.boolean = () => chainable
-  chainable.array = () => chainable
-  chainable.object = () => chainable
-  chainable.describe = () => chainable
-  chainable.optional = () => chainable
+  const chainable: any = new Proxy(
+    function () {
+      return chainable
+    },
+    {
+      get(_target, prop) {
+        if (typeof prop === "symbol") return undefined
+        if (prop === "apply" || prop === "call" || prop === "bind") return undefined
+        return () => chainable
+      },
+    }
+  )
   const stub = ((config: any) => config) as ToolFactory
   stub.schema = new Proxy({}, { get: () => () => chainable })
   tool = stub
@@ -306,16 +309,17 @@ export function validateOmoPlan(
   const results: OmoPlanCheck[] = []
 
   // 1-9. Section 存在性检查（A10）：从 5 项扩展到 9 项，覆盖全部 plan sections
+  // 接受两种格式：`## TL;DR` 或 `## 1. TL;DR`（数字编号常见于 OMO 项目）
   const sectionChecks: Array<{ name: string; pattern: RegExp }> = [
-    { name: "TL;DR section", pattern: /^##\s+TL;DR\s*$/m },
-    { name: "Context section", pattern: /^##\s+Context\s*$/m },
-    { name: "Work Objectives section", pattern: /^##\s+Work Objectives\s*$/m },
-    { name: "Verification Strategy section", pattern: /^##\s+Verification Strategy\s*$/m },
-    { name: "Execution Strategy section", pattern: /^##\s+Execution Strategy\s*$/m },
-    { name: "TODOs section", pattern: /^##\s+TODOs\s*$/m },
-    { name: "Final Verification Wave section", pattern: /^##\s+Final Verification Wave\s*$/m },
-    { name: "Commit Strategy section", pattern: /^##\s+Commit Strategy\s*$/m },
-    { name: "Success Criteria section", pattern: /^##\s+Success Criteria\s*$/m },
+    { name: "TL;DR section", pattern: /^##\s+(?:\d+\.\s+)?TL;DR\s*$/m },
+    { name: "Context section", pattern: /^##\s+(?:\d+\.\s+)?Context\s*$/m },
+    { name: "Work Objectives section", pattern: /^##\s+(?:\d+\.\s+)?Work Objectives\s*$/m },
+    { name: "Verification Strategy section", pattern: /^##\s+(?:\d+\.\s+)?Verification Strategy\s*$/m },
+    { name: "Execution Strategy section", pattern: /^##\s+(?:\d+\.\s+)?Execution Strategy\s*$/m },
+    { name: "TODOs section", pattern: /^##\s+(?:\d+\.\s+)?TODOs\s*$/m },
+    { name: "Final Verification Wave section", pattern: /^##\s+(?:\d+\.\s+)?Final Verification Wave\s*$/m },
+    { name: "Commit Strategy section", pattern: /^##\s+(?:\d+\.\s+)?Commit Strategy\s*$/m },
+    { name: "Success Criteria section", pattern: /^##\s+(?:\d+\.\s+)?Success Criteria\s*$/m },
   ]
 
   for (const s of sectionChecks) {
@@ -353,55 +357,6 @@ export function validateOmoPlan(
   }
 }
 
-/**
- * 9 个固定 section 的 OMO plan 内容。
- * 顺序固定，与 buildOmoPlan 输出的 ## 标题一一对应。
- */
-export interface OmoPlanSections {
-  tldr: string
-  context: string
-  workObjectives: string
-  verificationStrategy: string
-  executionStrategy: string
-  todos: string
-  finalVerificationWave: string
-  commitStrategy: string
-  successCriteria: string
-}
-
-/**
- * 按固定 9-section 顺序组装 OMO plan markdown。
- * 9 个 section 标题固定，AI 只需提供每节内容。
- * 输出格式与 OpenCode/OMO 解析器期望完全一致。
- */
-export function buildOmoPlan(sections: OmoPlanSections): string {
-  const parts: string[] = []
-
-  parts.push("## TL;DR", sections.tldr, "")
-  parts.push("## Context", sections.context, "")
-  parts.push("## Work Objectives", sections.workObjectives, "")
-  parts.push("## Verification Strategy", sections.verificationStrategy, "")
-  parts.push("## Execution Strategy", sections.executionStrategy, "")
-  parts.push(
-    "## TODOs",
-    "**OMO 会解析此 section 中的 checkbox 来追踪进度**",
-    "",
-    sections.todos,
-    ""
-  )
-  parts.push(
-    "## Final Verification Wave",
-    "**OMO 会解析此 section 中的 checkbox 来判断是否完成**",
-    "",
-    sections.finalVerificationWave,
-    ""
-  )
-  parts.push("## Commit Strategy", sections.commitStrategy, "")
-  parts.push("## Success Criteria", sections.successCriteria, "")
-
-  return parts.join("\n")
-}
-
 // ============================================================
 // OpenCode tool 入口
 // ============================================================
@@ -412,15 +367,40 @@ export function buildOmoPlan(sections: OmoPlanSections): string {
  */
 export const sync_tasks_from_plan = tool({
   description:
-    "单向同步 OMO plan 到 OpenSpec tasks.md。把 `.omo/plans/<change-name>.md` 镜像成 OpenSpec 期望的格式，覆盖 `openspec/changes/<change-name>/tasks.md`。方向：plan → tasks.md（不可反向）。可重入：plan 修改后随时运行。镜像内容包含：任务（TODO/FVW）+ 章节参考（TL;DR、Context、Execution Strategy、Commit Strategy、Success Criteria 等全部 9 章节）。",
+    "Mirror an OMO plan to OpenSpec tasks.md. Reads `.omo/plans/<change-name>.md` and writes the OMO-format tasks (TODO/FVW checkboxes + Plan Reference appendix) to `openspec/changes/<change-name>/tasks.md`. Reentrant: safe to re-run after plan edits. Direction is plan → tasks.md (one-way, never reverse).",
   args: {
     change_name: tool.schema
       .string()
+      .min(1)
       .describe(
-        "OpenSpec change 名称。对应路径：`.omo/plans/<change-name>.md` → `openspec/changes/<change-name>/tasks.md`"
+        "The OpenSpec change name. The plan is read from `.omo/plans/<change-name>.md` and the tasks are written to `openspec/changes/<change-name>/tasks.md`."
+      ),
+    paths: tool.schema
+      .array(tool.schema.string())
+      .min(1)
+      .describe(
+        "Absolute paths the tool will write to. Must include `openspec/changes/<change-name>/tasks.md`."
       ),
   },
   async execute(args, context) {
+    // 入口参数校验：清晰的错误信息（不让 Zod 冰冷的 "paths[3]" 错误直接冒泡）
+    if (!args.change_name || args.change_name.trim() === "") {
+      throw new Error(
+        `❌ 参数缺失：change_name\n` +
+          `   用途：OpenSpec change 名称\n` +
+          `   示例：change_name: "add-audio-device-selector"\n` +
+          `   应传：非空字符串`
+      )
+    }
+    if (!args.paths || args.paths.length === 0) {
+      throw new Error(
+        `❌ 参数缺失：paths\n` +
+          `   用途：Tool 将要修改的文件路径列表（OpenCode write 工具约定）\n` +
+          `   应传：包含 '${resolve(context.directory, "openspec", "changes", args.change_name, "tasks.md")}' 的非空数组\n` +
+          `   示例：paths: ["${resolve(context.directory, "openspec", "changes", args.change_name, "tasks.md")}"]`
+      )
+    }
+
     const projectRoot = context.directory
     const planPath = resolve(
       projectRoot,
@@ -435,6 +415,17 @@ export const sync_tasks_from_plan = tool({
       args.change_name,
       "tasks.md"
     )
+
+    const normalizedPaths = args.paths.map((p: string) => p.replace(/\\/g, "/"))
+    const normalizedExpected = tasksPath.replace(/\\/g, "/")
+    if (!normalizedPaths.includes(normalizedExpected)) {
+      throw new Error(
+        `❌ 参数错误：paths 缺少必需的写入目标\n` +
+          `   收到：${JSON.stringify(args.paths)}\n` +
+          `   期望包含：${tasksPath}\n` +
+          `   修复：paths 必须声明 tool 即将修改的所有文件路径`
+      )
+    }
 
     if (!existsSync(planPath)) {
       throw new Error(`plan 文件不存在：${planPath}`)
@@ -474,15 +465,38 @@ export const sync_tasks_from_plan = tool({
  */
 export const validate_omo_plan = tool({
   description:
-    "验证 OMO plan 结构是否符合 OMO 兼容性要求。11 项检查：9 个 section 存在（## TL;DR、## Context、## Work Objectives、## Verification Strategy、## Execution Strategy、## TODOs、## Final Verification Wave、## Commit Strategy、## Success Criteria）+ 2 个任务格式（至少 1 个 TODO 任务、至少 1 个 FVW 任务）。返回结构化结果：valid、totalChecks、passedChecks、results（每项检查的 name/description/passed）。",
+    "Validate an OMO plan for OMO compatibility. 11 checks: 9 required sections (## TL;DR, ## Context, ## Work Objectives, ## Verification Strategy, ## Execution Strategy, ## TODOs, ## Final Verification Wave, ## Commit Strategy, ## Success Criteria) + 2 task-format checks (at least one `#### N. [ ]` TODO + at least one `### FN. [ ]` FVW). Returns structured result: valid, totalChecks, passedChecks, results.",
   args: {
     change_name: tool.schema
       .string()
+      .min(1)
       .describe(
-        "OpenSpec change 名称。读取 `.omo/plans/<change-name>.md` 进行 11 项结构检查（9 section + 2 task 格式）。"
+        "The OpenSpec change name. The plan is read from `.omo/plans/<change-name>.md`."
+      ),
+    paths: tool.schema
+      .array(tool.schema.string())
+      .min(1)
+      .describe(
+        "Absolute paths the tool will read. Must include `.omo/plans/<change-name>.md`."
       ),
   },
   async execute(args, context) {
+    // 入口参数校验
+    if (!args.change_name || args.change_name.trim() === "") {
+      throw new Error(
+        `❌ 参数缺失：change_name\n` +
+          `   用途：OpenSpec change 名称\n` +
+          `   应传：非空字符串`
+      )
+    }
+    if (!args.paths || args.paths.length === 0) {
+      throw new Error(
+        `❌ 参数缺失：paths\n` +
+          `   用途：Tool 将要读取的文件路径列表（OpenCode read 工具约定）\n` +
+          `   应传：包含 '${resolve(context.directory, ".omo", "plans", args.change_name + ".md")}' 的非空数组`
+      )
+    }
+
     const projectRoot = context.directory
     const planPath = resolve(
       projectRoot,
@@ -490,6 +504,16 @@ export const validate_omo_plan = tool({
       "plans",
       `${args.change_name}.md`
     )
+
+    const normalizedPaths = args.paths.map((p: string) => p.replace(/\\/g, "/"))
+    const normalizedExpected = planPath.replace(/\\/g, "/")
+    if (!normalizedPaths.includes(normalizedExpected)) {
+      throw new Error(
+        `❌ 参数错误：paths 缺少必需的读取目标\n` +
+          `   收到：${JSON.stringify(args.paths)}\n` +
+          `   期望包含：${planPath}`
+      )
+    }
 
     if (!existsSync(planPath)) {
       throw new Error(`plan 文件不存在：${planPath}`)
@@ -512,85 +536,6 @@ export const validate_omo_plan = tool({
     }
 
     return `✅ plan 结构检查通过（${validation.passedChecks}/${validation.totalChecks} 项全部通过）`
-  },
-})
-
-/**
- * Tool: omo_spec_write_new_plan
- * 作用：按 9-section 固定结构写入 OMO 兼容执行计划
- */
-export const write_new_plan = tool({
-  description:
-    "写入 OMO 兼容执行计划到 .omo/plans/<change-name>.md。9 个参数对应 plan 的 9 个固定 section（顺序固定）：TL;DR、Context、Work Objectives、Verification Strategy、Execution Strategy、TODOs、Final Verification Wave、Commit Strategy、Success Criteria。Tool 负责组装 9 个 section 的标题和固定顺序，AI 只需提供各 section 的内容。",
-  args: {
-    change_name: tool.schema
-      .string()
-      .describe("OpenSpec change 名称。保存到 `.omo/plans/<change-name>.md`。"),
-    tldr: tool.schema
-      .string()
-      .describe("TL;DR section 内容（1-2 句，引用 proposal.md）"),
-    context: tool.schema
-      .string()
-      .describe("Context section 内容（2-3 句，引用 proposal.md）"),
-    work_objectives: tool.schema
-      .string()
-      .describe(
-        "Work Objectives section 内容（每个 capability 及关键 requirement，引用 specs/）"
-      ),
-    verification_strategy: tool.schema
-      .string()
-      .describe("Verification Strategy section 内容（引用 specs 的 scenarios）"),
-    execution_strategy: tool.schema
-      .string()
-      .describe("Execution Strategy section 内容（引用 design.md 和 research/）"),
-    todos: tool.schema
-      .string()
-      .describe(
-        "TODOs section 内容（OMO 格式：`#### N. [ ] title` + 9 个子字段：What to do / Must NOT do / Recommended Agent Profile / References / Acceptance Criteria / QA Scenarios / Parallelization / Evidence / Commit）"
-      ),
-    final_verification_wave: tool.schema
-      .string()
-      .describe(
-        "FVW section 内容（OMO 格式：`### FN. [ ] title` + Acceptance Criteria）"
-      ),
-    commit_strategy: tool.schema
-      .string()
-      .describe("Commit Strategy section 内容"),
-    success_criteria: tool.schema
-      .string()
-      .describe("Success Criteria section 内容"),
-  },
-  async execute(args, context) {
-    const projectRoot = context.directory
-    const planPath = resolve(
-      projectRoot,
-      ".omo",
-      "plans",
-      `${args.change_name}.md`
-    )
-
-    const sections: OmoPlanSections = {
-      tldr: args.tldr,
-      context: args.context,
-      workObjectives: args.work_objectives,
-      verificationStrategy: args.verification_strategy,
-      executionStrategy: args.execution_strategy,
-      todos: args.todos,
-      finalVerificationWave: args.final_verification_wave,
-      commitStrategy: args.commit_strategy,
-      successCriteria: args.success_criteria,
-    }
-
-    const planContent = buildOmoPlan(sections)
-
-    // 确保 .omo/plans/ 目录存在（首次生成 plan 时可能尚未创建）
-    mkdirSync(dirname(planPath), { recursive: true })
-
-    writeFileSync(planPath, planContent)
-
-    return `✅ plan 已写入：${planPath}
-   9 个 section 已按固定顺序组装
-   建议下一步：调用 \`omo_spec_validate_omo_plan\` 验证 plan 结构`
   },
 })
 
@@ -710,15 +655,43 @@ function readIfExists(path: string): string | null {
  * Tool: omo_spec_verify_implementation
  * 作用：准备实现验证上下文（artifacts + git diff + 5 维度检查清单）
  */
-export const verify_implementation = tool({
+/**
+ * Tool: omo_spec_prepare_verification_context
+ * 作用：读取 change 的所有 artifacts（proposal/design/specs/plan）+ 组装 5 维度验证清单 + 严重程度规则。
+ * 给 Oracle agent 用，agent 自行执行 git diff（避免 Bun.spawn 跨运行时依赖）。
+ */
+export const prepare_verification_context = tool({
   description:
-    "准备 OpenSpec 实现验证的 artifacts 上下文。读取所有 artifacts（proposal/specs/design/plan）+ 组装 5 维度验证清单（Spec 合规性 / Design 对齐 / Proposal 范围 / Task 完成度 / 非功能性合规性）+ 严重程度规则。**不捕获 git diff**——由 Oracle agent 自行执行 `git diff --name-only HEAD` 获取，避免 Bun.spawn 跨运行时依赖。",
+    "Read all artifacts of an OpenSpec change (proposal / specs / design / plan) and assemble a verification context. Returns: artifact contents + 5-dimension review checklist (Spec/Design/Proposal/Task/Non-functional compliance) + verdict rules (BLOCKED / CONDITIONAL / note). The calling agent (Oracle) should then run `git diff --name-only HEAD` itself to get changed files for the review.",
   args: {
     change_name: tool.schema
       .string()
-      .describe("OpenSpec change 名称。"),
+      .min(1)
+      .describe(
+        "The OpenSpec change name. Used to locate `.omo/plans/<change-name>.md` and `openspec/changes/<change-name>/{proposal.md, design.md, specs/<cap>/spec.md}`."
+      ),
+    paths: tool.schema
+      .array(tool.schema.string())
+      .min(1)
+      .describe(
+        "Absolute paths the tool will read. Must include `openspec/changes/<change-name>/proposal.md`, `design.md`, and `.omo/plans/<change-name>.md`."
+      ),
   },
   async execute(args, context) {
+    if (!args.change_name || args.change_name.trim() === "") {
+      throw new Error(
+        `❌ 参数缺失：change_name\n   用途：OpenSpec change 名称\n   应传：非空字符串`
+      )
+    }
+    if (!args.paths || args.paths.length === 0) {
+      throw new Error(
+        `❌ 参数缺失：paths\n` +
+          `   用途：Tool 将要读取的文件路径列表（OpenCode read 工具约定）\n` +
+          `   应传：包含 artifacts 路径的非空数组\n` +
+          `   示例：paths: ["${resolve(context.directory, "openspec", "changes", args.change_name, "proposal.md")}"]`
+      )
+    }
+
     const projectRoot = context.directory
     const changeDir = resolve(
       projectRoot,

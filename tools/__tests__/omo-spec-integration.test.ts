@@ -8,7 +8,6 @@
  * - 集成测试：实际调用 tool 的 execute()，涉及真实文件系统读写
  *
  * 覆盖：
- * - write_new_plan：创建 .omo/plans/ 目录 + 写 plan 文件
  * - sync_tasks_from_plan：读 plan → 写 tasks.md
  * - verify_implementation：读 artifacts + 组装 5 维度模板 + 提示 Oracle 执行 git diff
  * - 完整 round-trip：write plan → 读 plan → sync → 验证 tasks.md
@@ -16,6 +15,14 @@
  */
 
 import { afterEach, beforeEach, describe, expect, test } from "bun:test"
+import { join as joinPath } from "node:path"
+
+function syncArgs(changeName: string, t: string) {
+  return { change_name: changeName, paths: [joinPath(t, "openspec", "changes", changeName, "tasks.md")] }
+}
+function verifyArgs(changeName: string, t: string) {
+  return { change_name: changeName, paths: [joinPath(t, "openspec", "changes", changeName, "proposal.md")] }
+}
 import {
   mkdtempSync,
   existsSync,
@@ -28,8 +35,7 @@ import { tmpdir } from "node:os"
 import { join } from "node:path"
 import {
   sync_tasks_from_plan,
-  verify_implementation,
-  write_new_plan,
+  prepare_verification_context as verify_implementation,
 } from "../omo-spec"
 
 let tmp: string
@@ -42,93 +48,39 @@ afterEach(() => {
   rmSync(tmp, { recursive: true, force: true })
 })
 
-// ============================================================
-// write_new_plan 集成测试
-// ============================================================
-
-describe("write_new_plan 集成测试", () => {
-  test("完整 plan 写入 + 验证文件存在", async () => {
-    const result = await (write_new_plan as any).execute(
-      {
-        change_name: "my-feature",
-        tldr: "TL;DR content",
-        context: "Context content",
-        work_objectives: "WO content",
-        verification_strategy: "VS content",
-        execution_strategy: "ES content",
-        todos: "#### 1. [ ] task1\n- **What to do**: x\n\n#### 2. [ ] task2",
-        final_verification_wave: "### F1. [ ] fvw1",
-        commit_strategy: "CS content",
-        success_criteria: "SC content",
-      },
-      { directory: tmp }
-    )
-
-    expect(result).toContain("✅ plan 已写入")
-
-    const planPath = join(tmp, ".omo", "plans", "my-feature.md")
-    expect(existsSync(planPath)).toBe(true)
-
-    const content = readFileSync(planPath, "utf-8")
-    // 9 section 都在
-    expect(content).toContain("## TL;DR")
-    expect(content).toContain("## Context")
-    expect(content).toContain("## Work Objectives")
-    expect(content).toContain("## Verification Strategy")
-    expect(content).toContain("## Execution Strategy")
-    expect(content).toContain("## TODOs")
-    expect(content).toContain("## Final Verification Wave")
-    expect(content).toContain("## Commit Strategy")
-    expect(content).toContain("## Success Criteria")
-
-    // 内容透传
-    expect(content).toContain("TL;DR content")
-    expect(content).toContain("task1")
-  })
-
-  test("二次写入覆盖（旧 plan 被新 plan 替换）", async () => {
-    // 第一次写入
-    await (write_new_plan as any).execute(
-      {
-        change_name: "test",
-        tldr: "OLD TL;DR",
-        context: "",
-        work_objectives: "",
-        verification_strategy: "",
-        execution_strategy: "",
-        todos: "#### 1. [ ] t",
-        final_verification_wave: "### F1. [ ] f",
-        commit_strategy: "",
-        success_criteria: "",
-      },
-      { directory: tmp }
-    )
-
-    // 第二次写入（不同内容）
-    await (write_new_plan as any).execute(
-      {
-        change_name: "test",
-        tldr: "NEW TL;DR",
-        context: "",
-        work_objectives: "",
-        verification_strategy: "",
-        execution_strategy: "",
-        todos: "#### 1. [ ] t",
-        final_verification_wave: "### F1. [ ] f",
-        commit_strategy: "",
-        success_criteria: "",
-      },
-      { directory: tmp }
-    )
-
-    const content = readFileSync(
-      join(tmp, ".omo", "plans", "test.md"),
-      "utf-8"
-    )
-    expect(content).toContain("NEW TL;DR")
-    expect(content).not.toContain("OLD TL;DR")
-  })
-})
+/**
+ * 直接写 plan markdown（替代原 write_new_plan tool）
+ * 模拟 AI 按 OMO 格式写 plan 的行为，使用编号格式（## 1. TL;DR）
+ */
+function writePlanFile(
+  changeName: string,
+  sections: {
+    tldr: string
+    context: string
+    workObjectives: string
+    verificationStrategy: string
+    executionStrategy: string
+    todos: string
+    finalVerificationWave: string
+    commitStrategy: string
+    successCriteria: string
+  }
+): void {
+  const plansDir = join(tmp, ".omo", "plans")
+  mkdirSync(plansDir, { recursive: true })
+  const content = [
+    `## 1. TL;DR\n${sections.tldr}`,
+    `## 2. Context\n${sections.context}`,
+    `## 3. Work Objectives\n${sections.workObjectives}`,
+    `## 4. Verification Strategy\n${sections.verificationStrategy}`,
+    `## 5. Execution Strategy\n${sections.executionStrategy}`,
+    `## 6. TODOs\n${sections.todos}`,
+    `## 7. Final Verification Wave\n${sections.finalVerificationWave}`,
+    `## 8. Commit Strategy\n${sections.commitStrategy}`,
+    `## 9. Success Criteria\n${sections.successCriteria}`,
+  ].join("\n\n")
+  writeFileSync(join(plansDir, `${changeName}.md`), content)
+}
 
 // ============================================================
 // sync_tasks_from_plan 集成测试
@@ -136,26 +88,22 @@ describe("write_new_plan 集成测试", () => {
 
 describe("sync_tasks_from_plan 集成测试", () => {
   test("完整 plan → tasks.md 镜像", async () => {
-    // 先写 plan
-    await (write_new_plan as any).execute(
-      {
-        change_name: "sync-test",
-        tldr: "T",
-        context: "C",
-        work_objectives: "WO",
-        verification_strategy: "VS",
-        execution_strategy: "ES",
-        todos: "#### 1. [ ] task1\n- **Acceptance**: pass\n\n#### 2. [x] task2",
-        final_verification_wave: "### F1. [ ] fvw1",
-        commit_strategy: "CS",
-        success_criteria: "SC",
-      },
-      { directory: tmp }
-    )
+    // 先写 plan（用 helper 模拟 AI 写 plan）
+    writePlanFile("sync-test", {
+      tldr: "T",
+      context: "C",
+      workObjectives: "WO",
+      verificationStrategy: "VS",
+      executionStrategy: "ES",
+      todos: "#### 1. [ ] task1\n- **Acceptance**: pass\n\n#### 2. [x] task2",
+      finalVerificationWave: "### F1. [ ] fvw1",
+      commitStrategy: "CS",
+      successCriteria: "SC",
+    })
 
     // 同步
     const result = await (sync_tasks_from_plan as any).execute(
-      { change_name: "sync-test" },
+      syncArgs("sync-test", tmp),
       { directory: tmp }
     )
 
@@ -180,38 +128,37 @@ describe("sync_tasks_from_plan 集成测试", () => {
     expect(tasksContent).toContain("- [ ] 2.1 fvw1")
     // Plan Reference 附录
     expect(tasksContent).toContain("## Plan Reference")
-    expect(tasksContent).toContain("### TL;DR")
+    expect(tasksContent).toContain("### 1. TL;DR")
   })
 
   test("plan 不存在抛错（快速失败）", async () => {
     await expect(
       (sync_tasks_from_plan as any).execute(
-        { change_name: "missing" },
+        {
+          change_name: "missing",
+          paths: [join(tmp, "openspec", "changes", "missing", "tasks.md")],
+        },
         { directory: tmp }
       )
     ).rejects.toThrow(/plan 文件不存在/)
   })
 
   test("幂等性：多次 sync 输出相同", async () => {
-    await (write_new_plan as any).execute(
-      {
-        change_name: "idempotent",
-        tldr: "T",
-        context: "C",
-        work_objectives: "WO",
-        verification_strategy: "VS",
-        execution_strategy: "ES",
-        todos: "#### 1. [ ] t",
-        final_verification_wave: "### F1. [ ] f",
-        commit_strategy: "CS",
-        success_criteria: "SC",
-      },
-      { directory: tmp }
-    )
+    writePlanFile("idempotent", {
+      tldr: "T",
+      context: "C",
+      workObjectives: "WO",
+      verificationStrategy: "VS",
+      executionStrategy: "ES",
+      todos: "#### 1. [ ] t",
+      finalVerificationWave: "### F1. [ ] f",
+      commitStrategy: "CS",
+      successCriteria: "SC",
+    })
 
     // 第一次 sync
     await (sync_tasks_from_plan as any).execute(
-      { change_name: "idempotent" },
+      syncArgs("idempotent", tmp),
       { directory: tmp }
     )
     const first = readFileSync(
@@ -221,7 +168,7 @@ describe("sync_tasks_from_plan 集成测试", () => {
 
     // 第二次 sync
     await (sync_tasks_from_plan as any).execute(
-      { change_name: "idempotent" },
+      syncArgs("idempotent", tmp),
       { directory: tmp }
     )
     const second = readFileSync(
@@ -242,27 +189,23 @@ describe("完整 round-trip：write plan → sync → 验证", () => {
     const changeName = "round-trip"
 
     // 1. 写 plan
-    await (write_new_plan as any).execute(
-      {
-        change_name: changeName,
-        tldr: "Round-trip test",
-        context: "Test context",
-        work_objectives:
-          "- **Must Have**: feature X\n- **Must NOT Have**: feature Y",
-        verification_strategy: "- Run tests",
-        execution_strategy: "- Sequential",
-        todos:
-          "#### 1. [ ] step1\n- **What to do**: a\n- **Acceptance**: pass\n\n#### 2. [ ] step2\n- **What to do**: b\n\n#### 3. [ ] step3",
-        final_verification_wave: "### F1. [ ] final check",
-        commit_strategy: "one commit per wave",
-        success_criteria: "all tests pass",
-      },
-      { directory: tmp }
-    )
+    writePlanFile(changeName, {
+      tldr: "Round-trip test",
+      context: "Test context",
+      workObjectives:
+        "- **Must Have**: feature X\n- **Must NOT Have**: feature Y",
+      verificationStrategy: "- Run tests",
+      executionStrategy: "- Sequential",
+      todos:
+        "#### 1. [ ] step1\n- **What to do**: a\n- **Acceptance**: pass\n\n#### 2. [ ] step2\n- **What to do**: b\n\n#### 3. [ ] step3",
+      finalVerificationWave: "### F1. [ ] final check",
+      commitStrategy: "one commit per wave",
+      successCriteria: "all tests pass",
+    })
 
     // 2. 同步到 tasks.md
     const syncResult = await (sync_tasks_from_plan as any).execute(
-      { change_name: changeName },
+      syncArgs(changeName, tmp),
       { directory: tmp }
     )
     // 任务数 = 3 TODOs + 1 FVW = 4 总任务
@@ -290,9 +233,9 @@ describe("完整 round-trip：write plan → sync → 验证", () => {
     expect(content).toMatch(/      \*\*What to do\*\*: a/)
     // Plan Reference 包含全部 9 section
     expect(content).toContain("## Plan Reference")
-    expect(content).toContain("### TL;DR")
-    expect(content).toContain("### Work Objectives")
-    expect(content).toContain("### Success Criteria")
+    expect(content).toContain("### 1. TL;DR")
+    expect(content).toContain("### 3. Work Objectives")
+    expect(content).toContain("### 9. Success Criteria")
 
     // 4. 模拟 OMO 标记 task 完成，再次 sync
     const planPath = join(tmp, ".omo", "plans", `${changeName}.md`)
@@ -304,7 +247,7 @@ describe("完整 round-trip：write plan → sync → 验证", () => {
 
     // 5. 重新 sync
     await (sync_tasks_from_plan as any).execute(
-      { change_name: changeName },
+      syncArgs(changeName, tmp),
       { directory: tmp }
     )
 
@@ -359,7 +302,7 @@ describe("verify_implementation 集成测试", () => {
     setupChangeFixtures("git-diff-prompt")
 
     const result = await (verify_implementation as any).execute(
-      { change_name: "git-diff-prompt" },
+      verifyArgs("git-diff-prompt", tmp),
       { directory: tmp }
     )
 
@@ -374,7 +317,7 @@ describe("verify_implementation 集成测试", () => {
     setupChangeFixtures("dim-template")
 
     const result = await (verify_implementation as any).execute(
-      { change_name: "dim-template" },
+      verifyArgs("dim-template", tmp),
       { directory: tmp }
     )
 
@@ -393,7 +336,7 @@ describe("verify_implementation 集成测试", () => {
     setupChangeFixtures("artifacts-content")
 
     const result = await (verify_implementation as any).execute(
-      { change_name: "artifacts-content" },
+      verifyArgs("artifacts-content", tmp),
       { directory: tmp }
     )
 
@@ -412,7 +355,7 @@ describe("verify_implementation 集成测试", () => {
     setupChangeFixtures("no-changed-files")
 
     const result = await (verify_implementation as any).execute(
-      { change_name: "no-changed-files" },
+      verifyArgs("no-changed-files", tmp),
       { directory: tmp }
     )
 
@@ -425,7 +368,7 @@ describe("verify_implementation 集成测试", () => {
   test("artifacts 缺失时不报错（返回 null 字段，Oracle 自行判断）", async () => {
     // 不创建任何 artifacts
     const result = await (verify_implementation as any).execute(
-      { change_name: "no-artifacts" },
+      verifyArgs("no-artifacts", tmp),
       { directory: tmp }
     )
 
@@ -450,7 +393,7 @@ describe("verify_implementation 集成测试", () => {
     )
 
     const result = await (verify_implementation as any).execute(
-      { change_name: changeName },
+      verifyArgs(changeName, tmp),
       { directory: tmp }
     )
 

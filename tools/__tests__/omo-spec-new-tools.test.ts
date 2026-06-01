@@ -16,7 +16,6 @@ import {
   sync_tasks_from_plan,
   VERIFICATION_DIMENSIONS,
   VERDICT_RULES,
-  write_new_plan,
 } from "../omo-spec"
 
 // ============================================================
@@ -103,102 +102,6 @@ describe("VERIFICATION_DIMENSIONS 常量", () => {
   })
 })
 
-// ============================================================
-// write_new_plan / sync_tasks_from_plan - mkdirSync 保护
-// (Oracle review 🟡 #2)
-// ============================================================
-
-describe("write_new_plan - 自动创建 .omo/plans/ 目录", () => {
-  test(".omo/plans/ 不存在时自动创建", async () => {
-    const tmp = mkdtempSync(join(tmpdir(), "omo-write-test-"))
-    try {
-      // 不预创建 .omo/plans/ 目录
-      const result = await (write_new_plan as any).execute(
-        {
-          change_name: "test",
-          tldr: "T",
-          context: "C",
-          work_objectives: "WO",
-          verification_strategy: "V",
-          execution_strategy: "E",
-          todos: "#### 1. [ ] t",
-          final_verification_wave: "### F1. [ ] f",
-          commit_strategy: "CS",
-          success_criteria: "SC",
-        },
-        { directory: tmp }
-      )
-
-      expect(result).toContain("✅ plan 已写入")
-      expect(existsSync(join(tmp, ".omo", "plans", "test.md"))).toBe(true)
-    } finally {
-      rmSync(tmp, { recursive: true, force: true })
-    }
-  })
-
-  test(".omo/plans/ 已存在时正常写入", async () => {
-    const tmp = mkdtempSync(join(tmpdir(), "omo-write-test-"))
-    try {
-      const plansDir = join(tmp, ".omo", "plans")
-      // 预创建目录
-      const { mkdirSync } = await import("node:fs")
-      mkdirSync(plansDir, { recursive: true })
-
-      await (write_new_plan as any).execute(
-        {
-          change_name: "test",
-          tldr: "T",
-          context: "C",
-          work_objectives: "WO",
-          verification_strategy: "V",
-          execution_strategy: "E",
-          todos: "#### 1. [ ] t",
-          final_verification_wave: "### F1. [ ] f",
-          commit_strategy: "CS",
-          success_criteria: "SC",
-        },
-        { directory: tmp }
-      )
-
-      expect(existsSync(join(plansDir, "test.md"))).toBe(true)
-    } finally {
-      rmSync(tmp, { recursive: true, force: true })
-    }
-  })
-
-  test("写入内容正确（9 个 section 都在）", async () => {
-    const tmp = mkdtempSync(join(tmpdir(), "omo-write-test-"))
-    try {
-      await (write_new_plan as any).execute(
-        {
-          change_name: "test",
-          tldr: "TL;DR content",
-          context: "Context content",
-          work_objectives: "WO content",
-          verification_strategy: "VS content",
-          execution_strategy: "ES content",
-          todos: "#### 1. [ ] task1",
-          final_verification_wave: "### F1. [ ] fvw1",
-          commit_strategy: "CS content",
-          success_criteria: "SC content",
-        },
-        { directory: tmp }
-      )
-
-      const content = readFileSync(
-        join(tmp, ".omo", "plans", "test.md"),
-        "utf-8"
-      )
-      expect(content).toContain("## TL;DR")
-      expect(content).toContain("## TODOs")
-      expect(content).toContain("## Final Verification Wave")
-      expect(content).toContain("TL;DR content")
-    } finally {
-      rmSync(tmp, { recursive: true, force: true })
-    }
-  })
-})
-
 describe("sync_tasks_from_plan - 自动创建 openspec/changes/<name>/ 目录", () => {
   test("openspec/changes/<name>/ 不存在时自动创建", async () => {
     const tmp = mkdtempSync(join(tmpdir(), "omo-sync-test-"))
@@ -214,7 +117,10 @@ describe("sync_tasks_from_plan - 自动创建 openspec/changes/<name>/ 目录", 
 
       // 不预创建 openspec/changes/test/ 目录
       const result = await (sync_tasks_from_plan as any).execute(
-        { change_name: "test" },
+        {
+          change_name: "test",
+          paths: [join(tmp, "openspec", "changes", "test", "tasks.md")],
+        },
         { directory: tmp }
       )
 
@@ -230,10 +136,12 @@ describe("sync_tasks_from_plan - 自动创建 openspec/changes/<name>/ 目录", 
   test("plan 不存在时快速失败", async () => {
     const tmp = mkdtempSync(join(tmpdir(), "omo-sync-test-"))
     try {
-      // 不创建任何文件
       await expect(
         (sync_tasks_from_plan as any).execute(
-          { change_name: "missing" },
+          {
+            change_name: "missing",
+            paths: [join(tmp, "openspec", "changes", "missing", "tasks.md")],
+          },
           { directory: tmp }
         )
       ).rejects.toThrow(/plan 文件不存在/)
@@ -259,7 +167,10 @@ describe("sync_tasks_from_plan - 自动创建 openspec/changes/<name>/ 目录", 
       writeFileSync(join(changesDir, "tasks.md"), "OLD CONTENT")
 
       await (sync_tasks_from_plan as any).execute(
-        { change_name: "test" },
+        {
+          change_name: "test",
+          paths: [join(tmp, "openspec", "changes", "test", "tasks.md")],
+        },
         { directory: tmp }
       )
 
@@ -413,5 +324,77 @@ describe("prepareVerificationContext - changedFiles 由 Oracle 自行捕获", ()
       []
     )
     expect(ctx.changedFiles).toEqual([])
+  })
+})
+
+describe("sync_tasks_from_plan 参数校验", () => {
+  test("change_name 为空时抛清晰错误", async () => {
+    const tmp = mkdtempSync(join(tmpdir(), "omo-validation-"))
+    try {
+      await expect(
+        (sync_tasks_from_plan as any).execute(
+          { change_name: "", paths: ["x"] },
+          { directory: tmp }
+        )
+      ).rejects.toThrow(/❌ 参数缺失：change_name/)
+    } finally {
+      rmSync(tmp, { recursive: true, force: true })
+    }
+  })
+
+  test("change_name 缺失时抛清晰错误", async () => {
+    const tmp = mkdtempSync(join(tmpdir(), "omo-validation-"))
+    try {
+      await expect(
+        (sync_tasks_from_plan as any).execute(
+          { paths: ["x"] },
+          { directory: tmp }
+        )
+      ).rejects.toThrow(/❌ 参数缺失：change_name/)
+    } finally {
+      rmSync(tmp, { recursive: true, force: true })
+    }
+  })
+
+  test("paths 缺失时抛清晰错误", async () => {
+    const tmp = mkdtempSync(join(tmpdir(), "omo-validation-"))
+    try {
+      await expect(
+        (sync_tasks_from_plan as any).execute(
+          { change_name: "x" },
+          { directory: tmp }
+        )
+      ).rejects.toThrow(/❌ 参数缺失：paths/)
+    } finally {
+      rmSync(tmp, { recursive: true, force: true })
+    }
+  })
+
+  test("paths 为空数组时抛清晰错误", async () => {
+    const tmp = mkdtempSync(join(tmpdir(), "omo-validation-"))
+    try {
+      await expect(
+        (sync_tasks_from_plan as any).execute(
+          { change_name: "x", paths: [] },
+          { directory: tmp }
+        )
+      ).rejects.toThrow(/❌ 参数缺失：paths/)
+    } finally {
+      rmSync(tmp, { recursive: true, force: true })
+    }
+  })
+
+  test("paths 缺少 tasks.md 路径时抛清晰错误", async () => {
+    const tmp = mkdtempSync(join(tmpdir(), "omo-validation-"))
+    try {
+      await expect(
+        (sync_tasks_from_plan as any).execute(
+          { change_name: "x", paths: ["/some/other/path"] },
+          { directory: tmp }
+        )
+      ).rejects.toThrow(/❌ 参数错误：paths 缺少必需的写入目标/)
+    } finally {
+      rmSync(tmp, { recursive: true, force: true })
+    }
   })
 })

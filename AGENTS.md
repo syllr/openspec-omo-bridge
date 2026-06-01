@@ -27,7 +27,7 @@ proposal → design ──┬──► specs ──┐
                     └─────────────┘
 ```
 
-- `tasks.instruction` does everything: generates `.omo/plans/<name>.md` (OMO plan) + **Metis plan consultation** (PHASE 3, pre-plan strategy advice) + **Oracle gap analysis** (PHASE 2, artifacts coherence) + **Oracle + Momus plan review** (PHASE 4.2, plan review with Part A + Part B dual-gate) + calls `omo_spec_sync_tasks_from_plan` tool to mirror plan into tasks.md + inlines verdict handling (asks user for 🟡/⚪ acceptance)
+- `tasks.instruction` does everything: AI directly writes `.omo/plans/<name>.md` (OMO-format plan) + **Metis plan consultation** (PHASE 3, pre-plan strategy advice) + **Oracle gap analysis** (PHASE 2, artifacts coherence) + **Oracle + Momus plan review** (PHASE 4.2, plan review with Part A + Part B dual-gate) + calls `omo_spec_sync_tasks_from_plan` tool to mirror plan into tasks.md + inlines verdict handling (asks user for 🟡/⚪ acceptance)
 - `.omo/plans/<name>.md` uses **9 sections** in spec-driven: TL;DR, Context, Work Objectives, Verification Strategy, Execution Strategy, TODOs, Final Verification Wave, Commit Strategy, Success Criteria (7 sections in constitution, skipping Verification Strategy and Commit Strategy per Design Decision 6)
 - Non-Tasks sections use "summary + link" pattern (references `openspec/changes/<name>/` artifacts)
 - The plan is parsed by `/start-work` (OMO's Atlas agent)
@@ -38,7 +38,7 @@ The following gates apply to the **spec-driven** schema. Constitution schema has
 
 1. **Spec validation** (tasks PHASE 1.2, mandatory) — runs `openspec validate`, if errors show to user and let user decide how to fix
 2. **1 Oracle gap analysis** (tasks PHASE 2, after spec validation) — review of proposal/specs/design coherence before plan generation (Metis **not** used here — Metis is for pre-plan consultation, used only in PHASE 3)
-3. **Plan generation with Metis consultation** (tasks PHASE 3, mandatory) — **Metis plan consultation** (pre-plan strategy advice) + AI directly generates `.omo/plans/<name>.md` via `omo_spec_write_new_plan` tool
+3. **Plan generation with Metis consultation** (tasks PHASE 3, mandatory) — **Metis plan consultation** (pre-plan strategy advice) + AI directly writes `.omo/plans/<name>.md` in OMO format (no tool, see OMO plan format spec in schema PHASE 3)
 4. **Plan mirroring** (tasks PHASE 5, mandatory) — call `omo_spec_sync_tasks_from_plan` tool to mirror plan into tasks.md
 5. **Plan structure validation** (tasks PHASE 4.1, mandatory) — 11 checks: 9 sections exist (`## TL;DR` / `## Context` / `## Work Objectives` / `## Verification Strategy` / `## Execution Strategy` / `## TODOs` / `## Final Verification Wave` / `## Commit Strategy` / `## Success Criteria`) + at least one `N. Task` format task in TODOs + at least one `FN. Task` format task in FVW
 6. **1 parallel Oracle + 1 parallel Momus review** (tasks PHASE 4.2, mandatory) — concurrent review of plan: Oracle reviews spec/design alignment + OMO compatibility; Momus gives final OKAY/REJECT verdict (Part A executable path + Part B risk matrix)
@@ -81,7 +81,7 @@ Arithmetic uses `$((var + 1))` syntax (not `((var++))`) to avoid `set -e` exit o
 
 **位置**：`tools/omo-spec.ts`（OpenCode tool 格式，遵循 `@opencode-ai/plugin` 规范）
 
-**架构**：**单文件多 tool 设计** — 所有 OMO 相关 tool 和纯逻辑（types + parser + generator + 4 tool 入口）都在 `omo-spec.ts`。原因：tool 部署到 `~/.config/opencode/tools/` 时是单文件复制，单文件无需处理相对 import 解析问题。
+**架构**：**单文件多 tool 设计** — 所有 OMO 相关 tool 和纯逻辑（types + parser + generator + 3 tool 入口）都在 `omo-spec.ts`。原因：tool 部署到 `~/.config/opencode/tools/` 时是单文件复制，单文件无需处理相对 import 解析问题。
 
 **Tool 命名**（OpenCode 约定，多 tool 模式）：`omo_spec_<exportname>`
 
@@ -94,13 +94,12 @@ Arithmetic uses `$((var + 1))` syntax (not `((var++))`) to avoid `set -e` exit o
 - **测试环境**（bridge 项目本地 `bun test`）：bridge 项目不依赖 `@opencode-ai/plugin`，stub 兜底
 - 测试 `import { parseOmoPlan, generateOpenSpecTasks, validateOmoPlan } from "../omo-spec"` 复用纯函数
 
-**5 个纯函数**（可独立 import，零 OpenCode 依赖）：
+**4 个纯函数**（可独立 import，零 OpenCode 依赖）：
 
 1. `parseOmoPlan(content, changeName): OmoPlan` — 解析 OMO plan markdown 为结构化对象（sections + tasks + fields）
 2. `generateOpenSpecTasks(plan): string` — 从 OmoPlan 生成 OpenSpec tasks.md markdown（含 Wave 分组 + Plan Reference 附录）
 3. `validateOmoPlan(content, changeName): OmoPlanValidation` — 11 项 OMO 兼容性检查（9 个 section + 2 个任务格式）
-4. `buildOmoPlan(sections: OmoPlanSections): string` — 按 9-section 固定顺序组装 OMO plan markdown
-5. `prepareVerificationContext(changeName, artifacts, changedFiles): VerificationContext` — 准备实现验证上下文（artifacts + git diff + 5 维度 + verdict 规则）
+4. `prepareVerificationContext(changeName, artifacts, changedFiles): VerificationContext` — 准备实现验证上下文（artifacts + 5 维度 + verdict 规则）
 
 ---
 
@@ -173,48 +172,7 @@ AI 在 OpenCode 会话中直接调用：
 
 ---
 
-### omo_spec_write_new_plan tool
-
-**作用**：按 9-section 固定结构写入 OMO 兼容执行计划。**锁死 plan 格式** — AI 自由生成时容易漂移（标题错误、section 顺序错、缺字段），用 tool 后 100% 统一。
-
-**9 个固定 section**（顺序固定，tool 负责组装标题和 hint 文本）：
-
-| #   | Section                      | 内容来源                                           |
-| --- | ---------------------------- | -------------------------------------------------- |
-| 1   | `## TL;DR`                   | proposal.md（1-2 句）                              |
-| 2   | `## Context`                 | proposal.md（2-3 句）                              |
-| 3   | `## Work Objectives`         | specs/（每个 capability + 关键 requirement）       |
-| 4   | `## Verification Strategy`   | specs/ 的 scenarios                                |
-| 5   | `## Execution Strategy`      | design.md + research/                              |
-| 6   | `## TODOs`                   | OMO 格式 `#### N. [ ] title` + 9 子字段            |
-| 7   | `## Final Verification Wave` | OMO 格式 `### FN. [ ] title` + Acceptance Criteria |
-| 8   | `## Commit Strategy`         | 提交策略                                           |
-| 9   | `## Success Criteria`        | 成功标准                                           |
-
-**调用方式**：
-
-- tool 名：`omo_spec_write_new_plan`
-- 参数：10 个 string 参数（`change_name` + 9 个 section 内容）
-
-**关键收益**：
-
-- **格式 100% 一致**：tool 锁死 9-section 结构和顺序，AI 不会写错
-- **关键 hint 文本不遗漏**：tool 自动插入 `**OMO 会解析此 section 中的 checkbox 来追踪进度**` 等关键提示
-- **AI 简化**：AI 只需生成 9 个 section 的内容，不用记格式
-
-**集成点**：
-
-- `tasks.instruction` PHASE 3：生成 plan 时调用（替代之前 70+ 行的自由生成 prompt）
-- 写完后建议紧接调用 `omo_spec_validate_omo_plan` 验证
-
-**配套工具**：
-
-- `omo_spec_validate_omo_plan`：写完后立即验证 11 项 OMO 兼容性
-- `omo_spec_sync_tasks_from_plan`：plan 审查通过后镜像到 tasks.md
-
----
-
-### omo_spec_verify_implementation tool
+### omo_spec_prepare_verification_context tool
 
 **作用**：准备 OpenSpec 实现验证的 artifacts 上下文。**只读 artifacts + 组装模板**——不捕获 git diff（由 Oracle 自行执行，避免 Bun.spawn 跨运行时依赖）。
 
@@ -222,7 +180,7 @@ AI 在 OpenCode 会话中直接调用：
 
 AI 在 OpenCode 会话中直接调用：
 
-- tool 名：`omo_spec_verify_implementation`
+- tool 名：`omo_spec_prepare_verification_context`
 - 参数：`change_name: string`（OpenSpec change 名称）
 
 **返回**：artifacts 上下文（`VerificationContext`）：
@@ -234,7 +192,7 @@ AI 在 OpenCode 会话中直接调用：
 
 **工作流**：
 
-1. AI 调 `omo_spec_verify_implementation` 拿 artifacts + 维度模板
+1. AI 调 `omo_spec_prepare_verification_context` 拿 artifacts + 维度模板
 2. AI 把上下文传给 `task(subagent_type="oracle", ...)` 审查
 3. **Oracle 自行执行 `git diff --name-only HEAD`**（agent 直接跑 shell，不通过 tool）
 4. Oracle 用变更文件 + artifacts + 5 维度输出发现（🔴/🟡/⚪）
@@ -286,16 +244,16 @@ AI 在 OpenCode 会话中直接调用：
 
 Schema 在执行期间依赖以下外部系统和 agent。**所有调用遵循 Fast Fail Rule**（调用失败立即停止，不得重试/降级/跳过）：
 
-| 依赖                  | 类型                 | 用途                                                                                                                                    | 调用方式                                   |
-| --------------------- | -------------------- | --------------------------------------------------------------------------------------------------------------------------------------- | ------------------------------------------ |
-| `openspec`            | CLI                  | OpenSpec 工作流管理（new change / validate / archive / list / schema 等）                                                               | `openspec <subcommand>`                    |
-| `/start-work`         | OMO command          | 解析并执行 OMO plan（通过 Atlas agent）                                                                                                 | `/start-work .omo/plans/<change-name>.md`  |
-| Atlas agent           | OMO 内置 agent       | 解析 plan 中的 checkbox，调度 task 执行                                                                                                 | OMO 内部组件，无需 AI 显式调用             |
-| `oracle` agent        | Read-only 高 IQ 审查 | 差距分析（tasks PHASE 2）/ plan 审查（tasks PHASE 4.2）/ 实现验证（apply Step 3）                                                       | `task(subagent_type="oracle", ...)`        |
-| `metis` agent         | Pre-plan 咨询        | 提供 plan 策略建议（**仅**在 tasks PHASE 3 调用一次）                                                                                   | `task(subagent_type="metis", ...)`         |
-| `momus` agent         | Plan 评审            | 双重门禁审查 Part A（可执行性）+ Part B（风险矩阵）                                                                                     | `task(subagent_type="momus", ...)`         |
-| `omo-spec.ts` tools   | OpenCode tool        | 4 个工具：`omo_spec_write_new_plan` / `omo_spec_validate_omo_plan` / `omo_spec_sync_tasks_from_plan` / `omo_spec_verify_implementation` | OpenCode tool system 自动调用              |
-| `@opencode-ai/plugin` | NPM 包               | 提供 `tool()` helper 和 chainable schema builder                                                                                        | `require("@opencode-ai/plugin")`（懒加载） |
+| 依赖                  | 类型                 | 用途                                                                                                               | 调用方式                                   |
+| --------------------- | -------------------- | ------------------------------------------------------------------------------------------------------------------ | ------------------------------------------ |
+| `openspec`            | CLI                  | OpenSpec 工作流管理（new change / validate / archive / list / schema 等）                                          | `openspec <subcommand>`                    |
+| `/start-work`         | OMO command          | 解析并执行 OMO plan（通过 Atlas agent）                                                                            | `/start-work .omo/plans/<change-name>.md`  |
+| Atlas agent           | OMO 内置 agent       | 解析 plan 中的 checkbox，调度 task 执行                                                                            | OMO 内部组件，无需 AI 显式调用             |
+| `oracle` agent        | Read-only 高 IQ 审查 | 差距分析（tasks PHASE 2）/ plan 审查（tasks PHASE 4.2）/ 实现验证（apply Step 3）                                  | `task(subagent_type="oracle", ...)`        |
+| `metis` agent         | Pre-plan 咨询        | 提供 plan 策略建议（**仅**在 tasks PHASE 3 调用一次）                                                              | `task(subagent_type="metis", ...)`         |
+| `momus` agent         | Plan 评审            | 双重门禁审查 Part A（可执行性）+ Part B（风险矩阵）                                                                | `task(subagent_type="momus", ...)`         |
+| `omo-spec.ts` tools   | OpenCode tool        | 3 个工具：`omo_spec_sync_tasks_from_plan` / `omo_spec_validate_omo_plan` / `omo_spec_prepare_verification_context` | OpenCode tool system 自动调用              |
+| `@opencode-ai/plugin` | NPM 包               | 提供 `tool()` helper 和 chainable schema builder                                                                   | `require("@opencode-ai/plugin")`（懒加载） |
 
 **agent 数量限制**（基于实际成本）：
 

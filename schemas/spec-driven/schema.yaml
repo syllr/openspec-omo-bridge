@@ -501,18 +501,96 @@ artifacts:
          - `openspec/changes/<change-name>/design.md` — 技术方案、决策、风险
          - `openspec/changes/<change-name>/research/` — 技术调研（如果存在）
 
-      3. 为 9 个 section 分别准备内容（每个 section 的内容要求详见 `omo_spec_write_new_plan` tool 的 args 描述，参考 Metis 策略建议）
+      3. AI **直接**写 OMO 兼容 plan markdown 到 `.omo/plans/<change-name>.md`
 
-      4. 调用 `omo_spec_write_new_plan` OpenCode tool，传入 9 个 section 的内容
+      **OMO plan 格式规范**（必须严格遵守，validate_omo_plan 会校验）：
 
-      tool 会自动按固定顺序组装 9 个 section 标题和 hint 文本，保证 plan 格式 100% 一致。
+      ```markdown
+      ## 1. TL;DR
 
-      **自检**（E8，强烈建议但非强制）：
-      调完 `omo_spec_write_new_plan` 后立即调 `omo_spec_validate_omo_plan` 验证 11 项 OMO 兼容性（9 section + 2 task 格式）。
-      - ✅ 通过 → 进入 PHASE 4
-      - ❌ 失败 → tool 会 throw 错误，按错误信息修复后重新生成 plan
+      一句话概述本次变更做什么。
 
-      **完成标志**：tool 返回 `✅ plan 已写入`（以及可选的 `✅ plan 结构检查通过 11/11`）即可进入 PHASE 4。
+      ## 2. Context
+
+      背景信息（2-3 句）。
+
+      ## 3. Work Objectives
+
+      - **Must Have**:
+        - 目标 1
+      - **Must NOT Have**:
+        - 非目标 1
+
+      ## 4. Verification Strategy
+
+      - **Test Decision**: 单元测试 + E2E
+      - **Coverage Target**: ≥ 80%
+
+      ## 5. Execution Strategy
+
+      - **Critical Path**: 步骤 A → 步骤 B → 步骤 C
+      - **Max Concurrent**: 3
+
+      ## 6. TODOs
+
+      ### 6.1 Wave 1: 标题
+
+      #### 1. [ ] 任务标题
+
+      - **What to do**:
+        1. 具体动作 1
+        2. 具体动作 2
+      - **Must NOT do**:
+        - 不要做 X
+      - **Recommended Agent Profile**: `category="quick"` 或 `deep` 等
+      - **References**:
+        - `path/to/file.ts` (行号 L100-120)
+        - spec: `xxx/spec.md` "requirement 名"
+      - **Acceptance Criteria**:
+        ```bash
+        test -f path/to/file.ts && grep -q "pattern" path/to/file.ts
+        ```
+      - **QA Scenarios**:
+        - **Happy**: 正常路径
+        - **Exception**: 异常路径
+      - **Parallelization**: 可与 Task 2 并发
+      - **Evidence**: `.omo/evidence/xxx.txt`
+      - **Commit**: YES
+
+      ## 7. Final Verification Wave
+
+      ### F1. [ ] 验证项标题
+
+      - **Acceptance Criteria**:
+        - 检查 1
+        - 检查 2
+
+      ## 8. Commit Strategy
+
+      - 每个 task 一个 commit
+      - 使用 Conventional Commits 格式
+
+      ## 9. Success Criteria
+
+      - [ ] 硬性指标 1
+      - [ ] 软性指标 1
+      ```
+
+      **关键约束**（validate_omo_plan 11 项检查的硬性要求）：
+      - 9 个 section 标题必须存在（可用 `## 1. TL;DR` 或 `## TL;DR` 两种格式，**推荐编号**以匹配 OMO 项目惯例）
+      - TODOs section 必须含至少 1 个 `#### N. [ ] <title>` 格式任务
+      - Final Verification Wave section 必须含至少 1 个 `### FN. [ ] <title>` 格式任务
+      - Wave 标题（如 `### 6.1 Wave 1: 标题`）用 3 个 `#` + 数字 sub-number + 中英文冒号 `:` 或 `：`
+
+      **写 plan 时**：
+      - 用 `write` 工具直接写文件到 `.omo/plans/<change-name>.md`
+      - 不要手动 mkdir（write 工具会处理父目录）
+
+      4. 调用 `omo_spec_validate_omo_plan` OpenCode tool（参数：`change_name=<change-name>`）做 11 项 OMO 兼容性检查
+      - ✅ 通过（11/11）→ 进入 PHASE 4
+      - ❌ 失败 → tool 会 throw 错误，按错误信息修复 plan 后重新验证（最多 3 轮）
+
+      **完成标志**：`omo_spec_validate_omo_plan` 返回 `✅ plan 结构检查通过（11/11）` 即可进入 PHASE 4。
 
       === PHASE 4：Oracle + Momus 并行审查 Plan + Verdict 处理 ===
 
@@ -735,7 +813,7 @@ apply:
 
     === Step 3：Oracle 验证（最多 3 轮）===
 
-    /start-work 完成后，调用 `omo_spec_verify_implementation` OpenCode tool（参数：`change_name=<change-name>`）准备验证上下文。
+    /start-work 完成后，调用 `omo_spec_prepare_verification_context` OpenCode tool（参数：`change_name=<change-name>`）准备验证上下文。
 
     tool 负责：读取所有 artifacts（proposal/specs/design/plan）+ 组装 5 维度验证清单（Spec 合规性 / Design 对齐 / Proposal 范围 / Task 完成度 / 非功能性合规性）+ 严重程度规则。
 
@@ -752,7 +830,7 @@ apply:
 
     **步骤 2**：用变更文件列表 + 以下 artifacts 上下文做 5 维度审查。
 
-    [将 omo_spec_verify_implementation tool 的完整输出填入此处]")
+    [将 omo_spec_prepare_verification_context tool 的完整输出填入此处]")
     ```
 
     读取 Oracle 输出中的最终判定：
@@ -763,7 +841,7 @@ apply:
               prompt="根据以下验证结果修复实现产出。只修复标记为 🔴 的问题，不要修改其他内容。
               Oracle 验证结果中的所有 🔴 问题：
               [将 Oracle 输出的 🔴 问题列表及修复建议填入此处]")
-         修复完成后重新调用 `omo_spec_verify_implementation` 并重跑 Oracle 验证
+         修复完成后重新调用 `omo_spec_prepare_verification_context` 并重跑 Oracle 验证
 
          **超限处理**（3 轮后仍有 🔴）：汇总所有剩余 🔴 给用户，让用户选择：
          1. **接受剩余风险** → 视为 CONDITIONAL，继续
