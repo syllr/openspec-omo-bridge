@@ -548,7 +548,6 @@ artifacts:
 
       审查文件：
       - plan: .omo/plans/<change-name>.md
-      - `openspec/changes/<change-name>/research/` — 技术调研（如果存在）
 
       最终判定：
       - ✅ OKAY → 无 blocking issues，plan 可执行
