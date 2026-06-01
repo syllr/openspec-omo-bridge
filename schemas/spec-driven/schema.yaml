@@ -181,7 +181,9 @@ artifacts:
            等待所有 agent 完成后，将每个结果保存到 `spectest/<topic>/`
 
 
-        3. **用户确认**：向用户展示所有调研结果的摘要。如果用户 5 分钟内无回复，自动确认结果并继续（防止流程阻塞）。用户确认后，将每个 `spectest/<topic>/` 目录移动到 `openspec/changes/<change-name>/research/<topic>/`
+        3. **用户确认**：向用户展示所有调研结果的摘要，**等待用户明确确认后才能继续**。未确认前不要移动 `spectest/<topic>/` 目录。
+
+           如果用户长时间未回复，提示用户：「调研结果已准备好，请确认后继续」。**不要自动确认**（避免未审视的调研结论被采纳）。
 
           确认后的最终结构：
 
@@ -486,7 +488,7 @@ artifacts:
       tool 返回 `✅ 全部通过` → 进入 PHASE 4.2 启动 Oracle+Momus 审查。
       tool 返回 `❌ 失败` → 停止，修复 plan（按 tool 输出的失败项）后重新验证（重新跑 PHASE 4.1 → 完整 PHASE 4 审查）。
 
-      **5.2 启动 Oracle + Momus 并行审查**：
+      **4.2 启动 Oracle + Momus 并行审查**：
 
       ```
       PLAN_REVIEW_PROMPT = "你正在审查 OMO plan。请逐一检查以下所有检查项：
@@ -543,7 +545,7 @@ artifacts:
       task(subagent_type="momus", prompt=MOMUS_PLAN_REVIEW_PROMPT)
       ```
 
-      **5.3 收集评审结果（以下步骤不可跳过）**：
+      **4.3 收集评审结果（以下步骤不可跳过）**：
       1. 读取 Oracle 输出 → 列出所有 🔴/🟡/⚪ 发现
       2. 读取 Momus 输出 → 列出所有 🔴/🟡/⚪ 发现
       3. **自检**：确认所有 2 个 agent 结果都已读完。如有遗漏，回到步骤 1 重新读取
@@ -558,7 +560,7 @@ artifacts:
             修复完成后重新运行 PHASE 4（**最多 3 轮**，超限后汇总给用户）
          - 仅 🟡/⚪ → 进入 5.4 verdict 处理
 
-      **5.4 Verdict 处理（内联，替代原 critic.md）**：
+      **4.4 Verdict 处理（内联，替代原 critic.md）**：
 
       收集所有未解决的 🟡/⚪ 项（来自 PHASE 2 差距分析遗留 + PHASE 4 plan 审查遗留），向用户呈现并询问：
 
@@ -672,70 +674,34 @@ apply:
 
     === Step 3：Oracle 验证（最多 3 轮）===
 
-    /start-work 完成后，捕获变更文件列表（兼容空仓库）：
-    ```
-    git diff --name-only HEAD 2>/dev/null || git ls-files --others --exclude-standard
-    ```
+    /start-work 完成后，调用 `omo_spec_verify_implementation` OpenCode tool（参数：`change_name=<change-name>`）准备验证上下文。
 
+    tool 负责：读取所有 artifacts（proposal/specs/design/plan）+ 捕获 git diff + 组装 5 维度验证清单（Spec 合规性 / Design 对齐 / Proposal 范围 / Task 完成度 / 非功能性合规性）+ 严重程度规则。
+
+    拿到 tool 返回的上下文后，将上下文传给 Oracle 审查：
 
     ```
     task(subagent_type="oracle", prompt="你正在验证实现产出与 OpenSpec change artifacts 的一致性。
-    请检查所有实现产出（代码、配置、文档等）是否按 proposal、spec、design 的要求正确实现。
-    按严重程度输出发现（🔴阻塞 / 🟡警告 / ⚪建议）。
+    请根据以下验证上下文，按 5 维度（Spec 合规性 / Design 对齐 / Proposal 范围 / Task 完成度 / 非功能性合规性）输出发现。
+    按严重程度标注（🔴阻塞 / 🟡警告 / ⚪建议），对每个 🔴 给出具体修复建议。
 
-    审查文件：
-    - `openspec/changes/<change-name>/proposal.md` — 动机和能力
-    - `openspec/changes/<change-name>/specs/` — 需求和验收场景
-    - `openspec/changes/<change-name>/design.md` — 技术方案、决策、风险
-    - `.omo/plans/<change-name>.md` — OMO 执行计划（唯一的 task 定义来源）
-    - `openspec/changes/<change-name>/research/` — 技术调研（如果存在）
-
-    变更文件清单（来自 `git diff --name-only HEAD 2>/dev/null || git ls-files --others --exclude-standard`）：
-    [在此填入上个命令的输出]
-
-    请逐一检查变更文件是否满足以下条件：
-
-    维度 1 — Spec 合规性：
-    - 每个 spec requirement 的 scenario 是否在实现中有对应体现？
-    - 实现行为是否满足 spec 中 WHEN/THEN 的条件？
-
-    维度 2 — Design 对齐（实现与 Design 一致性）：
-    - 实现方案是否符合 design.md 的技术决策？
-    - design 中明确排除的 Non-Goals 是否在实现中出现？
-    - research/ 中的调研结论是否在实现中得到正确应用？
-
-    维度 3 — Proposal 范围：
-    - 实现内容是否在 proposal 定义的 Capabilities 范围内？
-    - 是否有超出 proposal 范围的 scope leak？
-    - proposal 中的所有 Capability 是否都有对应实现？
-
-    维度 4 — Task 完成度：
-    - plan 中的所有 task 是否都有对应的实现产出？
-    - plan 中每个 task 的 Evidence 路径是否存在？关键 task 的 evidence 内容是否与 Acceptance Criteria 匹配？
-
-    维度 5 — 非功能性合规性（如果 design/proposal 中有相关要求）：
-    - 性能要求（响应时间、吞吐量等）是否达标？
-    - 安全相关决策（认证、授权、加密）是否在实现中正确应用？
-    - 兼容性约束是否被遵守？
-
-    输出格式：逐维度分析 + 问题汇总 + 总体结论。
-
-    最终判定标准：
-    - 🔴 BLOCKED：存在严重的实现偏离，必须修复才能继续
-    - ⚠️ CONDITIONAL：实现基本正确但有 🟡/⚪ 瑕疵，可接受风险继续推进
-    - 注意：请谨慎区分 BLOCKED 和 CONDITIONAL。只有确实阻碍功能正确性的问题才标 🔴。
-    ")
+    [将 omo_spec_verify_implementation tool 的完整输出填入此处]")
     ```
 
     读取 Oracle 输出中的最终判定：
     1. 如果 ✅ PASS → 完成
-    2. 如果 🔴 BLOCKED：
+    2. 如果 🔴 BLOCKED（**最多 3 轮**）：
          将所有 🔴 问题打包，调用 agent 一次性修复：
          task(category="write", load_skills=[],
               prompt="根据以下验证结果修复实现产出。只修复标记为 🔴 的问题，不要修改其他内容。
               Oracle 验证结果中的所有 🔴 问题：
               [将 Oracle 输出的 🔴 问题列表及修复建议填入此处]")
-         修复完成后重新运行 Oracle 验证（**最多 3 轮**，超限后汇总给用户）
+         修复完成后重新调用 `omo_spec_verify_implementation` 并重跑 Oracle 验证
+
+         **超限处理**（3 轮后仍有 🔴）：汇总所有剩余 🔴 给用户，让用户选择：
+         1. **接受剩余风险** → 视为 CONDITIONAL，继续
+         2. **手动修复** → 保留当前状态，用户编辑后重新跑 Step 3
+         3. **停止** → 放弃本次 apply，让用户决定后续
     3. 如果 ⚠️ CONDITIONAL → 汇总 🟡/⚪ 展示给用户，让用户决定是否接受
 
     **注意**：Step 2.5 的 `omo_spec_sync_tasks_from_plan` tool 调用是 apply 阶段**唯一**的 tasks.md 写操作。

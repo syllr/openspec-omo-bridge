@@ -27,7 +27,7 @@ proposal → design ──┬──► specs ──┐
                     └─────────────┘
 ```
 
-- `tasks.instruction` does everything: generates `.omo/plans/<name>.md` (OMO plan) + multi-agent review (Oracle+Metis gap analysis → Oracle+Metis+Momus plan review) + calls `omo_spec_sync_tasks_from_plan` tool to mirror plan into tasks.md + inlines verdict handling (asks user for 🟡/⚪ acceptance)
+- `tasks.instruction` does everything: generates `.omo/plans/<name>.md` (OMO plan) + **Metis plan consultation** (PHASE 3, pre-plan strategy advice) + **Oracle gap analysis** (PHASE 2, artifacts coherence) + **Oracle + Momus plan review** (PHASE 4.2, plan review with Part A + Part B dual-gate) + calls `omo_spec_sync_tasks_from_plan` tool to mirror plan into tasks.md + inlines verdict handling (asks user for 🟡/⚪ acceptance)
 - `.omo/plans/<name>.md` uses **9 sections** in spec-driven: TL;DR, Context, Work Objectives, Verification Strategy, Execution Strategy, TODOs, Final Verification Wave, Commit Strategy, Success Criteria (7 sections in constitution, skipping Verification Strategy and Commit Strategy per Design Decision 6)
 - Non-Tasks sections use "summary + link" pattern (references `openspec/changes/<name>/` artifacts)
 - The plan is parsed by `/start-work` (OMO's Atlas agent)
@@ -37,13 +37,13 @@ proposal → design ──┬──► specs ──┐
 The following gates apply to the **spec-driven** schema. Constitution schema has its own quality mechanisms documented in the Constitution Schema section.
 
 1. **Spec validation** (tasks PHASE 1.2, mandatory) — runs `openspec validate`, if errors show to user and let user decide how to fix
-2. **1 parallel Oracle + 1 parallel Metis gap analysis** (tasks PHASE 2, after spec validation) — concurrent review of proposal/specs/design coherence before plan generation; both Oracle and Metis use the same review dimensions for double-blind redundant validation
-3. **Plan generation** (tasks PHASE 3, mandatory) — generate `.omo/plans/<name>.md` via `category="write"`
-4. **Plan mirroring** (tasks PHASE 5, mandatory — call `omo_spec_sync_tasks_from_plan` tool to mirror plan into tasks.md
+2. **1 Oracle gap analysis** (tasks PHASE 2, after spec validation) — review of proposal/specs/design coherence before plan generation (Metis **not** used here — Metis is for pre-plan consultation, used only in PHASE 3)
+3. **Plan generation with Metis consultation** (tasks PHASE 3, mandatory) — **Metis plan consultation** (pre-plan strategy advice) + AI directly generates `.omo/plans/<name>.md` via `omo_spec_write_new_plan` tool
+4. **Plan mirroring** (tasks PHASE 5, mandatory) — call `omo_spec_sync_tasks_from_plan` tool to mirror plan into tasks.md
 5. **Plan structure validation** (tasks PHASE 4.1, mandatory) — 7 checks: `## TODOs` section exists, `## Final Verification Wave` section exists, `## TL;DR` exists, `## Success Criteria` exists, `## Commit Strategy` exists, at least one `N. Task` format task in TODOs, at least one `FN. Task` format task in FVW
-6. **1 parallel Oracle + 1 parallel Metis + 1 parallel Momus review** (tasks PHASE 4.2, mandatory) — concurrent review of plan: Oracle + Metis use the same review dimensions for redundant validation; Momus gives final OKAY/REJECT verdict
-7. **Verdict handling** (tasks PHASE 4.4, hard block) — if 🔴 BLOCKED, fix plan and re-review (max 3 rounds); if 🟡/⚪ remain, ask user to accept risk or fix more; no separate verdict file written
-8. **Oracle/Metis/Momus invocation** (tasks, mandatory, fast fail) — if any agent call fails (timeout, unavailable, error), immediately stop workflow and report to user; no retry, no degradation, no skip
+6. **1 parallel Oracle + 1 parallel Momus review** (tasks PHASE 4.2, mandatory) — concurrent review of plan: Oracle reviews spec/design alignment + OMO compatibility; Momus gives final OKAY/REJECT verdict (Part A executable path + Part B risk matrix)
+7. **Verdict handling** (tasks PHASE 4.4, hard block) — if 🔴 BLOCKED, fix plan and re-review (max 3 rounds, after 3 rounds ask user to accept risk / manual fix / stop); if 🟡/⚪ remain, ask user to accept risk or fix more; no separate verdict file written
+8. **Oracle/Momus invocation** (tasks, mandatory, fast fail) — if any agent call fails (timeout, unavailable, error), immediately stop workflow and report to user; no retry, no degradation, no skip
 
 ## Language support
 
@@ -81,7 +81,7 @@ Arithmetic uses `$((var + 1))` syntax (not `((var++))`) to avoid `set -e` exit o
 
 **位置**：`tools/omo-spec.ts`（OpenCode tool 格式，遵循 `@opencode-ai/plugin` 规范）
 
-**架构**：**单文件多 tool 设计** — 所有 OMO 相关 tool 和纯逻辑（types + parser + generator + 2 tool 入口）都在 `omo-spec.ts`。原因：tool 部署到 `~/.config/opencode/tools/` 时是单文件复制，单文件无需处理相对 import 解析问题。
+**架构**：**单文件多 tool 设计** — 所有 OMO 相关 tool 和纯逻辑（types + parser + generator + 4 tool 入口）都在 `omo-spec.ts`。原因：tool 部署到 `~/.config/opencode/tools/` 时是单文件复制，单文件无需处理相对 import 解析问题。
 
 **Tool 命名**（OpenCode 约定，多 tool 模式）：`omo_spec_<exportname>`
 
@@ -120,7 +120,7 @@ AI 在 OpenCode 会话中直接调用：
 
 - 覆盖 `openspec/changes/<name>/tasks.md` 为 OpenSpec 格式
 - 包含 Wave 分组的任务（按 `N.M` 重新编号）
-- 包含 Plan Reference 附录，保留全部 9 章节（TL;DR、Context、Work Objectives、Verification Strategy、Execution Strategy、Commit Strategy、Success Criteria）
+- 包含 Plan Reference 附录，保留全部 9 章节（TL;DR、Context、Work Objectives、Verification Strategy、Execution Strategy、TODOs、Final Verification Wave、Commit Strategy、Success Criteria）
 - 保留 plan 的 checkbox 状态（`- [ ]` → `- [ ]`，`- [x]` → `- [x]`）
 
 ---
