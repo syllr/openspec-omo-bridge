@@ -774,6 +774,18 @@ apply:
     **注意**：Step 2.5 的 `omo_spec_sync_tasks_from_plan` tool 调用是 apply 阶段**唯一**的 tasks.md 写操作。
     任务完成状态通过 sync tool 从 plan 文件的 checkbox 镜像而来。
 
+    === Step 3.5：最终同步 tasks.md 镜像 ===
+
+    Step 3 验证结束后（无论 PASS / CONDITIONAL / 超限），**最终**调用一次 `omo_spec_sync_tasks_from_plan` tool（参数：`change_name=<change-name>`）同步 plan 状态到 tasks.md。
+
+    **目的**：保证 apply 阶段结束时 tasks.md 100% 反映 plan checkbox 最终状态。归档时（`openspec archive`）能读到准确完成度。
+
+    **幂等性**：plan checkbox 没变就重复输出。3 种终态对应：
+    - ✅ PASS：tasks.md 显示 100% 完成
+    - ⚠️ CONDITIONAL：tasks.md 显示部分完成 + 残留风险已知
+    - 🛑 超限停止：tasks.md 显示当前完成度，保留用户后续处理
+
     完整生命周期（tasks → apply）：
     1. tasks 阶段：生成 plan（PHASE 3）+ plan 审查 + verdict 内联处理（PHASE 4）+ 调 sync tool 生成 tasks.md 镜像（PHASE 5）
-    2. apply Step 2.5（本步）：sync tool 重新同步 checkbox 状态
+    2. apply Step 2.5：sync tool 重新同步 checkbox 状态（/start-work 之后）
+    3. apply Step 3.5（本步）：sync tool 最终同步（apply 结束之前）
