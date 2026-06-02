@@ -15,14 +15,6 @@
  */
 
 import { afterEach, beforeEach, describe, expect, test } from "bun:test"
-import { join as joinPath } from "node:path"
-
-function syncArgs(changeName: string, t: string) {
-  return { change_name: changeName, paths: [joinPath(t, "openspec", "changes", changeName, "tasks.md")] }
-}
-function verifyArgs(changeName: string, t: string) {
-  return { change_name: changeName, paths: [joinPath(t, "openspec", "changes", changeName, "proposal.md")] }
-}
 import {
   mkdtempSync,
   existsSync,
@@ -37,6 +29,13 @@ import {
   sync_tasks_from_plan,
   prepare_verification_context as verify_implementation,
 } from "../omo-spec"
+
+function verifyArgs(changeName: string, t: string) {
+  return {
+    change_name: changeName,
+    paths: [join(t, "openspec", "changes", changeName, "proposal.md")],
+  }
+}
 
 let tmp: string
 
@@ -82,103 +81,6 @@ function writePlanFile(
   writeFileSync(join(plansDir, `${changeName}.md`), content)
 }
 
-// ============================================================
-// sync_tasks_from_plan 集成测试
-// ============================================================
-
-describe("sync_tasks_from_plan 集成测试", () => {
-  test("完整 plan → tasks.md 镜像", async () => {
-    // 先写 plan（用 helper 模拟 AI 写 plan）
-    writePlanFile("sync-test", {
-      tldr: "T",
-      context: "C",
-      workObjectives: "WO",
-      verificationStrategy: "VS",
-      executionStrategy: "ES",
-      todos: "#### 1. [ ] task1\n- **Acceptance**: pass\n\n#### 2. [x] task2",
-      finalVerificationWave: "### F1. [ ] fvw1",
-      commitStrategy: "CS",
-      successCriteria: "SC",
-    })
-
-    // 同步
-    const result = await (sync_tasks_from_plan as any).execute(
-      syncArgs("sync-test", tmp),
-      { directory: tmp }
-    )
-
-    expect(result).toContain("✅ 同步完成")
-
-    const tasksPath = join(
-      tmp,
-      "openspec",
-      "changes",
-      "sync-test",
-      "tasks.md"
-    )
-    expect(existsSync(tasksPath)).toBe(true)
-
-    const tasksContent = readFileSync(tasksPath, "utf-8")
-
-    // OpenSpec tasks 格式
-    expect(tasksContent).toContain("## Tasks")
-    expect(tasksContent).toContain("- [ ] 1.1 task1")
-    expect(tasksContent).toContain("- [x] 1.2 task2")
-    // FVW
-    expect(tasksContent).toContain("- [ ] 2.1 fvw1")
-    // Plan Reference 附录
-    expect(tasksContent).toContain("## Plan Reference")
-    expect(tasksContent).toContain("### 1. TL;DR")
-  })
-
-  test("plan 不存在抛错（快速失败）", async () => {
-    await expect(
-      (sync_tasks_from_plan as any).execute(
-        {
-          change_name: "missing",
-          paths: [join(tmp, "openspec", "changes", "missing", "tasks.md")],
-        },
-        { directory: tmp }
-      )
-    ).rejects.toThrow(/plan 文件不存在/)
-  })
-
-  test("幂等性：多次 sync 输出相同", async () => {
-    writePlanFile("idempotent", {
-      tldr: "T",
-      context: "C",
-      workObjectives: "WO",
-      verificationStrategy: "VS",
-      executionStrategy: "ES",
-      todos: "#### 1. [ ] t",
-      finalVerificationWave: "### F1. [ ] f",
-      commitStrategy: "CS",
-      successCriteria: "SC",
-    })
-
-    // 第一次 sync
-    await (sync_tasks_from_plan as any).execute(
-      syncArgs("idempotent", tmp),
-      { directory: tmp }
-    )
-    const first = readFileSync(
-      join(tmp, "openspec", "changes", "idempotent", "tasks.md"),
-      "utf-8"
-    )
-
-    // 第二次 sync
-    await (sync_tasks_from_plan as any).execute(
-      syncArgs("idempotent", tmp),
-      { directory: tmp }
-    )
-    const second = readFileSync(
-      join(tmp, "openspec", "changes", "idempotent", "tasks.md"),
-      "utf-8"
-    )
-
-    expect(first).toBe(second)
-  })
-})
 
 // ============================================================
 // 完整 round-trip 测试
@@ -202,16 +104,17 @@ describe("完整 round-trip：write plan → sync → 验证", () => {
       commitStrategy: "one commit per wave",
       successCriteria: "all tests pass",
     })
+    mkdirSync(join(tmp, "openspec", "changes", changeName), { recursive: true })
 
-    // 2. 同步到 tasks.md
+    // 2. 同步到 tasks.md（batch API：无参，自动扫所有 plan）
     const syncResult = await (sync_tasks_from_plan as any).execute(
-      syncArgs(changeName, tmp),
+      {},
       { directory: tmp }
     )
     // 任务数 = 3 TODOs + 1 FVW = 4 总任务
-    expect(syncResult).toContain("任务数：4")
-    expect(syncResult).toContain("已完成 0，未完成 4")
-    expect(syncResult).toContain("Wave 数：2")
+    expect(syncResult.output).toContain("1 个 change 已同步")
+    expect(syncResult.output).toContain("round-trip: 4 tasks (0 ✅)")
+    expect(syncResult.output).toContain("2 waves")
 
     // 3. 验证 tasks.md 内容
     const tasksPath = join(
@@ -245,11 +148,12 @@ describe("完整 round-trip：write plan → sync → 验证", () => {
       .replace("#### 2. [ ] step2", "#### 2. [x] step2")
     writeFileSync(planPath, updatedPlan)
 
-    // 5. 重新 sync
-    await (sync_tasks_from_plan as any).execute(
-      syncArgs(changeName, tmp),
+    // 5. 重新 sync（batch）
+    const reSyncResult = await (sync_tasks_from_plan as any).execute(
+      {},
       { directory: tmp }
     )
+    expect(reSyncResult.output).toContain("round-trip: 4 tasks (2 ✅)")
 
     const updatedContent = readFileSync(tasksPath, "utf-8")
     // checkbox 状态被同步
@@ -307,10 +211,10 @@ describe("verify_implementation 集成测试", () => {
     )
 
     // 关键断言 1：输出明确告诉 Oracle 自行执行 git diff
-    expect(result).toContain("git diff --name-only HEAD")
-    expect(result).toContain("git ls-files --others --exclude-standard")
+    expect(result.output).toContain("git diff --name-only HEAD")
+    expect(result.output).toContain("git ls-files --others --exclude-standard")
     // 输出提到 "Oracle 自行执行"
-    expect(result).toMatch(/Oracle.*自行执行|自行执行.*git diff/)
+    expect(result.output).toMatch(/Oracle.*自行执行|自行执行.*git diff/)
   })
 
   test("输出包含 5 维度模板", async () => {
@@ -322,14 +226,14 @@ describe("verify_implementation 集成测试", () => {
     )
 
     // 5 维度名称都在
-    expect(result).toContain("Spec 合规性")
-    expect(result).toContain("Design 对齐")
-    expect(result).toContain("Proposal 范围")
-    expect(result).toContain("Task 完成度")
-    expect(result).toContain("非功能性合规性")
+    expect(result.output).toContain("Spec 合规性")
+    expect(result.output).toContain("Design 对齐")
+    expect(result.output).toContain("Proposal 范围")
+    expect(result.output).toContain("Task 完成度")
+    expect(result.output).toContain("非功能性合规性")
     // 严重程度规则
-    expect(result).toContain("BLOCKED")
-    expect(result).toContain("CONDITIONAL")
+    expect(result.output).toContain("BLOCKED")
+    expect(result.output).toContain("CONDITIONAL")
   })
 
   test("输出包含所有 artifacts 内容", async () => {
@@ -341,14 +245,14 @@ describe("verify_implementation 集成测试", () => {
     )
 
     // proposal 内容
-    expect(result).toContain("Test motivation")
+    expect(result.output).toContain("Test motivation")
     // design 内容
-    expect(result).toContain("Test decision")
+    expect(result.output).toContain("Test decision")
     // specs 内容（拼接格式）
-    expect(result).toContain("### user-auth")
-    expect(result).toContain("MUST work")
+    expect(result.output).toContain("### user-auth")
+    expect(result.output).toContain("MUST work")
     // plan 内容
-    expect(result).toContain("## TODOs")
+    expect(result.output).toContain("## TODOs")
   })
 
   test("输出不再包含 'Changed files:' 列表（tool 已不再捕获）", async () => {
@@ -360,9 +264,9 @@ describe("verify_implementation 集成测试", () => {
     )
 
     // 关键反向断言：tool 不再列出变更文件
-    expect(result).not.toContain("Changed files:")
+    expect(result.output).not.toContain("Changed files:")
     // changedFiles 在 tool 输出里是空数组（占位），不应被列出
-    expect(result).not.toMatch(/Changed files: \d+/)
+    expect(result.output).not.toMatch(/Changed files: \d+/)
   })
 
   test("artifacts 缺失时不报错（返回 null 字段，Oracle 自行判断）", async () => {
@@ -373,9 +277,9 @@ describe("verify_implementation 集成测试", () => {
     )
 
     // tool 仍然返回结构化输出
-    expect(result).toContain("=== 实现验证上下文已准备")
+    expect(result.output).toContain("=== 实现验证上下文已准备")
     // 5 维度模板仍在（与 artifacts 无关）
-    expect(result).toContain("Spec 合规性")
+    expect(result.output).toContain("Spec 合规性")
   })
 
   test("specs 目录不存在时不报错（B21 静态导入的鲁棒性）", async () => {
@@ -397,9 +301,9 @@ describe("verify_implementation 集成测试", () => {
       { directory: tmp }
     )
 
-    expect(result).toContain("=== 实现验证上下文已准备")
-    expect(result).toContain("# Proposal")
+    expect(result.output).toContain("=== 实现验证上下文已准备")
+    expect(result.output).toContain("# Proposal")
     // specs 段不存在（因为没创建 specs/ 目录）
-    expect(result).not.toContain("## Specs")
+    expect(result.output).not.toContain("## Specs")
   })
 })

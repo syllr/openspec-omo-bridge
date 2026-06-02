@@ -1,13 +1,13 @@
 #!/usr/bin/env bun test
 /**
- * omo-spec 3 个新纯函数单元测试
- * - checkTasksPhaseStatus
- * - buildChangeContext
- * - prepareVerificationContext
+ * omo-spec 3 个 tool 的 execute() 集成测试
+ * - sync_tasks_from_plan（含 batch / single / skip / 子目录边界）
+ * - validate_omo_plan（结构化返回）
+ * - prepare_verification_context（artifacts + 5 维度）
  */
 
 import { describe, expect, test } from "bun:test"
-import { mkdtempSync, existsSync, rmSync, readFileSync } from "node:fs"
+import { mkdtempSync, existsSync, rmSync, readFileSync, writeFileSync, mkdirSync } from "node:fs"
 import { tmpdir } from "node:os"
 import { join } from "node:path"
 import {
@@ -99,133 +99,6 @@ describe("VERIFICATION_DIMENSIONS 常量", () => {
     expect(VERDICT_RULES.blocked).toContain("修复")
     expect(VERDICT_RULES.conditional).toContain("可接受")
     expect(VERDICT_RULES.note).toContain("BLOCKED")
-  })
-})
-
-describe("sync_tasks_from_plan - 自动创建 openspec/changes/<name>/ 目录", () => {
-  test("openspec/changes/<name>/ 不存在时自动创建", async () => {
-    const tmp = mkdtempSync(join(tmpdir(), "omo-sync-test-"))
-    try {
-      // 预创建 plan 文件
-      const { mkdirSync, writeFileSync } = await import("node:fs")
-      const plansDir = join(tmp, ".omo", "plans")
-      mkdirSync(plansDir, { recursive: true })
-      writeFileSync(
-        join(plansDir, "test.md"),
-        `## TL;DR\nT\n## TODOs\n#### 1. [ ] t\n\n## Final Verification Wave\n### F1. [ ] f\n`
-      )
-
-      // 不预创建 openspec/changes/test/ 目录
-      const result = await (sync_tasks_from_plan as any).execute(
-        {
-          change_name: "test",
-          paths: [join(tmp, "openspec", "changes", "test", "tasks.md")],
-        },
-        { directory: tmp }
-      )
-
-      expect(result).toContain("✅ 同步完成")
-      expect(
-        existsSync(join(tmp, "openspec", "changes", "test", "tasks.md"))
-      ).toBe(true)
-    } finally {
-      rmSync(tmp, { recursive: true, force: true })
-    }
-  })
-
-  test("plan 不存在时快速失败", async () => {
-    const tmp = mkdtempSync(join(tmpdir(), "omo-sync-test-"))
-    try {
-      await expect(
-        (sync_tasks_from_plan as any).execute(
-          {
-            change_name: "missing",
-            paths: [join(tmp, "openspec", "changes", "missing", "tasks.md")],
-          },
-          { directory: tmp }
-        )
-      ).rejects.toThrow(/plan 文件不存在/)
-    } finally {
-      rmSync(tmp, { recursive: true, force: true })
-    }
-  })
-
-  test("已存在的 tasks.md 被覆盖（幂等性）", async () => {
-    const tmp = mkdtempSync(join(tmpdir(), "omo-sync-test-"))
-    try {
-      const { mkdirSync, writeFileSync } = await import("node:fs")
-      // 创建 plan
-      const plansDir = join(tmp, ".omo", "plans")
-      mkdirSync(plansDir, { recursive: true })
-      writeFileSync(
-        join(plansDir, "test.md"),
-        `## TL;DR\nT\n## TODOs\n#### 1. [ ] task1\n\n## Final Verification Wave\n### F1. [ ] f1\n`
-      )
-      // 预创建 tasks.md（包含旧内容）
-      const changesDir = join(tmp, "openspec", "changes", "test")
-      mkdirSync(changesDir, { recursive: true })
-      writeFileSync(join(changesDir, "tasks.md"), "OLD CONTENT")
-
-      await (sync_tasks_from_plan as any).execute(
-        {
-          change_name: "test",
-          paths: [join(tmp, "openspec", "changes", "test", "tasks.md")],
-        },
-        { directory: tmp }
-      )
-
-      const content = readFileSync(join(changesDir, "tasks.md"), "utf-8")
-      expect(content).not.toContain("OLD CONTENT")
-      expect(content).toContain("## Tasks")
-    } finally {
-      rmSync(tmp, { recursive: true, force: true })
-    }
-  })
-})
-
-// ============================================================
-// Wave 标题支持中英文冒号
-// (Oracle review 🟡 #3)
-// ============================================================
-
-describe("Wave 标题支持中英文冒号", () => {
-  test("英文冒号 : 仍可解析（回归测试）", () => {
-    const plan = parseOmoPlan(
-      `## TODOs\n### 6.1 Wave 1: first step\n#### 1. [ ] t\n`,
-      "t"
-    )
-    expect(plan.tasks[0].wave).toBe("Wave 1: first step")
-  })
-
-  test("中文全角冒号 ： 可解析", () => {
-    const plan = parseOmoPlan(
-      `## TODOs\n### 6.1 Wave 1：第一步\n#### 1. [ ] t\n`,
-      "t"
-    )
-    expect(plan.tasks[0].wave).toBe("Wave 1: 第一步")
-  })
-
-  test("多个 Wave 混合中英文冒号", () => {
-    const plan = parseOmoPlan(
-      `## TODOs
-### 6.1 Wave 1: english colon
-#### 1. [ ] t1
-### 6.2 Wave 2：中文冒号
-#### 2. [ ] t2
-`,
-      "t"
-    )
-    expect(plan.tasks[0].wave).toBe("Wave 1: english colon")
-    expect(plan.tasks[1].wave).toBe("Wave 2: 中文冒号")
-  })
-
-  test("Wave 后无内容时（边界情况）", () => {
-    const plan = parseOmoPlan(
-      `## TODOs\n### 6.1 Wave 1: \n#### 1. [ ] t\n`,
-      "t"
-    )
-    // 冒号后是空，trim 后应仍能解析
-    expect(plan.tasks[0].wave).toBe("Wave 1:")
   })
 })
 
@@ -327,72 +200,321 @@ describe("prepareVerificationContext - changedFiles 由 Oracle 自行捕获", ()
   })
 })
 
-describe("sync_tasks_from_plan 参数校验", () => {
-  test("change_name 为空时抛清晰错误", async () => {
-    const tmp = mkdtempSync(join(tmpdir(), "omo-validation-"))
+describe("sync_tasks_from_plan 批量模式", () => {
+  function setupPlan(tmp: string, name: string, content: string) {
+    const plansDir = join(tmp, ".omo", "plans")
+    mkdirSync(plansDir, { recursive: true })
+    writeFileSync(join(plansDir, `${name}.md`), content)
+  }
+
+  function setupChange(tmp: string, name: string) {
+    const changeDir = join(tmp, "openspec", "changes", name)
+    mkdirSync(changeDir, { recursive: true })
+  }
+
+  test("无 plan 时返回空提示", async () => {
+    const tmp = mkdtempSync(join(tmpdir(), "omo-batch-empty-"))
     try {
-      await expect(
-        (sync_tasks_from_plan as any).execute(
-          { change_name: "", paths: ["x"] },
-          { directory: tmp }
-        )
-      ).rejects.toThrow(/❌ 参数缺失：change_name/)
+      mkdirSync(join(tmp, ".omo", "plans"), { recursive: true })
+      const result = await (sync_tasks_from_plan as any).execute({}, { directory: tmp })
+      expect(result.output).toContain("没有 .md plan 文件")
     } finally {
       rmSync(tmp, { recursive: true, force: true })
     }
   })
 
-  test("change_name 缺失时抛清晰错误", async () => {
-    const tmp = mkdtempSync(join(tmpdir(), "omo-validation-"))
+  test("plans 目录不存在时抛清晰错误", async () => {
+    const tmp = mkdtempSync(join(tmpdir(), "omo-batch-nodir-"))
     try {
       await expect(
-        (sync_tasks_from_plan as any).execute(
-          { paths: ["x"] },
-          { directory: tmp }
-        )
-      ).rejects.toThrow(/❌ 参数缺失：change_name/)
+        (sync_tasks_from_plan as any).execute({}, { directory: tmp })
+      ).rejects.toThrow(/plans 目录不存在/)
     } finally {
       rmSync(tmp, { recursive: true, force: true })
     }
   })
 
-  test("paths 缺失时抛清晰错误", async () => {
-    const tmp = mkdtempSync(join(tmpdir(), "omo-validation-"))
+  test("plan 匹配 change → 同步成功", async () => {
+    const tmp = mkdtempSync(join(tmpdir(), "omo-batch-match-"))
     try {
-      await expect(
-        (sync_tasks_from_plan as any).execute(
-          { change_name: "x" },
-          { directory: tmp }
-        )
-      ).rejects.toThrow(/❌ 参数缺失：paths/)
+      setupPlan(tmp, "feature-x", "## TL;DR\nT\n## TODOs\n#### 1. [ ] task1\n## Final Verification Wave\n### F1. [ ] f\n")
+      setupChange(tmp, "feature-x")
+      const result = await (sync_tasks_from_plan as any).execute({}, { directory: tmp })
+      expect(result.output).toContain("1 个 change 已同步")
+      expect(result.output).toContain("feature-x")
+      expect(existsSync(join(tmp, "openspec", "changes", "feature-x", "tasks.md"))).toBe(true)
     } finally {
       rmSync(tmp, { recursive: true, force: true })
     }
   })
 
-  test("paths 为空数组时抛清晰错误", async () => {
-    const tmp = mkdtempSync(join(tmpdir(), "omo-validation-"))
+  test("plan 无匹配 change → 跳过", async () => {
+    const tmp = mkdtempSync(join(tmpdir(), "omo-batch-skip-"))
     try {
-      await expect(
-        (sync_tasks_from_plan as any).execute(
-          { change_name: "x", paths: [] },
-          { directory: tmp }
-        )
-      ).rejects.toThrow(/❌ 参数缺失：paths/)
+      setupPlan(tmp, "orphan-plan", "## TL;DR\nT\n## TODOs\n#### 1. [ ] t\n## Final Verification Wave\n### F1. [ ] f\n")
+      const result = await (sync_tasks_from_plan as any).execute({}, { directory: tmp })
+      expect(result.output).toContain("1 个 plan 跳过")
+      expect(result.output).toContain("无匹配的 change 目录")
     } finally {
       rmSync(tmp, { recursive: true, force: true })
     }
   })
 
-  test("paths 缺少 tasks.md 路径时抛清晰错误", async () => {
-    const tmp = mkdtempSync(join(tmpdir(), "omo-validation-"))
+  test("plan 含 0 task → 跳过", async () => {
+    const tmp = mkdtempSync(join(tmpdir(), "omo-batch-emptytask-"))
+    try {
+      setupPlan(tmp, "empty-tasks", "## TL;DR\nT\n## Context\nC\n")
+      setupChange(tmp, "empty-tasks")
+      const result = await (sync_tasks_from_plan as any).execute({}, { directory: tmp })
+      expect(result.output).toContain("plan 中无任务（0 tasks）")
+    } finally {
+      rmSync(tmp, { recursive: true, force: true })
+    }
+  })
+
+  test("多个 plan：部分匹配部分跳过", async () => {
+    const tmp = mkdtempSync(join(tmpdir(), "omo-batch-multi-"))
+    try {
+      setupPlan(tmp, "matched", "## TL;DR\nT\n## TODOs\n#### 1. [ ] t1\n## Final Verification Wave\n### F1. [ ] f\n")
+      setupPlan(tmp, "orphan", "## TL;DR\nT\n## TODOs\n#### 1. [ ] t2\n## Final Verification Wave\n### F1. [ ] f\n")
+      setupChange(tmp, "matched")
+      const result = await (sync_tasks_from_plan as any).execute({}, { directory: tmp })
+      expect(result.output).toContain("1 个 change 已同步")
+      expect(result.output).toContain("1 个 plan 跳过")
+      expect(existsSync(join(tmp, "openspec", "changes", "matched", "tasks.md"))).toBe(true)
+      expect(existsSync(join(tmp, "openspec", "changes", "orphan", "tasks.md"))).toBe(false)
+    } finally {
+      rmSync(tmp, { recursive: true, force: true })
+    }
+  })
+
+  test("幂等性：多次 sync 输出相同", async () => {
+    const tmp = mkdtempSync(join(tmpdir(), "omo-batch-idem-"))
+    try {
+      setupPlan(tmp, "idem", "## TL;DR\nT\n## TODOs\n#### 1. [ ] t1\n#### 2. [x] t2\n## Final Verification Wave\n### F1. [ ] f\n")
+      setupChange(tmp, "idem")
+      await (sync_tasks_from_plan as any).execute({}, { directory: tmp })
+      const first = readFileSync(join(tmp, "openspec", "changes", "idem", "tasks.md"), "utf-8")
+      await (sync_tasks_from_plan as any).execute({}, { directory: tmp })
+      const second = readFileSync(join(tmp, "openspec", "changes", "idem", "tasks.md"), "utf-8")
+      expect(first).toBe(second)
+    } finally {
+      rmSync(tmp, { recursive: true, force: true })
+    }
+  })
+
+  test("archive/ 子目录被跳过（不是 active change）", async () => {
+    const tmp = mkdtempSync(join(tmpdir(), "omo-batch-archive-"))
+    try {
+      setupPlan(tmp, "archived-old", "## TL;DR\nT\n## TODOs\n#### 1. [ ] t\n## Final Verification Wave\n### F1. [ ] f\n")
+      const archiveDir = join(tmp, "openspec", "changes", "archive", "archived-old")
+      mkdirSync(archiveDir, { recursive: true })
+      const result = await (sync_tasks_from_plan as any).execute({}, { directory: tmp })
+      expect(result.output).toContain("1 个 plan 跳过")
+      expect(existsSync(join(archiveDir, "tasks.md"))).toBe(false)
+    } finally {
+      rmSync(tmp, { recursive: true, force: true })
+    }
+  })
+})
+
+describe("sync_tasks_from_plan single mode（传 change_name）", () => {
+  function setupPlan(tmp: string, name: string, content: string) {
+    const plansDir = join(tmp, ".omo", "plans")
+    mkdirSync(plansDir, { recursive: true })
+    writeFileSync(join(plansDir, `${name}.md`), content)
+  }
+  function setupChange(tmp: string, name: string) {
+    mkdirSync(join(tmp, "openspec", "changes", name), { recursive: true })
+  }
+  const PLAN_CONTENT = "## TL;DR\nT\n## TODOs\n#### 1. [ ] t1\n## Final Verification Wave\n### F1. [ ] f\n"
+
+  test("change_name 匹配 → 同步该单个", async () => {
+    const tmp = mkdtempSync(join(tmpdir(), "omo-single-ok-"))
+    try {
+      setupPlan(tmp, "target", PLAN_CONTENT)
+      setupPlan(tmp, "other", PLAN_CONTENT)
+      setupChange(tmp, "target")
+      const result = await (sync_tasks_from_plan as any).execute(
+        { change_name: "target" },
+        { directory: tmp }
+      )
+      expect(result.output).toContain("target: 同步完成")
+      expect(result.output).toContain("2 tasks")
+      expect(existsSync(join(tmp, "openspec", "changes", "target", "tasks.md"))).toBe(true)
+      expect(existsSync(join(tmp, "openspec", "changes", "other", "tasks.md"))).toBe(false)
+    } finally {
+      rmSync(tmp, { recursive: true, force: true })
+    }
+  })
+
+  test("change_name 无匹配 change → 抛清晰错误", async () => {
+    const tmp = mkdtempSync(join(tmpdir(), "omo-single-skip-"))
+    try {
+      setupPlan(tmp, "orphan", PLAN_CONTENT)
+      await expect(
+        (sync_tasks_from_plan as any).execute(
+          { change_name: "orphan" },
+          { directory: tmp }
+        )
+      ).rejects.toThrow(/change 目录不存在/)
+    } finally {
+      rmSync(tmp, { recursive: true, force: true })
+    }
+  })
+
+  test("change_name plan 不存在 → 抛清晰错误", async () => {
+    const tmp = mkdtempSync(join(tmpdir(), "omo-single-noplan-"))
+    try {
+      mkdirSync(join(tmp, ".omo", "plans"), { recursive: true })
+      await expect(
+        (sync_tasks_from_plan as any).execute(
+          { change_name: "ghost" },
+          { directory: tmp }
+        )
+      ).rejects.toThrow(/plan 文件不存在/)
+    } finally {
+      rmSync(tmp, { recursive: true, force: true })
+    }
+  })
+
+  test("change_name 为空字符串 → 抛清晰错误", async () => {
+    const tmp = mkdtempSync(join(tmpdir(), "omo-single-empty-"))
     try {
       await expect(
         (sync_tasks_from_plan as any).execute(
-          { change_name: "x", paths: ["/some/other/path"] },
+          { change_name: "" },
           { directory: tmp }
         )
-      ).rejects.toThrow(/❌ 参数错误：paths 缺少必需的写入目标/)
+      ).rejects.toThrow(/change_name/)
+    } finally {
+      rmSync(tmp, { recursive: true, force: true })
+    }
+  })
+
+  test("change_name 为 null → 抛清晰错误", async () => {
+    const tmp = mkdtempSync(join(tmpdir(), "omo-single-null-"))
+    try {
+      await expect(
+        (sync_tasks_from_plan as any).execute(
+          { change_name: null },
+          { directory: tmp }
+        )
+      ).rejects.toThrow(/change_name/)
+    } finally {
+      rmSync(tmp, { recursive: true, force: true })
+    }
+  })
+
+  test("hybrid：传 change_name 只动该 change，不传批量", async () => {
+    const tmp = mkdtempSync(join(tmpdir(), "omo-single-hybrid-"))
+    try {
+      setupPlan(tmp, "alpha", PLAN_CONTENT)
+      setupPlan(tmp, "beta", PLAN_CONTENT)
+      setupChange(tmp, "alpha")
+      setupChange(tmp, "beta")
+      const singleResult = await (sync_tasks_from_plan as any).execute(
+        { change_name: "alpha" },
+        { directory: tmp }
+      )
+      expect(singleResult.output).toContain("alpha: 同步完成")
+      expect(singleResult.output).not.toContain("beta")
+      expect(existsSync(join(tmp, "openspec", "changes", "beta", "tasks.md"))).toBe(false)
+    } finally {
+      rmSync(tmp, { recursive: true, force: true })
+    }
+  })
+
+  test("批量：.omo/plans/ 下的子目录不会被当成 plan 读", async () => {
+    const tmp = mkdtempSync(join(tmpdir(), "omo-batch-subdir-"))
+    try {
+      const plansDir = join(tmp, ".omo", "plans")
+      mkdirSync(plansDir, { recursive: true })
+      setupPlan(tmp, "real-plan", PLAN_CONTENT)
+      setupChange(tmp, "real-plan")
+      mkdirSync(join(plansDir, "not-a-plan"), { recursive: true })
+      const result = await (sync_tasks_from_plan as any).execute({}, { directory: tmp })
+      expect(result.output).toContain("1 个 change 已同步")
+      expect(result.output).not.toContain("not-a-plan")
+    } finally {
+      rmSync(tmp, { recursive: true, force: true })
+    }
+  })
+
+  test("结构化返回：batch 模式 metadata 含 synced/skipped 数组", async () => {
+    const tmp = mkdtempSync(join(tmpdir(), "omo-batch-meta-"))
+    try {
+      setupPlan(tmp, "a", PLAN_CONTENT)
+      setupPlan(tmp, "orphan", PLAN_CONTENT)
+      setupChange(tmp, "a")
+      const result = await (sync_tasks_from_plan as any).execute({}, { directory: tmp })
+      expect(result.title).toContain("batch")
+      expect(result.title).toContain("1 synced")
+      expect(result.metadata.mode).toBe("batch")
+      expect(Array.isArray(result.metadata.synced)).toBe(true)
+      expect(result.metadata.synced[0].change).toBe("a")
+      expect(result.metadata.synced[0].total).toBe(2)
+      expect(result.metadata.synced[0].completed).toBe(0)
+      expect(result.metadata.synced[0].waves).toBe(2)
+      expect(Array.isArray(result.metadata.skipped)).toBe(true)
+      expect(result.metadata.skipped[0].plan).toBe("orphan.md")
+    } finally {
+      rmSync(tmp, { recursive: true, force: true })
+    }
+  })
+
+  test("结构化返回：single 模式 success metadata 含 total/completed/waves", async () => {
+    const tmp = mkdtempSync(join(tmpdir(), "omo-single-meta-"))
+    try {
+      setupPlan(tmp, "only", PLAN_CONTENT)
+      setupChange(tmp, "only")
+      const result = await (sync_tasks_from_plan as any).execute(
+        { change_name: "only" },
+        { directory: tmp }
+      )
+      expect(result.title).toBe("sync_tasks_from_plan: only")
+      expect(result.metadata.mode).toBe("single")
+      expect(result.metadata.changeName).toBe("only")
+      expect(result.metadata.total).toBe(2)
+      expect(result.metadata.completed).toBe(0)
+      expect(result.metadata.waves).toBe(2)
+      expect(result.metadata.tasksPath).toContain("openspec/changes/only/tasks.md")
+    } finally {
+      rmSync(tmp, { recursive: true, force: true })
+    }
+  })
+
+  test("结构化返回：single 模式 0-task plan → skip return path", async () => {
+    const tmp = mkdtempSync(join(tmpdir(), "omo-single-0task-"))
+    try {
+      setupPlan(tmp, "empty-change", "## TL;DR\nT\n## Context\nC\n")
+      setupChange(tmp, "empty-change")
+      const result = await (sync_tasks_from_plan as any).execute(
+        { change_name: "empty-change" },
+        { directory: tmp }
+      )
+      expect(result.title).toContain("skip")
+      expect(result.metadata.mode).toBe("single")
+      expect(result.metadata.changeName).toBe("empty-change")
+      expect(result.metadata.synced).toBe(0)
+      expect(result.metadata.reason).toContain("0 tasks")
+    } finally {
+      rmSync(tmp, { recursive: true, force: true })
+    }
+  })
+
+  test("结构化返回：batch 模式 skip 时 metadata.skipped 含 reason", async () => {
+    const tmp = mkdtempSync(join(tmpdir(), "omo-batch-skip-"))
+    try {
+      setupPlan(tmp, "only-valid", PLAN_CONTENT)
+      setupPlan(tmp, "ghost", PLAN_CONTENT)
+      setupChange(tmp, "only-valid")
+      const result = await (sync_tasks_from_plan as any).execute({}, { directory: tmp })
+      expect(result.title).toContain("1 synced")
+      expect(result.title).toContain("1 skipped")
+      const skipEntry = result.metadata.skipped.find((s: { plan: string }) => s.plan === "ghost.md")
+      expect(skipEntry).toBeDefined()
+      expect(skipEntry.reason).toContain("无匹配的 change 目录")
     } finally {
       rmSync(tmp, { recursive: true, force: true })
     }

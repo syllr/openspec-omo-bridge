@@ -39,7 +39,7 @@ The following gates apply to the **spec-driven** schema. Constitution schema has
 1. **Spec validation** (tasks PHASE 1.2, mandatory) — runs `openspec validate`, if errors show to user and let user decide how to fix
 2. **1 Oracle gap analysis** (tasks PHASE 2, after spec validation) — review of proposal/specs/design coherence before plan generation (Metis **not** used here — Metis is for pre-plan consultation, used only in PHASE 3)
 3. **Plan generation with Metis consultation** (tasks PHASE 3, mandatory) — **Metis plan consultation** (pre-plan strategy advice) + AI directly writes `.omo/plans/<name>.md` in OMO format (no tool, see OMO plan format spec in schema PHASE 3)
-4. **Plan mirroring** (tasks PHASE 5, mandatory) — call `omo_spec_sync_tasks_from_plan` tool to mirror plan into tasks.md
+4. **Plan mirroring** (tasks PHASE 5, mandatory) — call `omo_spec_sync_tasks_from_plan` tool (batch mode, no args) to mirror all plans into their matching non-archived change tasks.md
 5. **Plan structure validation** (tasks PHASE 4.1, mandatory) — 11 checks: 9 sections exist (`## TL;DR` / `## Context` / `## Work Objectives` / `## Verification Strategy` / `## Execution Strategy` / `## TODOs` / `## Final Verification Wave` / `## Commit Strategy` / `## Success Criteria`) + at least one `N. Task` format task in TODOs + at least one `FN. Task` format task in FVW
 6. **1 parallel Oracle + 1 parallel Momus review** (tasks PHASE 4.2, mandatory) — concurrent review of plan: Oracle reviews spec/design alignment + OMO compatibility; Momus gives final OKAY/REJECT verdict (Part A executable path + Part B risk matrix)
 7. **Verdict handling** (tasks PHASE 4.4, hard block) — if 🔴 BLOCKED, fix plan and re-review (max 3 rounds, after 3 rounds ask user to accept risk / manual fix / stop); if 🟡/⚪ remain, ask user to accept risk or fix more; no separate verdict file written
@@ -105,7 +105,7 @@ Arithmetic uses `$((var + 1))` syntax (not `((var++))`) to avoid `set -e` exit o
 
 ### omo_spec_sync_tasks_from_plan tool
 
-**作用**：单向同步 OMO plan → OpenSpec tasks.md。解决 OMO 和 OpenSpec 的任务格式冲突：
+**作用**：批量同步所有 OMO plan → OpenSpec tasks.md。解决 OMO 和 OpenSpec 的任务格式冲突：
 
 - OMO plan 使用 `#### N. [ ] 标题` 4-hash heading + 扁平 `N.` 编号
 - OpenSpec tasks.md 使用 `- [ ] N.M 标题` 列表项 + 多级 `N.M` 编号
@@ -116,19 +116,22 @@ Arithmetic uses `$((var + 1))` syntax (not `((var++))`) to avoid `set -e` exit o
 AI 在 OpenCode 会话中直接调用：
 
 - tool 名：`omo_spec_sync_tasks_from_plan`
-- 参数：`change_name: string`（OpenSpec change 名称）
+- 参数：**无**（一次调用扫 `.omo/plans/` 全部 plan）
 
 **输入**：
 
-- `change_name` → 自动定位 `.omo/plans/<name>.md` 和 `openspec/changes/<name>/tasks.md`
-- 使用 `context.directory`（OpenCode 注入）作为项目根，不依赖 `process.cwd()`
+- 使用 `context.directory`（OpenCode 注入）作为项目根
+- 扫 `.omo/plans/*.md` → 对每个 plan 匹配 `openspec/changes/<plan-name>/`（跳过 `archive/` 子目录）
+- 匹配的 change → 写 `tasks.md`（覆盖）；不匹配 → 跳过
 
 **输出**：
 
-- 覆盖 `openspec/changes/<name>/tasks.md` 为 OpenSpec 格式
-- 包含 Wave 分组的任务（按 `N.M` 重新编号）
-- 包含 Plan Reference 附录，保留全部 9 章节（TL;DR、Context、Work Objectives、Verification Strategy、Execution Strategy、TODOs、Final Verification Wave、Commit Strategy、Success Criteria）
+- 返回汇总：`已同步` 列表（change + 任务数 + 完成数 + waves + 路径）+ `跳过` 列表（plan + 原因）
+- 每个 `tasks.md` 包含 Wave 分组的任务（按 `N.M` 重新编号）
+- 包含 Plan Reference 附录，保留全部 9 章节
 - 保留 plan 的 checkbox 状态（`- [ ]` → `- [ ]`，`- [x]` → `- [x]`）
+
+**可重入**：幂等，多次调用结果一致。
 
 ---
 

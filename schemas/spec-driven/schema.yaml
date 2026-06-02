@@ -703,7 +703,7 @@ artifacts:
 
       **仅在 PHASE 4 审查通过（用户选择 1）后执行**。
 
-      调用 `omo_spec_sync_tasks_from_plan` OpenCode tool（参数：`change_name=<change-name>`）将 plan 镜像到 `openspec/changes/<change-name>/tasks.md`。
+      调用 `omo_spec_sync_tasks_from_plan` OpenCode tool（**batch 模式无参**）将所有 plan 批量镜像到匹配的非归档 change 的 `tasks.md`。
 
       这会生成 OpenSpec 期望的 checkbox 格式（含 Plan Reference 附录，保留全部 9 章节内容）。
 
@@ -846,7 +846,7 @@ apply:
 
     === Step 3.5：最终同步 tasks.md 镜像 ===
 
-    Step 3 验证结束后（无论 PASS / CONDITIONAL / 超限），**最终**调用一次 `omo_spec_sync_tasks_from_plan` tool（参数：`change_name=<change-name>`）同步 plan 状态到 tasks.md。
+    Step 3 验证结束后（无论 PASS / CONDITIONAL / 超限），**最终**调用一次 `omo_spec_sync_tasks_from_plan` tool（batch 模式无参）同步所有 plan 状态到 tasks.md。
 
     **目的**：保证 apply 阶段结束时 tasks.md 100% 反映 plan checkbox 最终状态。归档时（`openspec archive`）能读到准确完成度。
 
