@@ -742,7 +742,7 @@ apply:
     5. ❌ 禁止从 `openspec/changes/archive/` 等历史目录复制旧的 N.M 格式
     6. ❌ 禁止调用 `openspec-apply-change` skill（如果它被自动加载，请忽略它的所有步骤）
 
-    **唯一允许的 tasks.md 写操作**：Step 2.5 调用 `omo_spec_sync_tasks_from_plan` tool。
+    **唯一允许的 tasks.md 写操作**：Step 3.5（apply 结束前）调用 `omo_spec_sync_tasks_from_plan` tool。
 
     **唯一正确流程**（严格按顺序执行）：
     1. 验证 `tasks.md` 和 `.omo/plans/<change-name>.md` 都存在（tasks 阶段已完成）
@@ -757,7 +757,7 @@ apply:
     实际任务内容在 `.omo/plans/<change-name>.md` 中。
     任务完成状态由 OMO 通过解析 plan 文件中的 checkbox（`- [ ]` vs `- [x]`）判断。
 
-    apply 阶段与 tasks.md 唯一的交互是 **Step 2.5** —— 调 sync tool 重新同步 plan 的 checkbox 状态。
+    apply 阶段与 tasks.md 唯一的交互是 **Step 3.5** —— 调 sync tool 重新同步 plan 的 checkbox 状态。
 
     === Step 1：验证 tasks 阶段已完成 ===
 
@@ -790,26 +790,18 @@ apply:
 
     === Step 2：执行 /start-work ===
 
-    验证后，调用：
+    直接调用：
     ```
     /start-work .omo/plans/<change-name>.md
     ```
 
-    **执行结果处理：**
-    1. **完成**：继续 Oracle 验证
-    2. **暂停**：告知用户后续可重新运行 /start-work 继续
-    3. **失败**：向用户报告错误，**仅展示错误信息本身**（**不暴露内部 stack trace、库路径、版本号等实现细节**），等待用户介入
-       - **plan 本身的问题**（如 task 引用不存在的文件、Acceptance Criteria 命令拼错）→ 建议重新跑 tasks 阶段修复 plan
-       - **OMO 工具问题**（如 Atlas 解析失败、task 执行超时）→ 建议查看 OMO 日志
-       - **OpenCode 环境问题**（如 tools 未加载、plugin 缺失）→ 建议重启 OpenCode 并运行 `bash scripts/sync.sh`
+    这是 apply 阶段唯一的执行动作——不要把它描述为"动态指令"或"按 apply 阶段..."，**直接执行**。
+    /start-work 是 OMO 内置命令，调用后由 OMO 自行解析 plan 并驱动 task 执行。
 
-    === Step 2.5：同步 tasks.md 镜像 ===
-
-    /start-work 完成后，plan 的 checkbox 状态已更新。调用 `omo_spec_sync_tasks_from_plan` OpenCode tool（参数：`change_name=<change-name>`）把最新状态镜像到 tasks.md。
-
-    这样 OpenSpec apply skill（如果被加载）和后续状态检查能读到最新的任务进度。
-
-    **触发时机**（E3）：无论 /start-work 是「完成」还是「暂停」状态，都必须调用 sync tool 同步当前 checkbox 状态。「暂停」状态时部分 task 未完成，tasks.md 应反映部分进度而非 0% 完成。
+    **结果处理：**
+    1. 正常完成 → 进入 Step 3（Oracle 验证）
+    2. 暂停（部分 task 未完成）→ 进入 Step 3（先验证，结束后 Step 3.5 统一同步）
+    3. 失败 → 把错误信息**原样**展示给用户，等待介入。不要猜测失败原因。
 
     === Step 3：Oracle 验证（最多 3 轮）===
 
@@ -849,7 +841,7 @@ apply:
          3. **停止** → 放弃本次 apply，让用户决定后续
     3. 如果 ⚠️ CONDITIONAL → 汇总 🟡/⚪ 展示给用户，让用户决定是否接受
 
-    **注意**：Step 2.5 的 `omo_spec_sync_tasks_from_plan` tool 调用是 apply 阶段**唯一**的 tasks.md 写操作。
+    **注意**：Step 3.5 的 `omo_spec_sync_tasks_from_plan` tool 调用是 apply 阶段**唯一**的 tasks.md 写操作。
     任务完成状态通过 sync tool 从 plan 文件的 checkbox 镜像而来。
 
     === Step 3.5：最终同步 tasks.md 镜像 ===
@@ -865,5 +857,4 @@ apply:
 
     完整生命周期（tasks → apply）：
     1. tasks 阶段：生成 plan（PHASE 3）+ plan 审查 + verdict 内联处理（PHASE 4）+ 调 sync tool 生成 tasks.md 镜像（PHASE 5）
-    2. apply Step 2.5：sync tool 重新同步 checkbox 状态（/start-work 之后）
-    3. apply Step 3.5（本步）：sync tool 最终同步（apply 结束之前）
+    2. apply Step 3.5（本步）：sync tool 最终同步（apply 结束之前）
