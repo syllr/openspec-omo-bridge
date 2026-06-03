@@ -2,18 +2,6 @@ name: spec-driven
 version: 1
 description: Default OpenSpec workflow - proposal → design → specs → tasks → apply
 
-# ============================================================
-# 全局约定：错误消息格式（Oracle review ⚪ #18）
-# ============================================================
-# 所有错误消息必须遵守以下格式：
-#   - 🔴 [步骤名] 中断：[详细说明]                  阻塞错误（必须修复）
-#   - ⚠️ [步骤名]：[详细说明]                       警告（用户决定是否处理）
-#   - ℹ️ [步骤名]：[详细说明]                       信息提示
-# 禁止：
-#   - 不带 emoji 的错误消息
-#   - 暴露内部 stack trace、库路径、版本号
-#   - 用 ⚪ 表示错误（⚪ 仅用于 Oracle 严重程度标识）
-# ============================================================
 artifacts:
   - id: proposal
     generates: proposal.md
@@ -91,7 +79,7 @@ artifacts:
 
       缺少任一部分 → 重新生成。**不**进入 PHASE 3。
 
-      === PHASE 3：Oracle 审查（强制） ===
+      === PHASE 3：Oracle 审查 ===
 
       启动 1 个 Oracle agent 审查生成的 proposal。
       调用前将占位符替换为实际内容。
@@ -165,48 +153,31 @@ artifacts:
       读取以下文件提取设计所需信息：
       - `openspec/changes/<change-name>/proposal.md` — 动机和能力
 
-      === PHASE 2：技术调研（可选） ===
+      === PHASE 2：技术调研 ===
 
-      阅读 proposal 时，注意以下**不确定性信号**：
-      - "可能"、"maybe"、"might"、"needs investigation" 等词语
-      - 引用未文档化的 API 或协议
-      - 关于 API 字段、签名或认证方式的问题
-      - 不明确的库行为或兼容性问题
+      **触发条件**：仅当 `openspec/changes/<change-name>/proposal.md` 中**显式包含 `[NEEDS INVESTIGATION]` 标记**时执行本阶段。
+      如果 proposal.md 没有 `[NEEDS INVESTIGATION]` 标记 → **跳过整个 PHASE 2**，直接进入 PHASE 3。
 
-      对于每个不确定点，按以下流程处理：
+      对于每个标记为 `[NEEDS INVESTIGATION]` 的点：
 
-       1. **识别调研主题**：从 proposal.md 中提取每个不确定点，命名成 kebab-case 的调研主题。例如：`api-signature-format`、`plugin-config-schema`
+       1. **识别调研主题**：从 proposal.md 中提取每个标记点，命名成 kebab-case 的调研主题。例如：`api-signature-format`、`plugin-config-schema`
 
-       2. **两波并发调研**：
+       2. **单波 librarian 并发调研**：
 
-          所有调研产物（脚本、文档、API 响应）保存到临时目录 `$project/spectest/<topic>/`。用户确认后移动到 `openspec/changes/<change-name>/research/<topic>/`
+          所有调研产物保存到 `openspec/changes/<change-name>/research/<topic>/`。
 
-          **第一波 — 所有 librarian 并发**：在同一条消息中发起所有主题的 librarian 任务。每个 librarian 调研其主题的文档或源代码。
+          **所有 librarian 并发**：在同一条消息中发起所有主题的 librarian 任务。每个 librarian 调研其主题的文档或源代码，**直接给出代码示例 + 调用方式**：
 
           ```
-           task(subagent_type="librarian", prompt="调研 plugin.xml 配置声明格式...")
-           task(subagent_type="librarian", prompt="调研 OAuth2 PKCE 流程...")
+           task(subagent_type="librarian", prompt="调研 plugin.xml 配置声明格式，给出代码示例和调用方式。")
+           task(subagent_type="librarian", prompt="调研 OAuth2 PKCE 流程，给出代码示例和调用方式。")
            # ...N 个 topic，全部并发
            ```
 
-           等待所有 librarian 完成后，将每个结果保存到 `spectest/<topic>/notes.md`
+           等待所有 librarian 完成后，将每个结果保存到 `research/<topic>/notes.md`
 
 
-         **第二波 — 所有 agent 并发**：所有 librarian 完成后，在同一条消息中发起所有主题的分析任务。每个 agent 阅读 librarian 的调研结果，编写使用真实 API/接口调用的验证脚本。
-
-          ```
-           task(category="write", load_skills=[], prompt="基于 spectest/plugin-config/notes.md 的调研结果，
-           写一个脚本来实际测试 plugin.xml 配置声明格式。调用真实接口验证签名方式，
-           给出完整的代码示例和调用方式。将脚本和结果保存到 spectest/plugin-config/。")
-           task(category="write", load_skills=[], prompt="基于 spectest/pkce-flow/notes.md 的调研结果，
-           写一个脚本来验证 PKCE code_challenge 生成流程...")
-           # ...N 个 topic，全部并发
-           ```
-
-           等待所有 agent 完成后，将每个结果保存到 `spectest/<topic>/`
-
-
-        3. **用户确认**：向用户展示所有调研结果的摘要，**等待用户明确确认后才能继续**。未确认前不要移动 `spectest/<topic>/` 目录。
+        3. **用户确认**：向用户展示所有调研结果的摘要，**等待用户明确确认后才能继续**。
 
            **超时处理**：如果用户超过 10 分钟未回复，提示用户：「⚠️ 调研结果已准备好超过 10 分钟未确认，请明确确认或拒绝」。**不要自动确认**（避免未审视的调研结论被采纳）。
 
@@ -216,18 +187,15 @@ artifacts:
           openspec/changes/<change-name>/research/
           ├── index.md                    ← 所有调研点的摘要 + 最终结论
           ├── <topic-1>/                  ← 每个调研点一个子目录
-          │   ├── notes.md               ← 调研笔记（文档摘录、分析）
-          │   ├── test-script.sh/py/js   ← 验证脚本（可执行）
-          │   └── results.json           ← 实际返回结果（接口响应等）
+          │   └── notes.md               ← 调研笔记（文档摘录、分析、代码示例、调用方式）
           └── <topic-2>/
               ├── notes.md
               └── ...
           ```
 
        **重要**：
-       - research/ 目录是**可选的** — 只有 proposal 中存在不确定点时才创建
-       - 验证脚本必须是**实际可运行的**（不是伪代码）
-       - spectest/ 是临时目录，用户确认后数据才会移到 research/
+       - research/ 目录是**可选的** — 只有 proposal 中存在 `[NEEDS INVESTIGATION]` 标记时才创建
+       - notes.md 应包含**代码示例 + 调用方式**
 
       === PHASE 3：通过 Agent 生成 ===
 
@@ -293,57 +261,52 @@ artifacts:
 
       **Modified Capability 路径检查**：对 proposal 中列出的每个 Modified Capability，检查 `openspec/specs/<capability>/spec.md` 是否存在。如果不存在，停止工作流，列出所有缺失路径，询问用户是否改为 New Capability 或先创建基础 spec。
 
-      === PHASE 2：通过 Agent 生成 ===
+      === PHASE 2：生成 spec 文件 ===
 
-      将 proposal 和 design 的关键内容打包，委托 agent 生成 spec 文件：
+      读取以下文件提取必要信息：
+      - `openspec/changes/<change-name>/proposal.md` — 动机和 Capabilities
+      - `openspec/changes/<change-name>/design.md` — 技术决策和设计细节
+      - `openspec/changes/<change-name>/research/` — 技术调研结论（如果存在）
 
-       task(category="write", load_skills=[],
-            prompt="根据以下输入生成 spec 文件。
+      用 Write 工具为 proposal 的 Capabilities 部分列出的每个能力创建一个 spec 文件：
+      - 新能力：使用 proposal 中确切的 kebab-case 名称（specs/<capability>/spec.md）
+      - 修改的能力：使用 openspec/specs/<capability> 中已有的 spec 文件夹名称
 
-           输入文件（请直接读取以下文件获取完整内容）：
-           - `openspec/changes/<change-name>/proposal.md` — 动机和 Capabilities
-           - `openspec/changes/<change-name>/design.md` — 技术决策和设计细节
-           - `openspec/changes/<change-name>/research/` — 技术调研结论（如果存在）
+      **VALIDATION RULES**（openspec validate 强制检查以下规则）：
+      1. 每个 requirement 必须以 `### Requirement: <name>` 开头
+      2. Requirement 描述中必须包含大写 MUST 或 SHALL，不要用中文"必须"
+         - 肯定式："The system MUST ..."
+         - 否定式："The system MUST NOT ..."
+      3. 每个 requirement 必须至少有一个 scenario
+      4. 每个 scenario 必须以 `#### Scenario: <name>` 开头（恰好 4 个 #）
+      5. 每个 scenario 正文必须包含 WHEN / THEN 关键词
 
-           为 proposal 的 Capabilities 部分列出的每个能力创建一个 spec 文件。
-           - 新能力：使用 proposal 中确切的 kebab-case 名称（specs/<capability>/spec.md）
-           - 修改的能力：使用 openspec/specs/<capability> 中已有的 spec 文件夹名称
+      **Delta 操作**（使用 ## 标题）：
+      - **ADDED Requirements**（新增需求）：新能力
+      - **MODIFIED Requirements**（修改的需求）：行为变更，必须包含完整更新内容
+      - **REMOVED Requirements**（移除的需求）：已废弃功能，必须包含**原因**和**迁移方案**
+      - **RENAMED Requirements**（重命名的需求）：仅名称变更，使用 FROM:/TO: 格式
 
-           VALIDATION RULES（openspec validate 强制检查以下规则）：
-           1. 每个 requirement 必须以 `### Requirement: <name>` 开头
-           2. Requirement 描述中必须包含大写 MUST 或 SHALL，不要用中文"必须"
-              - 肯定式："The system MUST ..."
-              - 否定式："The system MUST NOT ..."
-           3. 每个 requirement 必须至少有一个 scenario
-           4. 每个 scenario 必须以 `#### Scenario: <name>` 开头（恰好 4 个 #）
-           5. 每个 scenario 正文必须包含 WHEN / THEN 关键词
+      **MODIFIED requirements 工作流**：
+      1. 在 openspec/specs/<capability>/spec.md 中找到现有 requirement
+      2. 复制完整的 requirement 块（从 ### Requirement: 到所有 scenarios）
+      3. 粘贴到 ## MODIFIED Requirements 下，编辑以反映新行为
+      4. 确保标题文本精确匹配
 
-           Delta 操作（使用 ## 标题）：
-           - **ADDED Requirements**（新增需求）：新能力
-           - **MODIFIED Requirements**（修改的需求）：行为变更，必须包含完整更新内容
-           - **REMOVED Requirements**（移除的需求）：已废弃功能，必须包含**原因**和**迁移方案**
-           - **RENAMED Requirements**（重命名的需求）：仅名称变更，使用 FROM:/TO: 格式
+      **常见陷阱**：使用 MODIFIED 但内容部分丢失，会在归档时丢失细节。
+      如果添加不改变现有行为的新关注点，请使用 ADDED。
 
-           MODIFIED requirements 工作流：
-           1. 在 openspec/specs/<capability>/spec.md 中找到现有 requirement
-           2. 复制完整的 requirement 块（从 ### Requirement: 到所有 scenarios）
-           3. 粘贴到 ## MODIFIED Requirements 下，编辑以反映新行为
-           4. 确保标题文本精确匹配
+      **Spec 应该是可测试的** —— 每个 scenario 都是一个潜在的测试用例。
 
-           常见陷阱：使用 MODIFIED 但内容部分丢失，会在归档时丢失细节。
-           如果添加不改变现有行为的新关注点，请使用 ADDED。
-
-           Spec 应该是可测试的 —— 每个 scenario 都是一个潜在的测试用例。
-
-           Example 格式参考：
-           ```
-           ## ADDED Requirements
-           ### Requirement: User can export data
-           The system SHALL allow users to export their data in CSV format.
-           #### Scenario: Successful export
-           - **WHEN** user clicks "Export" button
-           - **THEN** system downloads a CSV file with all user data
-            ```")
+      **Example 格式参考**：
+      ```
+      ## ADDED Requirements
+      ### Requirement: User can export data
+      The system SHALL allow users to export their data in CSV format.
+      #### Scenario: Successful export
+      - **WHEN** user clicks "Export" button
+      - **THEN** system downloads a CSV file with all user data
+      ```
 
 
       === PHASE 3：验证 ===
@@ -362,10 +325,12 @@ artifacts:
   - id: tasks
     generates: tasks.md
     description: >
-      Plan generation (with Metis consultation), multi-agent review,
-      and tasks.md mirroring. Generates .omo/plans/<name>.md (OMO
-      plan), reviews it via Oracle+Momus, and syncs to tasks.md via
-      omo_spec_sync_tasks_from_plan tool.
+      Spec validation, gap analysis, plan generation (with Metis
+      consultation), multi-agent review, and tasks.md mirroring.
+      Validates specs, runs Oracle gap analysis, generates
+      .omo/plans/<name>.md (OMO plan), reviews it via
+      omo_spec_validate_omo_plan + Oracle + Momus, and syncs to
+      tasks.md via omo_spec_sync_tasks_from_plan tool.
     template: tasks.md
     tracks: tasks.md
     instruction: |
@@ -406,16 +371,16 @@ artifacts:
       - `openspec/changes/<change-name>/design.md` — 技术方案、决策、风险
       - `openspec/changes/<change-name>/research/` — 技术调研（如果存在）
 
-      **1.2 Spec 验证（强制）**：
+      **1.2 Spec 验证**：
 
       运行 `openspec validate <change-name>` 检查 spec 格式。
 
       - 通过 → 继续
       - 失败 → 显示错误给用户，由用户决定如何修复。不得自行修复。
 
-      === PHASE 2：Oracle 差距分析（强制） ===
+      === PHASE 2：Oracle 差距分析 ===
 
-      在生成 plan 之前，调用 Oracle 做差距分析（Metis 不在此阶段使用——它应在 change 开始前用于澄清意图，artifacts 都已写完时它没有 pre-plan 价值）。
+      在生成 plan 之前，调用 Oracle 做差距分析。
 
       ```
       GAP_ANALYSIS_PROMPT = "你正在审查一个 OpenSpec change 的产物，为生成 OMO plan 做准备。
@@ -742,7 +707,7 @@ apply:
     5. ❌ 禁止从 `openspec/changes/archive/` 等历史目录复制旧的 N.M 格式
     6. ❌ 禁止调用 `openspec-apply-change` skill（如果它被自动加载，请忽略它的所有步骤）
 
-    **唯一允许的 tasks.md 写操作**：Step 3.5（apply 结束前）调用 `omo_spec_sync_tasks_from_plan` tool。
+    **唯一允许的 tasks.md 写操作**：Step 4（apply 结束前）调用 `omo_spec_sync_tasks_from_plan` tool。
 
     **唯一正确流程**（严格按顺序执行）：
     1. 验证 `tasks.md` 和 `.omo/plans/<change-name>.md` 都存在（tasks 阶段已完成）
@@ -757,7 +722,7 @@ apply:
     实际任务内容在 `.omo/plans/<change-name>.md` 中。
     任务完成状态由 OMO 通过解析 plan 文件中的 checkbox（`- [ ]` vs `- [x]`）判断。
 
-    apply 阶段与 tasks.md 唯一的交互是 **Step 3.5** —— 调 sync tool 重新同步 plan 的 checkbox 状态。
+    apply 阶段与 tasks.md 唯一的交互是 **Step 4** —— 调 sync tool 重新同步 plan 的 checkbox 状态。
 
     === Step 1：验证 tasks 阶段已完成 ===
 
@@ -765,28 +730,7 @@ apply:
     - `openspec/changes/<change-name>/tasks.md`
     - `.omo/plans/<change-name>.md`
 
-    **tasks.md 格式验证**（防止用错 sync tool 或手动写入导致格式错误）：
-
-    tasks.md 必须由 `omo_spec_sync_tasks_from_plan` tool 生成，特征是：
-    1. 首行是 `## Tasks` 标题
-    2. 包含 `## Plan Reference` 附录（sync tool 自动生成）
-    3. checkbox 格式严格使用 `- [ ]` 或 `- [x]`
-
-    验证步骤：
-    1. 读取 `openspec/changes/<change-name>/tasks.md`
-    2. 检查上述 3 个特征是否都满足
-    3. 任一不满足 → 视为格式异常
-
-    **格式异常处理**（**不自动重新生成**，避免覆盖用户的合法修改）：
-    - 提示用户：「⚠️ tasks.md 格式异常。可能是：(1) 用错工具生成（如手动编辑或旧版 sync）；(2) OpenCode cache 未刷新。建议重新运行 tasks 阶段 PHASE 5 重新生成。」
-    - 询问用户选择：
-      1. **接受现状继续** → 进入 Step 2
-      2. **重新跑 tasks PHASE 5** → 退出 apply，让用户重跑 tasks 阶段
-      3. **停止** → 保留当前状态，用户手动处理
-
-    1. 两个文件都存在 + tasks.md 格式正确 → 继续
-    2. 任一文件不存在 → 停止，提示用户：「🔴 tasks 阶段未完成。请先完成 tasks 阶段生成 plan + tasks.md。如果尚未创建 change，请先运行 `openspec new change --schema spec-driven <change-name>`。」
-    3. tasks.md 格式异常 → 按上述 3 选 1 处理
+    任一文件不存在 → 停止，提示用户：「🔴 tasks 阶段未完成。请先完成 tasks 阶段生成 plan + tasks.md。如果尚未创建 change，请先运行 `openspec new change --schema spec-driven <change-name>`。」
 
     === Step 2：执行 /start-work ===
 
@@ -800,7 +744,7 @@ apply:
 
     **结果处理：**
     1. 正常完成 → 进入 Step 3（Oracle 验证）
-    2. 暂停（部分 task 未完成）→ 进入 Step 3（先验证，结束后 Step 3.5 统一同步）
+    2. 暂停（部分 task 未完成）→ 进入 Step 3（先验证，结束后 Step 4 统一同步）
     3. 失败 → 把错误信息**原样**展示给用户，等待介入。不要猜测失败原因。
 
     === Step 3：Oracle 验证（最多 3 轮）===
@@ -841,10 +785,10 @@ apply:
          3. **停止** → 放弃本次 apply，让用户决定后续
     3. 如果 ⚠️ CONDITIONAL → 汇总 🟡/⚪ 展示给用户，让用户决定是否接受
 
-    **注意**：Step 3.5 的 `omo_spec_sync_tasks_from_plan` tool 调用是 apply 阶段**唯一**的 tasks.md 写操作。
+    **注意**：Step 4 的 `omo_spec_sync_tasks_from_plan` tool 调用是 apply 阶段**唯一**的 tasks.md 写操作。
     任务完成状态通过 sync tool 从 plan 文件的 checkbox 镜像而来。
 
-    === Step 3.5：最终同步 tasks.md 镜像 ===
+    === Step 4：最终同步 tasks.md 镜像 ===
 
     Step 3 验证结束后（无论 PASS / CONDITIONAL / 超限），**最终**调用一次 `omo_spec_sync_tasks_from_plan` tool（batch 模式无参）同步所有 plan 状态到 tasks.md。
 
@@ -857,4 +801,4 @@ apply:
 
     完整生命周期（tasks → apply）：
     1. tasks 阶段：生成 plan（PHASE 3）+ plan 审查 + verdict 内联处理（PHASE 4）+ 调 sync tool 生成 tasks.md 镜像（PHASE 5）
-    2. apply Step 3.5（本步）：sync tool 最终同步（apply 结束之前）
+    2. apply Step 4（本步）：sync tool 最终同步（apply 结束之前）
