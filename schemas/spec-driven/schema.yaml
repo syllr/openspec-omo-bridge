@@ -384,7 +384,6 @@ artifacts:
 
       ```
       GAP_ANALYSIS_PROMPT = "你正在审查一个 OpenSpec change 的产物，为生成 OMO plan 做准备。
-      请逐一检查以下所有检查项：
 
       审查文件：
       - `openspec/changes/<change-name>/proposal.md` — 动机和能力
@@ -392,23 +391,44 @@ artifacts:
       - `openspec/changes/<change-name>/design.md` — 技术方案、决策、风险
       - `openspec/changes/<change-name>/research/` — 技术调研（如果存在）
 
-      信源优先级：proposal.md > design.md > specs
+      信源规则：
+      - #1（遗漏/溢出）：以 proposal.md 为范围锚点
+      - #3（验收标准）：以 specs 为权威来源
+      - #5（一致性）：不做自动裁决，发现矛盾时同时列出双方原文，由人类判定
 
-      1. 遗漏与溢出——proposal 中的要点未被 specs/design 覆盖？反之，specs/design 中是否有 proposal 未提及的内容（scope leak）？
-      2. scope creep / AI-slop——是否有模糊、空洞或不必要的范围扩张？
-      3. 缺失的验收标准——每个 requirement 是否有明确的验收方式？
-      4. 未覆盖的边界情况——错误路径、并发、权限等是否被考虑？
-      5. artifacts 一致性——specs 和 design 之间是否有矛盾？（spec 说 A，design 说 B）
-      6. 表达模糊——是否有表述不清、可能产生歧义的地方？
-      7. research 完整性——proposal 中标记 [NEEDS INVESTIGATION] 的不确定点是否都有对应的 research/ 产出？结论是否在 design 中被引用？
-      8. decision 理由——design 中的关键技术决策是否都有明确的选型理由？有无"选 X 但没说为什么"的情况？
-      9. task 可衍生性——每个 requirement 是否能自然拆分为一个或多个可执行的 task？
-      10. 依赖隐含——是否有隐含的先后依赖关系未被明确声明？
+      请按以下三组顺序逐一检查，组内按编号顺序执行，不得跳过。
 
-      严重程度：🔴 阻塞 / 🟡警告 / ⚪ 建议
-      输出格式：按严重程度列出发现，对每个 🔴/🟡 给出具体修改建议"
+      === A. 宏观一致性 ===
+      1. 遗漏与溢出——proposal 中的要点未被 specs/design 覆盖？反之，specs/design 中是否有 proposal 未提及的内容？
+      2. artifacts 一致性——specs 和 design 之间是否有矛盾？（发现矛盾时列出双方原文，不做自动裁决）
+      3. research 完整性——proposal 中标记 [NEEDS INVESTIGATION] 的不确定点是否都有对应的 research/ 产出？结论是否在 design 中被引用？
+      4. decision 理由——design 中的关键技术决策是否都有明确的选型理由？有无"选 X 但没说为什么"的情况？
 
-      task(subagent_type="oracle", prompt=GAP_ANALYSIS_PROMPT)
+      === B. 微观质量 ===
+      5. 缺失的验收标准——每个 requirement 是否有明确的 WHEN/THEN 验收场景？
+      6. 边界情况覆盖——错误路径、并发、权限、空输入、超大输入等是否被识别？（注：识别了但未写验收标准的归入 #5）
+      7. 表达模糊——是否存在：(a) 同一概念在不同 artifact 中使用不同术语；(b) 使用了无量化指标的形容词且未定义度量方式；(c) 代词指代不明
+
+      === C. 可执行性 ===
+      8. scope creep——是否有 proposal 未提及的新增范围？（注：#1 检查"有没有覆盖"，本项检查"是否该做"）
+      9. task 可衍生性——每个 requirement 是否涉及 ≤1 个独立代码变更？若涉及 ≥2 个不同文件/模块的变更，标记为需要拆分
+      10. 依赖隐含——task 之间是否有未声明的先后依赖关系？
+
+      严重程度判定锚点：
+      🔴 阻塞：会导致 plan 生成错误或 task 无法执行（遗漏核心需求、验收标准缺失、artifacts 矛盾）
+      🟡 警告：不阻塞但会降低 plan 质量（表达模糊、scope creep、边界情况未覆盖）
+      ⚪ 建议：可改进但不影响执行（命名不一致、缺少注释）
+
+      输出格式（严格遵守）：
+      ### Findings
+      [序号] 严重程度 检查项名称
+          发现：具体描述
+          建议：具体修改建议
+
+      ### Summary
+      🔴: N | 🟡: N | ⚪: N
+
+      如果所有检查项均无发现，输出：### Summary\n✅ 全部通过，无发现"
       ```
 
       **收集评审结果：**
