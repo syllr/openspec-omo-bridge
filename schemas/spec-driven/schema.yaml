@@ -113,12 +113,10 @@ artifacts:
       1. 读取 Oracle 输出 → 列出所有 🔴/🟡/⚪ 发现
       2. **自检**：确认 Oracle 结果已成功读取。如有遗漏，回到步骤 1 重新读取
       3. 分类判定：
-         - 有任何 🔴 → BLOCKED，委托 agent 修复 proposal.md：
-           task(category="write", load_skills=[],
-                prompt="根据以下审查结果，修复 proposal.md 中被指出的问题。
-                只修复标记为 🔴 的问题，不要修改其他内容。
-                Oracle 审查发现的所有问题：
-                [将 Oracle 输出的所有 🔴 问题及修复建议以文本形式填入此处]")
+         - 有任何 🔴 → BLOCKED，AI 用 Read/Edit 工具直接修复 proposal.md：
+           只修复标记为 🔴 的问题，不要修改其他内容。
+           Oracle 审查发现的所有问题：
+           [将 Oracle 输出的所有 🔴 问题及修复建议以文本形式填入此处]
            修复完成后重新运行 PHASE 3（最多 3 轮）
          - 仅 🟡/⚪ → 展示给用户，让用户评估决定是否修复
 
@@ -197,18 +195,14 @@ artifacts:
        - research/ 目录是**可选的** — 只有 proposal 中存在 `[NEEDS INVESTIGATION]` 标记时才创建
        - notes.md 应包含**代码示例 + 调用方式**
 
-      === PHASE 3：通过 Agent 生成 ===
+      === PHASE 3：生成 design.md ===
 
-      打包所有上下文和研究发现（如果存在）到完整 prompt 中，委托 agent 生成设计文档：
+      AI 用 Read/Write 工具直接创建 design.md：
 
-       task(category="write", load_skills=[],
-            prompt="为以下变更生成技术设计文档（design.md）。
+      - 读取 `openspec/changes/<change-name>/proposal.md` — 动机和能力
+      - 读取 `openspec/changes/<change-name>/research/` — 技术调研（如果存在）
 
-           输入文件（请直接读取以下文件获取完整内容）：
-           - `openspec/changes/<change-name>/proposal.md` — 动机和能力
-           - `openspec/changes/<change-name>/research/` — 技术调研（如果存在）
-
-           设计文档必须包含以下部分：
+      设计文档必须包含以下部分：
 
            1. **Context**（上下文）：背景、当前状态、约束、干系人
            2. **Goals / Non-Goals**（目标/非目标）：设计要实现的和明确排除的
@@ -435,12 +429,10 @@ artifacts:
       1. 读取 Oracle 输出 → 列出所有 🔴/🟡/⚪ 发现
       2. **自检**：确认 Oracle 结果已成功读取。如有遗漏，回到步骤 1 重新读取
       3. 分类判定：
-         - 有任何 🔴 → BLOCKED，委托 agent 修复 artifacts：
-           task(category="write", load_skills=[],
-                prompt="根据以下差距分析结果，修复 proposal/specs/design 中被指出的问题。
-                只修复标记为 🔴 的问题，不要修改其他内容。
-                Oracle 审查发现的所有问题：
-                [将 Oracle 输出的所有 🔴 问题及修复建议以文本形式填入此处]")
+         - 有任何 🔴 → BLOCKED，AI 用 Read/Edit 工具直接修复 artifacts：
+           只修复标记为 🔴 的问题，不要修改其他内容。
+           Oracle 审查发现的所有问题：
+           [将 Oracle 输出的所有 🔴 问题及修复建议以文本形式填入此处]
            修复完成后重新运行 PHASE 2（最多 3 轮）
          - 仅 🟡/⚪ → 记录清单，**留到 PHASE 4 末尾统一问用户**
 
@@ -650,12 +642,10 @@ artifacts:
       3. **自检**：确认所有 2 个 agent 结果都已读完。如有遗漏，回到步骤 1 重新读取
       4. 合并发现：同一问题多个 agent 都发现时取更高严重程度
       5. 分类判定：
-          - Momus 🔴 REJECT 或 任一 agent 有 🔴 → BLOCKED，委托 agent 修复 plan：
-            task(category="write", load_skills=[],
-                 prompt="根据以下审查结果，一次性修复 plan 中被指出的问题。
-                 只修复标记为 🔴 的问题，不要修改其他内容。
-                 Oracle + Momus 审查发现的所有问题：
-                 [将两个 agent 输出的所有 🔴 问题及修复建议以文本形式填入此处]")
+          - Momus 🔴 REJECT 或 任一 agent 有 🔴 → BLOCKED，AI 用 Read/Edit 工具直接修复 plan：
+            只修复标记为 🔴 的问题，不要修改其他内容。
+            Oracle + Momus 审查发现的所有问题：
+            [将两个 agent 输出的所有 🔴 问题及修复建议以文本形式填入此处]
             修复完成后重新运行 PHASE 4（**最多 3 轮**，超限后汇总给用户）
          - 仅 🟡/⚪ → 进入 5.4 verdict 处理
 
@@ -792,11 +782,10 @@ apply:
     读取 Oracle 输出中的最终判定：
     1. 如果 ✅ PASS → 完成
     2. 如果 🔴 BLOCKED（**最多 3 轮**）：
-         将所有 🔴 问题打包，调用 agent 一次性修复：
-         task(category="write", load_skills=[],
-              prompt="根据以下验证结果修复实现产出。只修复标记为 🔴 的问题，不要修改其他内容。
-              Oracle 验证结果中的所有 🔴 问题：
-              [将 Oracle 输出的 🔴 问题列表及修复建议填入此处]")
+         将所有 🔴 问题打包，AI 用 Read/Edit 工具直接修复实现：
+         只修复标记为 🔴 的问题，不要修改其他内容。
+         Oracle 验证结果中的所有 🔴 问题：
+         [将 Oracle 输出的 🔴 问题列表及修复建议填入此处]
          修复完成后重新调用 `omo_spec_prepare_verification_context` 并重跑 Oracle 验证
 
          **超限处理**（3 轮后仍有 🔴）：汇总所有剩余 🔴 给用户，让用户选择：

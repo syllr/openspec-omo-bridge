@@ -2,13 +2,6 @@ name: constitution
 version: 1
 description: Simplified 3-stage schema for project constitution - scan → design → apply
 
-# ============================================================
-# 共享约定：与 spec-driven schema 的引用关系（Oracle review ⚪ #6）
-# ============================================================
-# 本 schema 的 Constitution 区域格式详见 spec-driven schema 的 AGENTS.md 约定。
-# 两个 schema 共用 AGENTS.md 作为宪法元数据的存储位置，
-# constitution 用 <!-- constitution-start/end --> 标记隔离，spec-driven 用 ## Constitution 区域。
-# ============================================================
 artifacts:
   - id: scan
     generates: scan.md
@@ -82,25 +75,17 @@ artifacts:
 
       === Step 4：生成 scan.md ===
 
-      打包上下文，委托 category="write" 生成 scan.md：
+      AI 用 Read/Write 工具直接创建 scan.md：
 
-      **Fast fail**：如果以下 task(category="write") 调用失败（超时、不可用、出错），立即停止工作流，向用户报告：「🔴 scan.md 生成失败。[错误信息]」，等待用户介入。
+      - 读取模板：schemas/constitution/templates/scan.md
+      - 用户选择的维度：[填入]
+      - 适用技术栈：[填入用户确认的技术栈，或"通用"]
+      - 用户需求摘要：[填入用户描述的具体需求]
+      - 操作类型：[INIT 新增维度 / APPEND 追加 tech_stack / UPDATE 覆盖已有条目]（来自精检去重结果）
+      - 已有维度列表：[从 AGENTS.md 读取]
+      - 精确去重结果：[完全重复/可以追加/新增维度]
 
-      task(category="write", load_skills=[],
-          prompt="生成 scan.md 文件。
-
-          输入文件（请直接读取）：
-          - scan.md 模板：schemas/constitution/templates/scan.md
-
-          直接传入的上下文：
-          - 用户选择的维度：[填入用户选择的维度名称]
-          - 适用技术栈：[填入用户确认的技术栈，或"通用"]
-          - 用户需求摘要：[填入用户描述的具体需求]
-          - 操作类型：[INIT 新增维度 / APPEND 追加 tech_stack / UPDATE 覆盖已有条目]（来自精检去重结果）
-          - 已有维度列表：[从 AGENTS.md 中读取的已有维度列表]
-          - 精确去重结果：[完全重复/可以追加/新增维度]
-
-          按模板结构输出。只聚焦用户选择的维度。")
+      按模板结构输出。只聚焦用户选择的维度。
     requires: [ ]
   - id: design
     generates: design.md
@@ -152,29 +137,21 @@ artifacts:
 
        === Step 4：生成 design.md ===
 
-       **Fast fail**：如果以下 task(category="write") 调用失败，立即停止工作流，向用户报告：「🔴 design.md 生成失败。[错误信息]」，等待用户介入。
+       AI 用 Read/Write 工具直接创建 design.md：
 
-       task(category="write", load_skills=[],
-           prompt="生成 design.md 文件。
+       - 读取模板：schemas/constitution/templates/design.md
+       - 读取 Scan：openspec/changes/<change-name>/scan.md
+       - 读取 Research：openspec/changes/<change-name>/research/<dimension>/（如果存在）
+       - 聚焦维度：[填入]
+       - 用户确认内容：[填入用户批准的规则]
 
-          输入文件（请直接读取）：
-          - 模板：schemas/constitution/templates/design.md
-          - Scan：openspec/changes/<change-name>/scan.md
-          - Research：openspec/changes/<change-name>/research/<dimension>/（如果存在）
+       design.md 需要包含：
+       1. 该维度的最终规则列表（按 tech_stack 分组）
+       2. 写入 docs/constitution/<dimension>/<file>.md 的规范内容
 
-          直接传入的上下文：
-          - 聚焦维度：[填入本次聚焦的维度]
-          - 用户确认内容：[填入用户批准的规则]
-
-          design.md 需要包含以下信息：
-          1. 该维度的最终规则列表（按 tech_stack 分组）
-          2. 写入 docs/constitution/<dimension>/<file>.md 的规范内容
-
-          按模板结构输出。")
+       按模板结构输出。
     requires:
       - scan
-  # tasks 和 critic 阶段已删除：对于 constitution 场景，
-  # 产出只是几个文档文件，不需要复杂的执行计划和多 agent 评审。
   # apply 直接基于 design 输出创建文件。
 apply:
   requires:
@@ -183,7 +160,7 @@ apply:
   instruction: |
     __LANG_PLACEHOLDER__
 
-    **重要：tasks 和 critic 阶段已删除。apply 直接基于 design 输出创建文件。**
+      **apply 直接基于 design 输出创建文件。**
 
       === Step 1：读取上下文 ===
 
@@ -256,35 +233,31 @@ apply:
 
       ---
 
-      **统一的 write agent prompt（请根据上述场景选择对应的操作部分）：**
+      AI 用 Read/Edit 工具直接更新 AGENTS.md 的 Constitution 区域（不委托 write agent）：
 
-      **Fast fail**：如果以下 task(category="write") 调用失败，立即停止工作流，向用户报告：「🔴 AGENTS.md 更新失败。[错误信息]」，等待用户介入。不得手动修改 AGENTS.md。
+      - 操作类型：{INIT / APPEND / UPDATE}
+      - 目标维度：<dimension>
+      - 目标 tech_stack：<tech_stack>
+      - 新增/更新的条目描述：<条目描述>
 
-      task(category="write", load_skills=[],
-          prompt="更新 AGENTS.md 的 Constitution 区域。
+      AGENTS.md 中 Constitution 区域格式：
+      ```markdown
+      ## Constitution
+      <!-- constitution-start -->
+      - **code-conventions** — 代码风格/命名/注释规范
+        - `通用` 格式化/命名/注释规范
+        - `python` PEP 8, type hints
+      - **architecture** — 分层/模块/依赖方向
+        - `通用` 分层架构约束
+      <!-- constitution-end -->
+      ```
 
-          操作类型：{INIT / APPEND / UPDATE}
-          目标维度：<dimension>
-          目标 tech_stack：<tech_stack>
-          新增/更新的条目描述：<条目描述>
+      根据操作类型执行：
+      - INIT：在 AGENTS.md 末尾创建 ## Constitution 区域（含标记），写入新维度条目
+      - APPEND：找到 `**<dimension>**` 块，在其条目列表末尾追加 `- <tech_stack> <描述>`
+      - UPDATE：找到 `**<dimension>**` 下对应的 `` `<tech_stack>` `` 行，替换描述部分
 
-          AGENTS.md 中 Constitution 区域格式：
-          ```markdown
-          ## Constitution
-          <!-- constitution-start -->
-          - **code-conventions** — 代码风格/命名/注释规范
-            - `通用` 格式化/命名/注释规范
-            - `python` PEP 8, type hints
-          - **architecture** — 分层/模块/依赖方向
-            - `通用` 分层架构约束
-          <!-- constitution-end -->
-          ```
-
-          根据操作类型执行：
-          - INIT：在 AGENTS.md 末尾创建 ## Constitution 区域（含标记），写入新维度条目
-          - APPEND：找到 `**<dimension>**` 块，在其条目列表末尾追加 `- <tech_stack> <描述>`
-          - UPDATE：找到 `**<dimension>**` 下对应的 `` `<tech_stack>` `` 行，替换描述部分
-          不要修改 Constitution 区域之外的任何内容。不要修改子目录的 AGENTS.md。")
+      不要修改 Constitution 区域之外的任何内容。不要修改子目录的 AGENTS.md。
 
       === Step 4：自检 ===
 
