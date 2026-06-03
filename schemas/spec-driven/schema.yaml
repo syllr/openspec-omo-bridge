@@ -336,22 +336,6 @@ artifacts:
       2. 向用户报告：「🔴 [PHASE 名] 中断：[agent/tool/skill 名] 调用失败。[错误信息]」
       3. 等待用户介入
 
-      === 核心架构：本阶段做 5 件事 ===
-
-      | PHASE | 工作 | 产出 |
-      |-------|------|------|
-      | 1 | 读取上下文 + Spec 验证 | 通过/失败 |
-      | 2 | Oracle 差距分析 | 修复 proposal/specs/design 中的 🔴 |
-      | 3 | Metis 咨询 + AI 直接生成 OMO plan（write_new_plan tool） | `.omo/plans/<change-name>.md` |
-      | 4 | Oracle + Momus 并行审查 | Verdict（内联处理：🟡/⚪ 问用户，🔴 修复） |
-      | 5 | 调用 omo_spec_sync_tasks_from_plan tool | `tasks.md`（plan 镜像，**仅在审查通过后**） |
-
-      **关键概念**：
-      - **plan 是唯一的 task 定义来源** —— OMO 通过解析 plan 的 checkbox 追踪进度
-      - **tasks.md 是 plan 的镜像** —— 由 `omo_spec_sync_tasks_from_plan` tool 在 PHASE 5 生成
-      - **Verdict 内联处理** —— PHASE 4 审查后的 🟡/⚪ 立即问用户，接受才进入 apply，无需 critic/verdict 文件
-      - **OpenSpec apply 阶段不会读 critic.md** —— apply 阶段只检查 tasks.md 存在
-
       === PHASE 1：读取上下文 + Spec 验证 ===
 
       **1.1 读取以下文件：**
@@ -557,8 +541,6 @@ artifacts:
       - ✅ 通过（11/11）→ 进入 PHASE 4
       - ❌ 失败 → tool 会 throw 错误，按错误信息修复 plan 后重新验证（最多 3 轮）
 
-      **完成标志**：`omo_spec_validate_omo_plan` 返回 `✅ plan 结构检查通过（11/11）` 即可进入 PHASE 4。
-
       === PHASE 4：Oracle + Momus 并行审查 Plan + Verdict 处理 ===
 
       **4.1 plan 结构检查（OMO 兼容性）**：
@@ -669,7 +651,9 @@ apply:
 
     === 关键：与 openspec-apply-change skill 的冲突 ===
 
-    本系统使用自定义的 `spec-driven` schema，与标准 `openspec-apply-change` skill 的行为**完全不同**。
+    本 apply 阶段由 `openspec-apply-change` skill 触发，但本系统使用自定义的 `spec-driven` schema，与标准 skill 的行为**完全不同**。
+
+    **优先级声明**：本 instruction 中的所有命令优先级**高于** `openspec-apply-change` skill 的步骤。AI 必须按本 instruction 执行，**忽略** skill 中任何与本 instruction 冲突的步骤。
 
     **绝对禁止**（如违反会产生错误的 tasks.md）：
     1. ❌ 禁止**手动**重写或重新生成 `tasks.md`（无论是 `1.1` 格式还是其他格式）— tasks.md 只能由 `omo_spec_sync_tasks_from_plan` tool 写入
@@ -677,24 +661,9 @@ apply:
     3. ❌ 禁止**手动**标记 `tasks.md` 中的 checkbox — checkbox 由 sync tool 从 plan 镜像
     4. ❌ 禁止执行 skill 的 Step 6（"Mark task complete in the tasks file"）
     5. ❌ 禁止从 `openspec/changes/archive/` 等历史目录复制旧的 N.M 格式
-    6. ❌ 禁止调用 `openspec-apply-change` skill（如果它被自动加载，请忽略它的所有步骤）
+    6. ❌ 禁止调用 `openspec-apply-change` skill 中的任何写入/读取 tasks.md 的步骤（如果它被自动加载，请忽略它的所有步骤）
 
     **唯一允许的 tasks.md 写操作**：Step 4（apply 结束前）调用 `omo_spec_sync_tasks_from_plan` tool。
-
-    **唯一正确流程**（严格按顺序执行）：
-    1. 验证 `tasks.md` 和 `.omo/plans/<change-name>.md` 都存在（tasks 阶段已完成）
-    2. 调用 `/start-work .omo/plans/<change-name>.md`（这是唯一的执行方式）
-    3. 等待 OMO 完成或暂停
-    4. 用 `git diff` 验证实现（不涉及 tasks.md）
-
-    === 核心架构（必读）===
-
-    tasks.md 是 `.omo/plans/<change-name>.md` 的镜像，由 `omo_spec_sync_tasks_from_plan` tool 在 **tasks 阶段 PHASE 5** 生成。
-
-    实际任务内容在 `.omo/plans/<change-name>.md` 中。
-    任务完成状态由 OMO 通过解析 plan 文件中的 checkbox（`- [ ]` vs `- [x]`）判断。
-
-    apply 阶段与 tasks.md 唯一的交互是 **Step 4** —— 调 sync tool 重新同步 plan 的 checkbox 状态。
 
     === Step 1：验证 tasks 阶段已完成 ===
 
@@ -743,18 +712,14 @@ apply:
 
     读取 Oracle 输出中的最终判定：
     1. 如果 ✅ PASS → 完成
-    2. 如果 🔴 BLOCKED（**最多 3 轮**）：
-         将所有 🔴 问题打包，AI 用 Read/Edit 工具直接修复实现：
-         只修复标记为 🔴 的问题，不要修改其他内容。
-         Oracle 验证结果中的所有 🔴 问题：
-         [将 Oracle 输出的 🔴 问题列表及修复建议填入此处]
+    2. 如果 🔴 或 🟡 BLOCKED（**最多 3 轮**）：
+         AI 用 Read/Edit 工具直接修复实现：
+         只修复标记为 🔴/🟡 的问题，不要修改其他内容。
+         Oracle 验证结果中的所有 🔴/🟡 问题：
+         [将 Oracle 输出的 🔴/🟡 问题列表及修复建议填入此处]
          修复完成后重新调用 `omo_spec_prepare_verification_context` 并重跑 Oracle 验证
-
-         **超限处理**（3 轮后仍有 🔴）：汇总所有剩余 🔴 给用户，让用户选择：
-         1. **接受剩余风险** → 视为 CONDITIONAL，继续
-         2. **手动修复** → 保留当前状态，用户编辑后重新跑 Step 3
-         3. **停止** → 放弃本次 apply，让用户决定后续
-    3. 如果 ⚠️ CONDITIONAL → 汇总 🟡/⚪ 展示给用户，让用户决定是否接受
+         超限（3 轮后仍有 🔴/🟡）→ 汇总所有剩余展示给用户
+    3. 如果 ⚠️ CONDITIONAL → 汇总 ⚪ 展示给用户
 
     **注意**：Step 4 的 `omo_spec_sync_tasks_from_plan` tool 调用是 apply 阶段**唯一**的 tasks.md 写操作。
     任务完成状态通过 sync tool 从 plan 文件的 checkbox 镜像而来。

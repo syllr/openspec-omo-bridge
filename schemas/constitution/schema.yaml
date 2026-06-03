@@ -274,7 +274,7 @@ apply:
       test "$(grep -c '\*\*<dimension>\*\*' AGENTS.md)" -le 1 && echo "no duplicate dimension title"
       ```
 
-      如果任何检查失败，警告用户并提供修复选项。建议先备份 AGENTS.md（cp AGENTS.md AGENTS.md.bak）。
+      如果任何检查失败，警告用户并提供修复选项。
 
       === Step 5：报告结果 ===
 
