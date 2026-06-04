@@ -82,3 +82,8 @@ coverage/
 
 # OMO plan files (runtime, per-developer)
 .omo/
+
+# bun test auto-generated
+tools/__tests__/package.json
+tools/__tests__/package-lock.json
+tools/__tests__/node_modules/

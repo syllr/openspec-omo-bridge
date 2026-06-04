@@ -43,11 +43,11 @@ scripts/sync.sh --dry-run             # 预览
 
 ## The 3 tools
 
-| Tool 名                                 | 作用                                                      | 参数                                                                                            |
-| --------------------------------------- | --------------------------------------------------------- | ----------------------------------------------------------------------------------------------- |
-| `omo_spec_sync_tasks_from_plan`         | 把 `.omo/plans/*.md` 镜像成 `openspec/changes/*/tasks.md` | `{ change_name?: string }` — 传单个 / 不传批量                                                  |
-| `omo_spec_validate_omo_plan`            | 验证 plan 是否符合 OMO 兼容性（11 项检查）                | `{ change_name: string, plan_file_path: string }` — `plan_file_path` 是 plan 文件的绝对路径     |
-| `omo_spec_prepare_verification_context` | 组装实现验证上下文（artifacts + 5 维度 + verdict 规则）   | `{ change_name: string, change_dir_path: string }` — `change_dir_path` 是 change 目录的绝对路径 |
+| Tool 名                                 | 作用                                                      | 参数                                                                      |
+| --------------------------------------- | --------------------------------------------------------- | ------------------------------------------------------------------------- |
+| `omo_spec_sync_tasks_from_plan`         | 把 `.omo/plans/*.md` 镜像成 `openspec/changes/*/tasks.md` | `{ change_name?: string, plan_file_path?: string }` — 都不传 → batch 批量 |
+| `omo_spec_validate_omo_plan`            | 验证 plan 是否符合 OMO 兼容性（11 项检查）                | `{ change_name?: string, plan_file_path?: string }` — 至少传一个          |
+| `omo_spec_prepare_verification_context` | 组装实现验证上下文（artifacts + 5 维度 + verdict 规则）   | `{ change_name?: string, plan_file_path?: string }` — 至少传一个          |
 
 **Tool 命名规则**：`omo_spec_<exportname>`（`<file>_<exportname>`，hyphen → underscore）。`omo-spec.ts` 文件名 → tool 名前缀 `omo_spec_`。
 
@@ -77,11 +77,15 @@ scripts/sync.sh --dry-run             # 预览
 
 抛错统一格式 `❌ 标题\n   详情\n   修复：建议`。`output` 给 LLM 看，`metadata` 给程序消费。
 
-**路径参数**：两个 read 类 tool 都接受单 `string` 路径参数（**不是 array**），跟 OpenCode read tool 的 `paths: array` 元数据约定解耦。`validate_omo_plan.plan_file_path` = `<root>/.omo/plans/<change-name>.md`；`prepare_verification_context.change_dir_path` = `<root>/openspec/changes/<change-name>`。LLM 必须传**单个绝对路径字符串**（不会让 LLM 因传错格式 string vs array 失败）。
+**参数解析**:3 个 tool 共享参数 schema `(change_name?: string, plan_file_path?: string)`,通过纯函数 `resolveChangeContext(args, projectRoot)` 推导 `changeName / planPath / changeDir`。
+
+- `validate_omo_plan` / `prepare_verification_context`:两个参数都可选,**至少传一个**,否则 throw
+- `sync_tasks_from_plan`:两个都不传 → batch 模式(扫所有 `.omo/plans/*.md`)
+- 推导优先级:`plan_file_path` 的 basename(去掉 `.md`)推 `change_name`;仅传 `change_name` 时拼 `<root>/.omo/plans/<change_name>.md`;两者都传则验证一致性
 
 ## 4 pure functions (可独立 import，零 OpenCode 依赖)
 
-`parseOmoPlan(content, changeName): OmoPlan` · `generateOpenSpecTasks(plan): string` · `validateOmoPlan(content, changeName): OmoPlanValidation` · `prepareVerificationContext(changeName, artifacts, changedFiles): VerificationContext`
+`parseOmoPlan(content, changeName): OmoPlan` · `generateOpenSpecTasks(plan): string` · `validateOmoPlan(content, changeName): OmoPlanValidation` · `resolveChangeContext(args, projectRoot): ResolvedChangeContext` · `prepareVerificationContext(changeName, artifacts, changedFiles): VerificationContext`
 
 测试用 `import { parseOmoPlan, generateOpenSpecTasks, validateOmoPlan } from "../omo-spec"` 复用纯函数。`prepare_verification_context` tool 的 `metadata` 给 Oracle agent 用，Oracle **自己**跑 `git diff --name-only HEAD` 拿变更文件（不通过 tool，避免 Bun.spawn 跨运行时）。
 

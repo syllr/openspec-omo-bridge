@@ -30,10 +30,9 @@ import {
   prepare_verification_context as verify_implementation,
 } from "../omo-spec"
 
-function verifyArgs(changeName: string, t: string) {
+function verifyArgs(changeName: string, _t: string) {
   return {
     change_name: changeName,
-    change_dir_path: join(t, "openspec", "changes", changeName),
   }
 }
 

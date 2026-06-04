@@ -375,6 +375,101 @@ export function validateOmoPlan(
   }
 }
 
+/**
+ * Tool 调用参数 → 推导 change 上下文。
+ * - 接受 `change_name` (可选) + `plan_file_path` (可选),**至少传一个**
+ * - 优先用 `plan_file_path` 推 `change_name`(basename 去掉 `.md`)
+ * - 仅传 `change_name` 时,从 `<projectRoot>/.omo/plans/<change_name>.md` 推 `plan_path`
+ * - 两者都传时验证一致性
+ * @param args tool 调用 args (只取 change_name 和 plan_file_path 两个字段)
+ * @param projectRoot OpenCode context.directory
+ * @returns 解析后的 changeName / planPath / changeDir
+ * @throws 缺参数 / 不一致 / 路径格式错误时 throw
+ */
+export interface ResolvedChangeContext {
+  changeName: string
+  planPath: string
+  changeDir: string
+}
+
+export function resolveChangeContext(
+  args: { change_name?: string; plan_file_path?: string },
+  projectRoot: string
+): ResolvedChangeContext {
+  if (args.change_name !== undefined && typeof args.change_name !== "string") {
+    throw new Error(
+      `❌ 参数类型错误：change_name\n` +
+        `   收到类型：${typeof args.change_name}（值：${JSON.stringify(args.change_name)}）\n` +
+        `   应传：string 或省略`
+    )
+  }
+  if (args.plan_file_path !== undefined && typeof args.plan_file_path !== "string") {
+    throw new Error(
+      `❌ 参数类型错误：plan_file_path\n` +
+        `   收到类型：${typeof args.plan_file_path}（值：${JSON.stringify(args.plan_file_path)}）\n` +
+        `   应传：string 或省略`
+    )
+  }
+
+  const cn = args.change_name?.trim() || ""
+  const pp = args.plan_file_path?.trim() || ""
+
+  if (!cn && !pp) {
+    throw new Error(
+      `❌ 至少传一个参数：change_name 或 plan_file_path\n` +
+        `   用途：定位 change 目录和 plan 文件\n` +
+        `   修复：传 change_name='my-change' 或 plan_file_path='${resolve(projectRoot, ".omo", "plans", "my-change.md")}'`
+    )
+  }
+
+  let changeName: string
+  let planPath: string
+
+  if (pp) {
+    if (!pp.endsWith(".md")) {
+      throw new Error(
+        `❌ plan_file_path 必须以 .md 结尾：${pp}\n` +
+          `   修复：传 .omo/plans/<change-name>.md 这样的绝对路径`
+      )
+    }
+    planPath = pp
+    const base = basename(pp, ".md")
+    if (!base) {
+      throw new Error(
+        `❌ plan_file_path 格式错误：${pp}\n` +
+          `   修复：传 .omo/plans/<change-name>.md 这样的绝对路径`
+      )
+    }
+    changeName = base
+    if (cn && cn !== changeName) {
+      throw new Error(
+        `❌ change_name='${cn}' 与 plan_file_path 推导出 change_name='${changeName}' 不一致\n` +
+          `   修复：传一致的 change_name 和 plan_file_path,或只传其中一个`
+      )
+    }
+  } else {
+    changeName = cn
+    planPath = resolve(projectRoot, ".omo", "plans", `${changeName}.md`)
+  }
+
+  if (changeName.includes("/") || changeName.includes("\\")) {
+    throw new Error(
+      `❌ change_name 不能包含路径分隔符：${changeName}\n` +
+        `   修复：传纯名称（不含 '/' 或 '\\'），如 'my-change'`
+    )
+  }
+  if (changeName === "." || changeName === "..") {
+    throw new Error(
+      `❌ change_name 不能是 '.' 或 '..'\n` +
+        `   修复：传有效的 change 名称，如 'my-change'`
+    )
+  }
+
+  const changeDir = resolve(projectRoot, "openspec", "changes", changeName)
+
+  return { changeName, planPath, changeDir }
+}
+
 // ============================================================
 // OpenCode tool 入口
 // ============================================================
@@ -386,59 +481,64 @@ export function validateOmoPlan(
  */
 export const sync_tasks_from_plan = tool({
   description:
-    "Mirror an OMO plan to OpenSpec tasks.md. **With `change_name`**: sync only that one plan. **Without** (batch mode): scan `.omo/plans/*.md`, for each plan look up `openspec/changes/<plan-name>/` (skipping `archive/` subdirectory), and sync if a matching non-archived change exists. Skipped plans are reported with a reason. Reentrant.",
+    "Mirror an OMO plan to OpenSpec tasks.md. **With `change_name` or `plan_file_path`**: sync only that one plan. **Without either** (batch mode): scan `.omo/plans/*.md`, for each plan look up `openspec/changes/<plan-name>/` (skipping `archive/` subdirectory), and sync if a matching non-archived change exists. Skipped plans are reported with a reason. Reentrant.",
   args: {
     change_name: tool.schema
       .string()
       .min(1)
       .optional()
       .describe(
-        "Optional. If provided, sync only this one plan (`.omo/plans/<change-name>.md` → `openspec/changes/<change-name>/tasks.md`). If omitted, batch-sync all plans in `.omo/plans/` to their matching non-archived changes."
+        "Optional. The OpenSpec change name. If provided (with or without plan_file_path), sync only that one plan. If both change_name and plan_file_path are omitted, batch-sync all plans in `.omo/plans/`."
+      ),
+    plan_file_path: tool.schema
+      .string()
+      .min(1)
+      .optional()
+      .describe(
+        "Optional. Absolute path to the plan markdown file. The change name is derived from the basename. If provided (with or without change_name), sync only that one plan. If both are omitted, batch-sync all plans."
       ),
   },
   async execute(args, context) {
-    const rawName = args.change_name
-    if (rawName !== undefined && (typeof rawName !== "string" || rawName.trim() === "")) {
-      throw new Error(
-        `❌ 参数错误：change_name\n   收到：${JSON.stringify(rawName)}\n   应传：非空字符串或省略（批量模式）`
-      )
+    const cn = args.change_name?.trim() || ""
+    const pp = args.plan_file_path?.trim() || ""
+    const hasInput = !!(cn || pp)
+    let resolved: ResolvedChangeContext | null = null
+    if (hasInput) {
+      resolved = resolveChangeContext({ change_name: cn, plan_file_path: pp }, context.directory)
     }
-    const changeName = rawName?.trim()
 
     const projectRoot = context.directory
     const plansDir = resolve(projectRoot, ".omo", "plans")
     const changesDir = resolve(projectRoot, "openspec", "changes")
 
-    if (!existsSync(plansDir)) {
+    if (resolved === null && !existsSync(plansDir)) {
       throw new Error(
         `❌ plans 目录不存在：${plansDir}\n   修复：确认在 OpenSpec 项目根目录执行`
       )
     }
 
-    if (changeName !== undefined) {
-      const singlePlanPath = resolve(plansDir, `${changeName}.md`)
-      const singleChangeDir = resolve(changesDir, changeName)
-      if (!existsSync(singlePlanPath)) {
+    if (resolved !== null) {
+      if (!existsSync(resolved.planPath)) {
         throw new Error(
-          `❌ plan 文件不存在：${singlePlanPath}\n   修复：确认 .omo/plans/${changeName}.md 已创建`
+          `❌ plan 文件不存在：${resolved.planPath}\n   修复：确认 .omo/plans/${resolved.changeName}.md 已创建`
         )
       }
-      if (!existsSync(singleChangeDir)) {
+      if (!existsSync(resolved.changeDir)) {
         throw new Error(
-          `❌ change 目录不存在：${singleChangeDir}\n   修复：运行 openspec new change --schema spec-driven ${changeName}`
+          `❌ change 目录不存在：${resolved.changeDir}\n   修复：运行 openspec new change --schema spec-driven ${resolved.changeName}`
         )
       }
     }
 
-    const targetPlanFiles: string[] = changeName
-      ? [`${changeName}.md`]
+    const targetPlanFiles: string[] = resolved !== null
+      ? [basename(resolved.planPath)]
       : readdirSync(plansDir).filter((f) => f.endsWith(".md"))
 
     if (targetPlanFiles.length === 0) {
       return {
         title: "sync_tasks_from_plan: empty",
         output: `ℹ️ ${plansDir} 下没有 .md plan 文件，无可同步内容`,
-        metadata: { mode: changeName ? "single" : "batch", synced: [], skipped: [] },
+        metadata: { mode: resolved ? "single" : "batch", synced: [], skipped: [] },
       }
     }
 
@@ -446,9 +546,19 @@ export const sync_tasks_from_plan = tool({
     const skipped: Array<{ plan: string; reason: string }> = []
 
     for (const planFile of targetPlanFiles) {
-      const planChangeName = basename(planFile, ".md")
-      const planPath = resolve(plansDir, planFile)
-      const changeDir = resolve(changesDir, planChangeName)
+      let planPath: string
+      let planChangeName: string
+      let changeDir: string
+
+      if (resolved !== null) {
+        planPath = resolved.planPath
+        planChangeName = resolved.changeName
+        changeDir = resolved.changeDir
+      } else {
+        planChangeName = basename(planFile, ".md")
+        planPath = resolve(plansDir, planFile)
+        changeDir = resolve(changesDir, planChangeName)
+      }
       const tasksPath = resolve(changeDir, "tasks.md")
 
       const planStat = statSync(planPath, { throwIfNoEntry: false })
@@ -495,7 +605,8 @@ export const sync_tasks_from_plan = tool({
       }
     }
 
-    if (args.change_name) {
+    if (resolved !== null) {
+      const cn2 = resolved.changeName
       const s = synced[0]
       const k = skipped[0]
       if (s) {
@@ -507,15 +618,15 @@ export const sync_tasks_from_plan = tool({
       }
       if (k) {
         return {
-          title: `sync_tasks_from_plan: skip ${args.change_name}`,
-          output: `⏭️ ${args.change_name}: ${k.reason}`,
-          metadata: { mode: "single", changeName: args.change_name, synced: 0, reason: k.reason },
+          title: `sync_tasks_from_plan: skip ${cn2}`,
+          output: `⏭️ ${cn2}: ${k.reason}`,
+          metadata: { mode: "single", changeName: cn2, synced: 0, reason: k.reason },
         }
       }
       return {
-        title: `sync_tasks_from_plan: empty ${args.change_name}`,
-        output: `ℹ️ ${args.change_name} 无可同步内容`,
-        metadata: { mode: "single", changeName: args.change_name, synced: 0 },
+        title: `sync_tasks_from_plan: empty ${cn2}`,
+        output: `ℹ️ ${cn2} 无可同步内容`,
+        metadata: { mode: "single", changeName: cn2, synced: 0 },
       }
     }
 
@@ -554,64 +665,31 @@ export const validate_omo_plan = tool({
     change_name: tool.schema
       .string()
       .min(1)
+      .optional()
       .describe(
-        "The OpenSpec change name (matches `.omo/plans/<change-name>.md` and `openspec/changes/<change-name>/`)."
+        "The OpenSpec change name. Optional if plan_file_path is provided."
       ),
     plan_file_path: tool.schema
       .string()
       .min(1)
+      .optional()
       .describe(
-        "Absolute path to the plan markdown file, e.g. `<projectRoot>/.omo/plans/<change-name>.md`."
+        "Absolute path to the plan markdown file, e.g. `<projectRoot>/.omo/plans/<change-name>.md`. Optional if change_name is provided."
       ),
   },
   async execute(args, context) {
-    // 入口参数校验
-    if (!args.change_name || args.change_name.trim() === "") {
-      throw new Error(
-        `❌ 参数缺失：change_name\n` +
-          `   用途：OpenSpec change 名称\n` +
-          `   应传：非空字符串`
-      )
-    }
-    if (!args.plan_file_path || args.plan_file_path.trim() === "") {
-      throw new Error(
-        `❌ 参数缺失：plan_file_path\n` +
-          `   用途：plan 文件的绝对路径\n` +
-          `   应传：例如 '${resolve(context.directory, ".omo", "plans", `${args.change_name || "my-change"}.md`)}'`
-      )
-    }
-
-    const projectRoot = context.directory
-    const expectedPath = resolve(
-      projectRoot,
-      ".omo",
-      "plans",
-      `${args.change_name}.md`
-    )
-    // 容错:Windows 反斜杠 + 末尾斜杠 + 大小写(预留)
-    const normalizedInput = args.plan_file_path.replace(/\\/g, "/").replace(/\/+$/, "")
-    const normalizedExpected = expectedPath.replace(/\\/g, "/").replace(/\/+$/, "")
-    if (normalizedInput.toLowerCase() !== normalizedExpected.toLowerCase()) {
-      throw new Error(
-        `❌ 参数错误：plan_file_path 与 change_name 不匹配\n` +
-          `   收到：${args.plan_file_path}\n` +
-          `   期望：${expectedPath}\n` +
-          `   修复：传 change_name='${args.change_name}' 对应的 .omo/plans/${args.change_name}.md 绝对路径`
-      )
-    }
-    const planPath = expectedPath
+    const { changeName, planPath } = resolveChangeContext(args, context.directory)
 
     if (!existsSync(planPath)) {
       throw new Error(
-        `❌ plan 文件不存在：${planPath}\n   修复：确认 .omo/plans/${args.change_name}.md 已创建`
+        `❌ plan 文件不存在：${planPath}\n   修复：确认 .omo/plans/${changeName}.md 已创建`
       )
     }
 
     const planContent = readFileSync(planPath, "utf-8")
-    const validation = validateOmoPlan(planContent, args.change_name)
+    const validation = validateOmoPlan(planContent, changeName)
 
     if (!validation.valid) {
-      // C17: 失败时 throw，与 sync_tasks_from_plan 错误处理风格统一
       const failed = validation.results.filter((r) => !r.passed)
       const failedList = failed
         .map((r) => `  - ${r.name}: ${r.description}`)
@@ -624,10 +702,10 @@ export const validate_omo_plan = tool({
     }
 
     return {
-      title: `validate_omo_plan: ${args.change_name} (${validation.passedChecks}/${validation.totalChecks})`,
+      title: `validate_omo_plan: ${changeName} (${validation.passedChecks}/${validation.totalChecks})`,
       output: `✅ plan 结构检查通过（${validation.passedChecks}/${validation.totalChecks} 项全部通过）`,
       metadata: {
-        changeName: args.change_name,
+        changeName,
         valid: validation.valid,
         passedChecks: validation.passedChecks,
         totalChecks: validation.totalChecks,
@@ -774,56 +852,25 @@ export const prepare_verification_context = tool({
     change_name: tool.schema
       .string()
       .min(1)
+      .optional()
       .describe(
-        "The OpenSpec change name (matches `openspec/changes/<change-name>/` and `.omo/plans/<change-name>.md`)."
+        "The OpenSpec change name. Optional if plan_file_path is provided."
       ),
-    change_dir_path: tool.schema
+    plan_file_path: tool.schema
       .string()
       .min(1)
+      .optional()
       .describe(
-        "Absolute path to the change directory, e.g. `<projectRoot>/openspec/changes/<change-name>`."
+        "Absolute path to the plan markdown file. Optional if change_name is provided."
       ),
   },
   async execute(args, context) {
-    if (!args.change_name || args.change_name.trim() === "") {
-      throw new Error(
-        `❌ 参数缺失：change_name\n   用途：OpenSpec change 名称\n   应传：非空字符串`
-      )
-    }
-    if (!args.change_dir_path || args.change_dir_path.trim() === "") {
-      throw new Error(
-        `❌ 参数缺失：change_dir_path\n` +
-          `   用途：change 目录的绝对路径\n` +
-          `   应传：例如 '${resolve(context.directory, "openspec", "changes", `${args.change_name || "my-change"}`)}'`
-      )
-    }
+    const { changeName, planPath, changeDir } = resolveChangeContext(args, context.directory)
 
-    const projectRoot = context.directory
-    const expectedChangeDir = resolve(
-      projectRoot,
-      "openspec",
-      "changes",
-      args.change_name
-    )
-    const changeDir = args.change_dir_path
-    const norm = (p: string) => p.replace(/\\/g, "/").replace(/\/+$/, "")
-    if (norm(changeDir).toLowerCase() !== norm(expectedChangeDir).toLowerCase()) {
-      throw new Error(
-        `❌ 参数错误：change_dir_path 与 change_name 不匹配\n` +
-          `   收到：${changeDir}\n` +
-          `   期望：${expectedChangeDir}\n` +
-          `   修复：传 change_name='${args.change_name}' 对应的 openspec/changes/${args.change_name} 绝对路径`
-      )
-    }
-
-    // 读 artifacts
     const proposal = readIfExists(resolve(changeDir, "proposal.md"))
     const design = readIfExists(resolve(changeDir, "design.md"))
-    const plan = readIfExists(
-      resolve(projectRoot, ".omo", "plans", `${args.change_name}.md`)
-    )
+    const plan = readIfExists(planPath)
 
-    // 读 specs（拼接，B21: 静态导入 readdirSync）
     let specs: string | null = null
     const specsDir = resolve(changeDir, "specs")
     if (existsSync(specsDir)) {
@@ -837,9 +884,8 @@ export const prepare_verification_context = tool({
       if (parts.length > 0) specs = parts.join("\n\n")
     }
 
-    // changedFiles 由 Oracle agent 自行执行 git diff 获取（不通过 tool）
     const ctx = prepareVerificationContext(
-      args.change_name,
+      changeName,
       { proposal, design, specs, plan },
       []
     )

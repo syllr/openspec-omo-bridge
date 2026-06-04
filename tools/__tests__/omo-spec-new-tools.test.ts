@@ -378,29 +378,31 @@ describe("sync_tasks_from_plan single mode（传 change_name）", () => {
     }
   })
 
-  test("change_name 为空字符串 → 抛清晰错误", async () => {
+  test("change_name 为空字符串 → 走 batch 模式（视为未传）", async () => {
     const tmp = mkdtempSync(join(tmpdir(), "omo-single-empty-"))
     try {
-      await expect(
-        (sync_tasks_from_plan as any).execute(
-          { change_name: "" },
-          { directory: tmp }
-        )
-      ).rejects.toThrow(/change_name/)
+      mkdirSync(join(tmp, ".omo", "plans"), { recursive: true })
+      const result = await (sync_tasks_from_plan as any).execute(
+        { change_name: "" },
+        { directory: tmp }
+      )
+      expect(result.metadata.mode).toBe("batch")
+      expect(result.output).toMatch(/批量|没有 \.md plan 文件/)
     } finally {
       rmSync(tmp, { recursive: true, force: true })
     }
   })
 
-  test("change_name 为 null → 抛清晰错误", async () => {
+  test("change_name 为 null → 走 batch 模式（视为未传）", async () => {
     const tmp = mkdtempSync(join(tmpdir(), "omo-single-null-"))
     try {
-      await expect(
-        (sync_tasks_from_plan as any).execute(
-          { change_name: null },
-          { directory: tmp }
-        )
-      ).rejects.toThrow(/change_name/)
+      mkdirSync(join(tmp, ".omo", "plans"), { recursive: true })
+      const result = await (sync_tasks_from_plan as any).execute(
+        { change_name: null },
+        { directory: tmp }
+      )
+      expect(result.metadata.mode).toBe("batch")
+      expect(result.output).toContain("没有 .md plan 文件")
     } finally {
       rmSync(tmp, { recursive: true, force: true })
     }
