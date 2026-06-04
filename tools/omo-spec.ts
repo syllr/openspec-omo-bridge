@@ -695,7 +695,7 @@ export function validatePlanCompletion(
  */
 export const sync_tasks_from_plan = tool({
   description:
-    "Mirror an OMO plan to OpenSpec tasks.md. **With `change_name` or `plan_file_path`**: sync only that one plan. **Without either** (batch mode): scan `.omo/plans/*.md`, for each plan look up `openspec/changes/<plan-name>/` (skipping `archive/` subdirectory), and sync if a matching non-archived change exists. Skipped plans are reported with a reason. Reentrant.",
+    "Mirror an OMO plan to OpenSpec tasks.md. **ONLY call after the OMO plan file (`.omo/plans/<change-name>.md`) has been created or modified** — this tool is a one-way mirror from plan → tasks.md, do NOT call speculatively, as a pre-flight check, or to 'refresh' state. Typical legitimate call sites: (1) right after `validate_omo_plan` passes in the tasks phase (PHASE 5), (2) the final step before `openspec archive` in the apply phase (Step 4). **With `change_name` or `plan_file_path`**: sync only that one plan. **Without either** (batch mode): scan `.omo/plans/*.md`, for each plan look up `openspec/changes/<plan-name>/` (skipping `archive/` subdirectory), and sync if a matching non-archived change exists. Skipped plans are reported with a reason. Reentrant (safe to call multiple times) but should only be called when the plan has actually changed.",
   args: {
     change_name: tool.schema
       .string()
