@@ -732,10 +732,13 @@ apply:
     - Success Criteria section：`- [ ]` → `- [x]`
 
     **循环退出条件**（每轮修复前先检查）：
-    调用 `omo_spec_validate_plan_completion` tool 检查 plan 状态。
-    - 如果 `allDone=true`（所有 TODOs 和 Success Criteria 都已 `[x]` 标记）→ **直接退出循环**，进入 Step 4 同步。
+    用 Read 工具重读 `.omo/plans/<change-name>.md`,grep 未完成模式:
+    ```
+    grep -E '^#### [0-9]+\. \[ \]|^- \[ \]' .omo/plans/<change-name>.md
+    ```
+    - 0 匹配 → 所有 TODOs 和 Success Criteria 都已 `[x]` 标记 → **直接退出循环**，进入 Step 4 同步。
       即便 Oracle 报 🔴/🟡，plan checkbox 已被全部标记就不再修。
-    - 如果 `allDone=false` → 继续走下面的流程。
+    - 有匹配 → 继续走下面的流程。
 
     读取 Oracle 输出的最终判定：
     1. 如果 ✅ PASS → 完成

@@ -5,9 +5,8 @@
  * 工具命名（OpenCode 约定）：`omo_spec_<exportname>`
  *   - sync_tasks_from_plan       → omo_spec_sync_tasks_from_plan
  *   - validate_omo_plan          → omo_spec_validate_omo_plan
- *   - validate_plan_completion   → omo_spec_validate_plan_completion
  *
- * 测试通过 `import { parseOmoPlan, generateOpenSpecTasks, validateOmoPlan, validatePlanCompletion } from "../omo-spec"` 复用纯函数。
+ * 测试通过 `import { parseOmoPlan, generateOpenSpecTasks, validateOmoPlan } from "../omo-spec"` 复用纯函数。
  *
  * Plugin 懒加载：require("@opencode-ai/plugin") + try/catch：
  * - 生产（OpenCode 加载 tool）：plugin 存在，用真实实现
@@ -684,59 +683,6 @@ export function validatePlanCompletion(
 // OpenCode tool 入口
 // ============================================================
 
-export interface PlanCompletion {
-  todoTotal: number
-  todoCompleted: number
-  todoPending: number
-  criteriaTotal: number
-  criteriaCompleted: number
-  criteriaPending: number
-  hasContent: boolean
-  allDone: boolean
-}
-
-/**
- * 纯函数：审计 plan 完成度,统计 TODOs + Success Criteria 的完成/未完成数量。
- * - FVW 不计入(由 Oracle 单独验证)
- * - `allDone` = (有内容) && (todos + criteria 全部完成)
- * @param content plan markdown 原文
- * @param changeName 回填到 parseOmoPlan
- * @returns PlanCompletion
- */
-export function validatePlanCompletion(
-  content: string,
-  changeName: string
-): PlanCompletion {
-  const plan = parseOmoPlan(content, changeName)
-  const todos = plan.tasks.filter((t) => !t.isFvw)
-  const todoTotal = todos.length
-  const todoCompleted = todos.filter((t) => t.completed).length
-  const todoPending = todoTotal - todoCompleted
-
-  const criteria = plan.successCriteria
-  const criteriaTotal = criteria.length
-  const criteriaCompleted = criteria.filter((c) => c.completed).length
-  const criteriaPending = criteriaTotal - criteriaCompleted
-
-  const hasContent = todoTotal + criteriaTotal > 0
-  const allDone = hasContent && todoPending === 0 && criteriaPending === 0
-
-  return {
-    todoTotal,
-    todoCompleted,
-    todoPending,
-    criteriaTotal,
-    criteriaCompleted,
-    criteriaPending,
-    hasContent,
-    allDone,
-  }
-}
-
-// ============================================================
-// OpenCode tool 入口
-// ============================================================
-
 /**
  * Tool: omo_spec_sync_tasks_from_plan
  * 作用：同步 OMO plan → OpenSpec tasks.md。传 change_name 同步单个，不传批量同步全部。
@@ -974,60 +920,6 @@ export const validate_omo_plan = tool({
         totalChecks: validation.totalChecks,
         results: validation.results,
       },
-    }
-  },
-})
-
-/**
- * Tool: omo_spec_validate_plan_completion
- * 作用：审计 plan 完成度 — 统计 TODOs + Success Criteria 的 completed / pending 数量。
- */
-export const validate_plan_completion = tool({
-  description:
-    "Audit an OMO plan's task completion. Counts completed/pending items in both ## TODOs (`#### N. [x]`) and ## Success Criteria (`- [x]`). Returns counts + a derived `allDone` flag (true when both sections are 100% done with at least 1 item). Use in apply loops to decide when to exit.",
-  args: {
-    change_name: tool.schema
-      .string()
-      .min(1)
-      .optional()
-      .describe(
-        "The OpenSpec change name. Optional if plan_file_path is provided."
-      ),
-    plan_file_path: tool.schema
-      .string()
-      .min(1)
-      .optional()
-      .describe(
-        "Absolute path to the plan markdown file, e.g. `<projectRoot>/.omo/plans/<change-name>.md`. Optional if change_name is provided."
-      ),
-  },
-  async execute(args, context) {
-    const { changeName, planPath } = resolveChangeContext(args, context.directory)
-    if (!existsSync(planPath)) {
-      throw new Error(
-        `❌ plan 文件不存在：${planPath}\n   修复：确认 .omo/plans/${changeName}.md 已创建`
-      )
-    }
-    const content = readFileSync(planPath, "utf-8")
-    const c = validatePlanCompletion(content, changeName)
-
-    if (!c.hasContent) {
-      return {
-        title: `validate_plan_completion: ${changeName} (empty)`,
-        output: `ℹ️ ${changeName}: plan 无 TODO 任务或 Success Criteria 项,无需检查`,
-        metadata: { changeName, ...c },
-      }
-    }
-
-    const totalDone = c.todoCompleted + c.criteriaCompleted
-    const totalAll = c.todoTotal + c.criteriaTotal
-    const output = c.allDone
-      ? `✅ ${changeName}: 全部完成（${c.todoTotal} todos + ${c.criteriaTotal} criteria = ${totalAll} 项）`
-      : `📊 ${changeName}: ${c.todoCompleted}/${c.todoTotal} todos ✅, ${c.criteriaCompleted}/${c.criteriaTotal} criteria ✅（pending: ${c.todoPending} todos, ${c.criteriaPending} criteria）`
-    return {
-      title: `validate_plan_completion: ${changeName} (${totalDone}/${totalAll}${c.allDone ? " ✓" : ""})`,
-      output,
-      metadata: { changeName, ...c },
     }
   },
 })
