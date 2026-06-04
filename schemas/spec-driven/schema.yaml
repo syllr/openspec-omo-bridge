@@ -690,24 +690,10 @@ apply:
 
     === Step 3：Oracle 验证（最多 3 轮）===
 
-    /start-work 完成后，调用 `omo_spec_prepare_verification_context` OpenCode tool（参数：`change_name=<change-name>`）准备验证上下文。
-
-    tool 负责：读取所有 artifacts（proposal/specs/design/plan）+ 组装 5 维度验证清单（Spec 合规性 / Design 对齐 / Proposal 范围 / Task 完成度 / 非功能性合规性）+ 严重程度规则。
-
-    **不通过 tool 捕获 git diff**——由 Oracle 自行执行（避免 Bun.spawn 跨运行时依赖）。
-
-    拿到 tool 返回的上下文后，将上下文传给 Oracle 审查：
+    /start-work 完成后，调用 Oracle agent 审查 change：
 
     ```
-    task(subagent_type="oracle", prompt="你正在验证实现产出与 OpenSpec change artifacts 的一致性。
-    请根据以下验证上下文，按 5 维度（Spec 合规性 / Design 对齐 / Proposal 范围 / Task 完成度 / 非功能性合规性）输出发现。
-    按严重程度标注（🔴阻塞 / 🟡警告 / ⚪建议），对每个 🔴 给出具体修复建议。
-
-    **步骤 1**：执行 `git diff --name-only HEAD` 获取变更文件列表（空仓库时 fallback `git ls-files --others --exclude-standard`）。
-
-    **步骤 2**：用变更文件列表 + 以下 artifacts 上下文做 5 维度审查。
-
-    [将 omo_spec_prepare_verification_context tool 的完整输出填入此处]")
+    task(subagent_type="oracle", prompt="审查 OpenSpec change '<change-name>' 的实现产出。你有 read 工具和 bash 工具，请自行读 artifacts 和执行 git diff，无需 LLM 中转。按 5 维度（Spec 合规性 / Design 对齐 / Proposal 范围 / Task 完成度 / 非功能性合规性）输出发现，按严重程度标注（🔴阻塞 / 🟡警告 / ⚪建议），对每个 🔴 给出具体修复建议。")
     ```
 
     读取 Oracle 输出中的最终判定：
@@ -717,7 +703,7 @@ apply:
          只修复标记为 🔴/🟡 的问题，不要修改其他内容。
          Oracle 验证结果中的所有 🔴/🟡 问题：
          [将 Oracle 输出的 🔴/🟡 问题列表及修复建议填入此处]
-         修复完成后重新调用 `omo_spec_prepare_verification_context` 并重跑 Oracle 验证
+         修复完成后用 read 工具重新读 4 个 artifact 路径 + 重跑 Oracle 验证
          超限（3 轮后仍有 🔴/🟡）→ 汇总所有剩余展示给用户
     3. 如果 ⚠️ CONDITIONAL → 汇总 ⚪ 展示给用户
 
