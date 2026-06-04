@@ -33,7 +33,7 @@ import {
 function verifyArgs(changeName: string, t: string) {
   return {
     change_name: changeName,
-    paths: [join(t, "openspec", "changes", changeName, "proposal.md")],
+    change_dir_path: join(t, "openspec", "changes", changeName),
   }
 }
 

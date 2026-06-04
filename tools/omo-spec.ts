@@ -555,13 +555,13 @@ export const validate_omo_plan = tool({
       .string()
       .min(1)
       .describe(
-        "The OpenSpec change name. The plan is read from `.omo/plans/<change-name>.md`."
+        "The OpenSpec change name (matches `.omo/plans/<change-name>.md` and `openspec/changes/<change-name>/`)."
       ),
-    paths: tool.schema
-      .array(tool.schema.string())
+    plan_file_path: tool.schema
+      .string()
       .min(1)
       .describe(
-        "Absolute paths the tool will read. Must include `.omo/plans/<change-name>.md`."
+        "Absolute path to the plan markdown file, e.g. `<projectRoot>/.omo/plans/<change-name>.md`."
       ),
   },
   async execute(args, context) {
@@ -573,31 +573,33 @@ export const validate_omo_plan = tool({
           `   应传：非空字符串`
       )
     }
-    if (!args.paths || args.paths.length === 0) {
+    if (!args.plan_file_path || args.plan_file_path.trim() === "") {
       throw new Error(
-        `❌ 参数缺失：paths\n` +
-          `   用途：Tool 将要读取的文件路径列表（OpenCode read 工具约定）\n` +
-          `   应传：包含 '${resolve(context.directory, ".omo", "plans", args.change_name + ".md")}' 的非空数组`
+        `❌ 参数缺失：plan_file_path\n` +
+          `   用途：plan 文件的绝对路径\n` +
+          `   应传：例如 '${resolve(context.directory, ".omo", "plans", `${args.change_name || "my-change"}.md`)}'`
       )
     }
 
     const projectRoot = context.directory
-    const planPath = resolve(
+    const expectedPath = resolve(
       projectRoot,
       ".omo",
       "plans",
       `${args.change_name}.md`
     )
-
-    const normalizedPaths = args.paths.map((p: string) => p.replace(/\\/g, "/"))
-    const normalizedExpected = planPath.replace(/\\/g, "/")
-    if (!normalizedPaths.includes(normalizedExpected)) {
+    // 容错:Windows 反斜杠 + 末尾斜杠 + 大小写(预留)
+    const normalizedInput = args.plan_file_path.replace(/\\/g, "/").replace(/\/+$/, "")
+    const normalizedExpected = expectedPath.replace(/\\/g, "/").replace(/\/+$/, "")
+    if (normalizedInput.toLowerCase() !== normalizedExpected.toLowerCase()) {
       throw new Error(
-        `❌ 参数错误：paths 缺少必需的读取目标\n` +
-          `   收到：${JSON.stringify(args.paths)}\n` +
-          `   期望包含：${planPath}`
+        `❌ 参数错误：plan_file_path 与 change_name 不匹配\n` +
+          `   收到：${args.plan_file_path}\n` +
+          `   期望：${expectedPath}\n` +
+          `   修复：传 change_name='${args.change_name}' 对应的 .omo/plans/${args.change_name}.md 绝对路径`
       )
     }
+    const planPath = expectedPath
 
     if (!existsSync(planPath)) {
       throw new Error(
@@ -773,13 +775,13 @@ export const prepare_verification_context = tool({
       .string()
       .min(1)
       .describe(
-        "The OpenSpec change name. Used to locate `.omo/plans/<change-name>.md` and `openspec/changes/<change-name>/{proposal.md, design.md, specs/<cap>/spec.md}`."
+        "The OpenSpec change name (matches `openspec/changes/<change-name>/` and `.omo/plans/<change-name>.md`)."
       ),
-    paths: tool.schema
-      .array(tool.schema.string())
+    change_dir_path: tool.schema
+      .string()
       .min(1)
       .describe(
-        "Absolute paths the tool will read. Must include `openspec/changes/<change-name>/proposal.md`, `design.md`, and `.omo/plans/<change-name>.md`."
+        "Absolute path to the change directory, e.g. `<projectRoot>/openspec/changes/<change-name>`."
       ),
   },
   async execute(args, context) {
@@ -788,22 +790,31 @@ export const prepare_verification_context = tool({
         `❌ 参数缺失：change_name\n   用途：OpenSpec change 名称\n   应传：非空字符串`
       )
     }
-    if (!args.paths || args.paths.length === 0) {
+    if (!args.change_dir_path || args.change_dir_path.trim() === "") {
       throw new Error(
-        `❌ 参数缺失：paths\n` +
-          `   用途：Tool 将要读取的文件路径列表（OpenCode read 工具约定）\n` +
-          `   应传：包含 artifacts 路径的非空数组\n` +
-          `   示例：paths: ["${resolve(context.directory, "openspec", "changes", args.change_name, "proposal.md")}"]`
+        `❌ 参数缺失：change_dir_path\n` +
+          `   用途：change 目录的绝对路径\n` +
+          `   应传：例如 '${resolve(context.directory, "openspec", "changes", `${args.change_name || "my-change"}`)}'`
       )
     }
 
     const projectRoot = context.directory
-    const changeDir = resolve(
+    const expectedChangeDir = resolve(
       projectRoot,
       "openspec",
       "changes",
       args.change_name
     )
+    const changeDir = args.change_dir_path
+    const norm = (p: string) => p.replace(/\\/g, "/").replace(/\/+$/, "")
+    if (norm(changeDir).toLowerCase() !== norm(expectedChangeDir).toLowerCase()) {
+      throw new Error(
+        `❌ 参数错误：change_dir_path 与 change_name 不匹配\n` +
+          `   收到：${changeDir}\n` +
+          `   期望：${expectedChangeDir}\n` +
+          `   修复：传 change_name='${args.change_name}' 对应的 openspec/changes/${args.change_name} 绝对路径`
+      )
+    }
 
     // 读 artifacts
     const proposal = readIfExists(resolve(changeDir, "proposal.md"))

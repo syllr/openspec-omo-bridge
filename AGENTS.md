@@ -43,11 +43,11 @@ scripts/sync.sh --dry-run             # 预览
 
 ## The 3 tools
 
-| Tool 名                                 | 作用                                                      | 参数                                           |
-| --------------------------------------- | --------------------------------------------------------- | ---------------------------------------------- |
-| `omo_spec_sync_tasks_from_plan`         | 把 `.omo/plans/*.md` 镜像成 `openspec/changes/*/tasks.md` | `{ change_name?: string }` — 传单个 / 不传批量 |
-| `omo_spec_validate_omo_plan`            | 验证 plan 是否符合 OMO 兼容性（11 项检查）                | `{ change_name: string, paths: string[] }`     |
-| `omo_spec_prepare_verification_context` | 组装实现验证上下文（artifacts + 5 维度 + verdict 规则）   | `{ change_name: string, paths: string[] }`     |
+| Tool 名                                 | 作用                                                      | 参数                                                                                            |
+| --------------------------------------- | --------------------------------------------------------- | ----------------------------------------------------------------------------------------------- |
+| `omo_spec_sync_tasks_from_plan`         | 把 `.omo/plans/*.md` 镜像成 `openspec/changes/*/tasks.md` | `{ change_name?: string }` — 传单个 / 不传批量                                                  |
+| `omo_spec_validate_omo_plan`            | 验证 plan 是否符合 OMO 兼容性（11 项检查）                | `{ change_name: string, plan_file_path: string }` — `plan_file_path` 是 plan 文件的绝对路径     |
+| `omo_spec_prepare_verification_context` | 组装实现验证上下文（artifacts + 5 维度 + verdict 规则）   | `{ change_name: string, change_dir_path: string }` — `change_dir_path` 是 change 目录的绝对路径 |
 
 **Tool 命名规则**：`omo_spec_<exportname>`（`<file>_<exportname>`，hyphen → underscore）。`omo-spec.ts` 文件名 → tool 名前缀 `omo_spec_`。
 
@@ -77,7 +77,7 @@ scripts/sync.sh --dry-run             # 预览
 
 抛错统一格式 `❌ 标题\n   详情\n   修复：建议`。`output` 给 LLM 看，`metadata` 给程序消费。
 
-**`paths` 参数是 OpenCode read 工具的约定**（必须包含 tool 要读的文件路径，否则权限系统会拦截）。AI 必须传包含 plan/artifact 路径的绝对路径数组。
+**路径参数**：两个 read 类 tool 都接受单 `string` 路径参数（**不是 array**），跟 OpenCode read tool 的 `paths: array` 元数据约定解耦。`validate_omo_plan.plan_file_path` = `<root>/.omo/plans/<change-name>.md`；`prepare_verification_context.change_dir_path` = `<root>/openspec/changes/<change-name>`。LLM 必须传**单个绝对路径字符串**（不会让 LLM 因传错格式 string vs array 失败）。
 
 ## 4 pure functions (可独立 import，零 OpenCode 依赖)
 
