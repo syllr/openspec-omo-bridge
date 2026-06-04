@@ -3,10 +3,11 @@
  *
  * 单一文件设计：所有 OMO 相关的 OpenCode tool + 纯逻辑都在此文件。
  * 工具命名（OpenCode 约定）：`omo_spec_<exportname>`
- *   - sync_tasks_from_plan → omo_spec_sync_tasks_from_plan
- *   - validate_omo_plan   → omo_spec_validate_omo_plan
+ *   - sync_tasks_from_plan       → omo_spec_sync_tasks_from_plan
+ *   - validate_omo_plan          → omo_spec_validate_omo_plan
+ *   - validate_plan_completion   → omo_spec_validate_plan_completion
  *
- * 测试通过 `import { parseOmoPlan, generateOpenSpecTasks, validateOmoPlan } from "../omo-spec"` 复用纯函数。
+ * 测试通过 `import { parseOmoPlan, generateOpenSpecTasks, validateOmoPlan, validatePlanCompletion } from "../omo-spec"` 复用纯函数。
  *
  * Plugin 懒加载：require("@opencode-ai/plugin") + try/catch：
  * - 生产（OpenCode 加载 tool）：plugin 存在，用真实实现
@@ -75,10 +76,17 @@ export interface OmoSection {
   isCore: boolean
 }
 
+export interface OmoSuccessCriterion {
+  index: number
+  text: string
+  completed: boolean
+}
+
 export interface OmoPlan {
   changeName: string
   sections: OmoSection[]
   tasks: OmoTask[]
+  successCriteria: OmoSuccessCriterion[]
 }
 
 export interface OmoPlanCheck {
@@ -116,12 +124,13 @@ function stripSectionNumber(rawTitle: string): string {
 export function parseOmoPlan(content: string, changeName: string): OmoPlan {
   // 防御性 null/undefined 检查（A6）
   if (!content) {
-    return { changeName, sections: [], tasks: [] }
+    return { changeName, sections: [], tasks: [], successCriteria: [] }
   }
   // 支持 \r\n, \n, 单独 \r（A32）
   const lines = content.split(/\r\n|\r|\n/)
   const sections: OmoSection[] = []
   const tasks: OmoTask[] = []
+  const successCriteria: OmoSuccessCriterion[] = []
 
   let currentSection: OmoSection | null = null
   let currentWave = ""
@@ -146,6 +155,20 @@ export function parseOmoPlan(content: string, changeName: string): OmoPlan {
     }
 
     if (!currentSection) continue
+
+    if (currentSection.title.toLowerCase() === "success criteria") {
+      const scMatch = line.match(/^-\s*\[([ xX])\]\s*(.+)$/)
+      if (scMatch) {
+        successCriteria.push({
+          index: successCriteria.length + 1,
+          text: scMatch[2].trim(),
+          completed: scMatch[1].toLowerCase() === "x",
+        })
+        continue
+      }
+      currentSection.body += line + "\n"
+      continue
+    }
 
     if (!currentIsCore) {
       currentSection.body += line + "\n"
@@ -230,7 +253,7 @@ export function parseOmoPlan(content: string, changeName: string): OmoPlan {
 
   if (currentSection) sections.push(currentSection)
 
-  return { changeName, sections, tasks }
+  return { changeName, sections, tasks, successCriteria }
 }
 
 /**
@@ -468,6 +491,246 @@ export function resolveChangeContext(
   const changeDir = resolve(projectRoot, "openspec", "changes", changeName)
 
   return { changeName, planPath, changeDir }
+}
+
+/**
+ * Plan 中可更新的 task section 类型。
+ * - `todos`: `## TODOs` 下的 `#### N. [ ]` 任务
+ * - `success_criteria`: `## Success Criteria` 下的 `- [ ]` 验收项
+ */
+export type PlanSection = "todos" | "success_criteria"
+
+export interface PlanTaskUpdateResult {
+  content: string
+  updated: boolean
+  section: PlanSection
+  index: number
+  completed: boolean
+  matchedTitle?: string
+  error?: string
+}
+
+/**
+ * 纯函数：更新 plan 中某项 task 的 checkbox 状态。
+ * - `todos` section: 找 `#### N. [x/x]` 行,N 匹配时切换 checkbox
+ * - `success_criteria` section: 在 SC section 内找第 N 个 `- [x/x]` 项
+ * @param content plan markdown 原文
+ * @param section 目标 section
+ * @param index 1-based 位置 (todos: task 编号;success_criteria: SC section 内顺序)
+ * @param completed true → 标 [x],false → 标 [ ]
+ * @returns { content, updated, ... } 失败时 updated=false + error 字段
+ */
+export function updatePlanTaskStatus(
+  content: string,
+  section: PlanSection,
+  index: number,
+  completed: boolean
+): PlanTaskUpdateResult {
+  if (typeof content !== "string" || content === "") {
+    return {
+      content: content || "",
+      updated: false,
+      section,
+      index,
+      completed,
+      error: "plan 内容为空",
+    }
+  }
+  if (section !== "todos" && section !== "success_criteria") {
+    return {
+      content,
+      updated: false,
+      section,
+      index,
+      completed,
+      error: `未知 section: ${section}`,
+    }
+  }
+  if (!Number.isInteger(index) || index < 1) {
+    return {
+      content,
+      updated: false,
+      section,
+      index,
+      completed,
+      error: `task_index 必须是正整数：${index}`,
+    }
+  }
+
+  const lines = content.split(/\r\n|\r|\n/)
+  const newCheckbox = completed ? "[x]" : "[ ]"
+
+  if (section === "todos") {
+    for (let i = 0; i < lines.length; i++) {
+      const m = lines[i].match(/^####\s+(\d+)\.\s*\[([ xX])\]\s*(.+)$/)
+      if (m && m[1] === String(index)) {
+        const title = m[3].trim()
+        lines[i] = `#### ${index}. ${newCheckbox} ${title}`
+        return {
+          content: lines.join("\n"),
+          updated: true,
+          section,
+          index,
+          completed,
+          matchedTitle: title,
+        }
+      }
+    }
+    return {
+      content,
+      updated: false,
+      section,
+      index,
+      completed,
+      error: `未找到 TODO 任务 #${index}`,
+    }
+  }
+
+  // success_criteria: 在 ## Success Criteria section 内找第 N 个 `- [x]`
+  let inSc = false
+  let count = 0
+  for (let i = 0; i < lines.length; i++) {
+    const sectionMatch = lines[i].match(/^##\s+(.+)$/)
+    if (sectionMatch) {
+      const t = stripSectionNumber(sectionMatch[1]).toLowerCase()
+      if (t === "success criteria") {
+        inSc = true
+      } else if (inSc) {
+        break
+      }
+      continue
+    }
+    if (!inSc) continue
+    const scMatch = lines[i].match(/^-\s*\[([ xX])\]\s*(.+)$/)
+    if (scMatch) {
+      count++
+      if (count === index) {
+        const text = scMatch[2].trim()
+        lines[i] = `- ${newCheckbox} ${text}`
+        return {
+          content: lines.join("\n"),
+          updated: true,
+          section,
+          index,
+          completed,
+          matchedTitle: text,
+        }
+      }
+    }
+  }
+  return {
+    content,
+    updated: false,
+    section,
+    index,
+    completed,
+    error:
+      count > 0
+        ? `Success Criteria 中未找到第 ${index} 项（共有 ${count} 项）`
+        : "未找到 Success Criteria 章节或无 criterion 项",
+  }
+}
+
+export interface PlanCompletion {
+  todoTotal: number
+  todoCompleted: number
+  todoPending: number
+  criteriaTotal: number
+  criteriaCompleted: number
+  criteriaPending: number
+  hasContent: boolean
+  allDone: boolean
+}
+
+/**
+ * 纯函数：审计 plan 完成度,统计 TODOs + Success Criteria 的完成/未完成数量。
+ * - FVW 不计入(由 Oracle 单独验证)
+ * - `allDone` = (有内容) && (todos + criteria 全部完成)
+ * @param content plan markdown 原文
+ * @param changeName 回填到 parseOmoPlan
+ * @returns PlanCompletion
+ */
+export function validatePlanCompletion(
+  content: string,
+  changeName: string
+): PlanCompletion {
+  const plan = parseOmoPlan(content, changeName)
+  const todos = plan.tasks.filter((t) => !t.isFvw)
+  const todoTotal = todos.length
+  const todoCompleted = todos.filter((t) => t.completed).length
+  const todoPending = todoTotal - todoCompleted
+
+  const criteria = plan.successCriteria
+  const criteriaTotal = criteria.length
+  const criteriaCompleted = criteria.filter((c) => c.completed).length
+  const criteriaPending = criteriaTotal - criteriaCompleted
+
+  const hasContent = todoTotal + criteriaTotal > 0
+  const allDone = hasContent && todoPending === 0 && criteriaPending === 0
+
+  return {
+    todoTotal,
+    todoCompleted,
+    todoPending,
+    criteriaTotal,
+    criteriaCompleted,
+    criteriaPending,
+    hasContent,
+    allDone,
+  }
+}
+
+// ============================================================
+// OpenCode tool 入口
+// ============================================================
+
+export interface PlanCompletion {
+  todoTotal: number
+  todoCompleted: number
+  todoPending: number
+  criteriaTotal: number
+  criteriaCompleted: number
+  criteriaPending: number
+  hasContent: boolean
+  allDone: boolean
+}
+
+/**
+ * 纯函数：审计 plan 完成度,统计 TODOs + Success Criteria 的完成/未完成数量。
+ * - FVW 不计入(由 Oracle 单独验证)
+ * - `allDone` = (有内容) && (todos + criteria 全部完成)
+ * @param content plan markdown 原文
+ * @param changeName 回填到 parseOmoPlan
+ * @returns PlanCompletion
+ */
+export function validatePlanCompletion(
+  content: string,
+  changeName: string
+): PlanCompletion {
+  const plan = parseOmoPlan(content, changeName)
+  const todos = plan.tasks.filter((t) => !t.isFvw)
+  const todoTotal = todos.length
+  const todoCompleted = todos.filter((t) => t.completed).length
+  const todoPending = todoTotal - todoCompleted
+
+  const criteria = plan.successCriteria
+  const criteriaTotal = criteria.length
+  const criteriaCompleted = criteria.filter((c) => c.completed).length
+  const criteriaPending = criteriaTotal - criteriaCompleted
+
+  const hasContent = todoTotal + criteriaTotal > 0
+  const allDone = hasContent && todoPending === 0 && criteriaPending === 0
+
+  return {
+    todoTotal,
+    todoCompleted,
+    todoPending,
+    criteriaTotal,
+    criteriaCompleted,
+    criteriaPending,
+    hasContent,
+    allDone,
+  }
 }
 
 // ============================================================
@@ -711,6 +974,60 @@ export const validate_omo_plan = tool({
         totalChecks: validation.totalChecks,
         results: validation.results,
       },
+    }
+  },
+})
+
+/**
+ * Tool: omo_spec_validate_plan_completion
+ * 作用：审计 plan 完成度 — 统计 TODOs + Success Criteria 的 completed / pending 数量。
+ */
+export const validate_plan_completion = tool({
+  description:
+    "Audit an OMO plan's task completion. Counts completed/pending items in both ## TODOs (`#### N. [x]`) and ## Success Criteria (`- [x]`). Returns counts + a derived `allDone` flag (true when both sections are 100% done with at least 1 item). Use in apply loops to decide when to exit.",
+  args: {
+    change_name: tool.schema
+      .string()
+      .min(1)
+      .optional()
+      .describe(
+        "The OpenSpec change name. Optional if plan_file_path is provided."
+      ),
+    plan_file_path: tool.schema
+      .string()
+      .min(1)
+      .optional()
+      .describe(
+        "Absolute path to the plan markdown file, e.g. `<projectRoot>/.omo/plans/<change-name>.md`. Optional if change_name is provided."
+      ),
+  },
+  async execute(args, context) {
+    const { changeName, planPath } = resolveChangeContext(args, context.directory)
+    if (!existsSync(planPath)) {
+      throw new Error(
+        `❌ plan 文件不存在：${planPath}\n   修复：确认 .omo/plans/${changeName}.md 已创建`
+      )
+    }
+    const content = readFileSync(planPath, "utf-8")
+    const c = validatePlanCompletion(content, changeName)
+
+    if (!c.hasContent) {
+      return {
+        title: `validate_plan_completion: ${changeName} (empty)`,
+        output: `ℹ️ ${changeName}: plan 无 TODO 任务或 Success Criteria 项,无需检查`,
+        metadata: { changeName, ...c },
+      }
+    }
+
+    const totalDone = c.todoCompleted + c.criteriaCompleted
+    const totalAll = c.todoTotal + c.criteriaTotal
+    const output = c.allDone
+      ? `✅ ${changeName}: 全部完成（${c.todoTotal} todos + ${c.criteriaTotal} criteria = ${totalAll} 项）`
+      : `📊 ${changeName}: ${c.todoCompleted}/${c.todoTotal} todos ✅, ${c.criteriaCompleted}/${c.criteriaTotal} criteria ✅（pending: ${c.todoPending} todos, ${c.criteriaPending} criteria）`
+    return {
+      title: `validate_plan_completion: ${changeName} (${totalDone}/${totalAll}${c.allDone ? " ✓" : ""})`,
+      output,
+      metadata: { changeName, ...c },
     }
   },
 })

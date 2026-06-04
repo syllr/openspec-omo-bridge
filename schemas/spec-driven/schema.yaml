@@ -690,13 +690,40 @@ apply:
 
     === Step 3：Oracle 验证（最多 3 轮）===
 
-    /start-work 完成后，调用 Oracle agent 审查 change：
+    /start-work 完成后，调用 Oracle agent 审查 change（artifacts 正确性 + plan 任务完成度）：
 
     ```
-    task(subagent_type="oracle", prompt="审查 OpenSpec change '<change-name>' 的实现产出。你有 read 工具和 bash 工具，请自行读 artifacts 和执行 git diff，无需 LLM 中转。按 5 维度（Spec 合规性 / Design 对齐 / Proposal 范围 / Task 完成度 / 非功能性合规性）输出发现，按严重程度标注（🔴阻塞 / 🟡警告 / ⚪建议），对每个 🔴 给出具体修复建议。")
+    task(subagent_type="oracle", prompt="审查 OpenSpec change '<change-name>' 的实现产出。你有 read 工具和 bash 工具，请自行读 artifacts、plan 文件和执行 git diff。
+
+    **两件事**：
+
+    1. **5 维度审查**：按 Spec 合规性 / Design 对齐 / Proposal 范围 / 非功能性合规性输出发现，标注 🔴阻塞 / 🟡警告 / ⚪建议，对每个 🔴 给出具体修复建议。
+
+    2. **Plan 任务完成度审计**：读 `.omo/plans/<change-name>.md`，对每个 `#### N. [ ]` 任务（不含 FVW `### FN. [ ]`），根据 artifacts + git diff + evidence 判断是否实际完成。返回结构化清单：
+       ```
+       PLAN_UPDATES:
+       - task: 1.1 [ ] 创建 foo.ts
+         status: completed
+         evidence: 文件已存在 + 包含 export function foo
+       - task: 1.2 [ ] 添加测试
+         status: incomplete
+         reason: 缺少 test 目录
+       ```
+       status 仅 `completed` / `incomplete`（不含 `in_progress`——本审计只区分 done / not done）。")
     ```
 
-    读取 Oracle 输出中的最终判定：
+    **处理 PLAN_UPDATES**：对 Oracle 标 `completed` 的每项，用 Read + Edit 工具把 plan 中对应 checkbox 改 `[x]`：
+
+    - TODOs section：`#### N. [ ]` → `#### N. [x]`
+    - Success Criteria section：`- [ ]` → `- [x]`
+
+    **循环退出条件**（每轮修复前先检查）：
+    调用 `omo_spec_validate_plan_completion` tool 检查 plan 状态。
+    - 如果 `allDone=true`（所有 TODOs 和 Success Criteria 都已 `[x]` 标记）→ **直接退出循环**，进入 Step 4 同步。
+      即便 Oracle 报 🔴/🟡，plan checkbox 已被全部标记就不再修。
+    - 如果 `allDone=false` → 继续走下面的流程。
+
+    读取 Oracle 输出的最终判定：
     1. 如果 ✅ PASS → 完成
     2. 如果 🔴 或 🟡 BLOCKED（**最多 3 轮**）：
          AI 用 Read/Edit 工具直接修复实现：
