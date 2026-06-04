@@ -699,15 +699,29 @@ apply:
 
     1. **5 维度审查**：按 Spec 合规性 / Design 对齐 / Proposal 范围 / 非功能性合规性输出发现，标注 🔴阻塞 / 🟡警告 / ⚪建议，对每个 🔴 给出具体修复建议。
 
-    2. **Plan 任务完成度审计**：读 `.omo/plans/<change-name>.md`，对每个 `#### N. [ ]` 任务（不含 FVW `### FN. [ ]`），根据 artifacts + git diff + evidence 判断是否实际完成。返回结构化清单：
+    2. **Plan 任务完成度审计**：读 `.omo/plans/<change-name>.md`，对两类项分别判断是否实际完成：
+       - TODOs section 的 `#### N. [ ]` 任务（不含 FVW `### FN. [ ]`）
+       - Success Criteria section 的 `- [ ]` 验收项
+
+       根据 artifacts + git diff + evidence 判断，返回结构化清单：
        ```
        PLAN_UPDATES:
-       - task: 1.1 [ ] 创建 foo.ts
+       - section: todos
+         task: 1.1 [ ] 创建 foo.ts
          status: completed
          evidence: 文件已存在 + 包含 export function foo
-       - task: 1.2 [ ] 添加测试
+       - section: todos
+         task: 1.2 [ ] 添加测试
          status: incomplete
          reason: 缺少 test 目录
+       - section: success_criteria
+         task: - [ ] 修复通知丢失 bug
+         status: completed
+         evidence: git diff 中已删除 OpenCodeNotificationRouter.notify 的第一个 ?: return
+       - section: success_criteria
+         task: - [ ] 多项目 SSE 真正可用
+         status: incomplete
+         reason: OpenCodeServerManager 仍有 stop 旧 consumer 调用
        ```
        status 仅 `completed` / `incomplete`（不含 `in_progress`——本审计只区分 done / not done）。")
     ```
