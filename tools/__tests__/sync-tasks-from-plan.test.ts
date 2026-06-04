@@ -789,8 +789,21 @@ describe("Generator 输出", () => {
     )
     const out = generateOpenSpecTasks(plan)
     expect(out).toContain("- [ ] 1.1 t1")
-    expect(out).toContain("- [ ] 2.1 fvw1")
-    expect(out).toContain("- [ ] 2.2 fvw2")
+    expect(out).toContain("- 2.1 fvw1")
+    expect(out).toContain("- 2.2 fvw2")
+  })
+
+  test("FVW 任务在 tasks.md 中无 checkbox(用户手动验证)", () => {
+    const plan = parseOmoPlan(
+      `## TODOs\n#### 1. [ ] t1\n#### 2. [x] t2\n## Final Verification Wave\n### F1. [ ] fvw1\n- **Acceptance**: ./gradlew check\n`,
+      "t"
+    )
+    const out = generateOpenSpecTasks(plan)
+    expect(out).toContain("- [ ] 1.1 t1")
+    expect(out).toContain("- [x] 1.2 t2")
+    expect(out).toContain("- 2.1 fvw1")
+    expect(out).toContain("**Acceptance**: ./gradlew check")
+    expect(out).not.toMatch(/^- \[[ x]\] 2\.1/m)
   })
 
   test("checkbox 状态正确", () => {
@@ -1322,7 +1335,7 @@ one commit per wave
     expect(out1).toContain("## Plan Reference")
     expect(out1).toContain("- [ ] 1.1 任务1")
     expect(out1).toContain("- [x] 1.2 任务2")
-    expect(out1).toContain("- [ ] 2.1 verify")
+    expect(out1).toContain("- 2.1 verify")
 
     // Step 3: 验证幂等性（同 plan 同步两次输出相同）
     const out2 = generateOpenSpecTasks(plan1)

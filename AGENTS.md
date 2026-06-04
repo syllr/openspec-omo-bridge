@@ -96,13 +96,13 @@ scripts/sync.sh --dry-run             # 预览
 
 ## Format conversion: OMO plan ↔ OpenSpec tasks.md
 
-| 维度   | OMO plan                                  | OpenSpec tasks.md                         |
-| ------ | ----------------------------------------- | ----------------------------------------- |
-| 主章节 | `## TODOs` / `## Final Verification Wave` | `## Tasks`                                |
-| Wave   | `### 6.1 Wave 1: 标题`                    | `### Wave 1: 标题`                        |
-| 任务   | `#### 1. [ ] 标题`                        | `- [ ] 1.1 标题`                          |
-| FVW    | `### F1. [ ] 标题`                        | `- [ ] 8.1 标题`（FVW 作为最后一个 Wave） |
-| 字段   | `- **Field**: value`                      | `      **Field**: value`（6 空格缩进）    |
+| 维度   | OMO plan                                  | OpenSpec tasks.md                            |
+| ------ | ----------------------------------------- | -------------------------------------------- |
+| 主章节 | `## TODOs` / `## Final Verification Wave` | `## Tasks`                                   |
+| Wave   | `### 6.1 Wave 1: 标题`                    | `### Wave 1: 标题`                           |
+| 任务   | `#### 1. [ ] 标题`                        | `- [ ] 1.1 标题`                             |
+| FVW    | `### F1. [ ] 标题`                        | `- 8.1 标题`（用户手动验证,**无 checkbox**） |
+| 字段   | `- **Field**: value`                      | `      **Field**: value`（6 空格缩进）       |
 
 **单向同步**：plan → tasks.md。tasks.md 是 plan 的镜像，**不要手动编辑**（会被下次同步覆盖）。`sync_tasks_from_plan` 幂等，plan 改后重跑即可。
 

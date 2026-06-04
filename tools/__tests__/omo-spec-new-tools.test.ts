@@ -369,6 +369,7 @@ describe("sync_tasks_from_plan single mode（传 change_name）", () => {
       expect(result.metadata.changeName).toBe("only")
       expect(result.metadata.total).toBe(2)
       expect(result.metadata.completed).toBe(0)
+      expect(result.metadata.manualVerification).toBe(1)
       expect(result.metadata.waves).toBe(2)
       expect(result.metadata.tasksPath).toContain("openspec/changes/only/tasks.md")
     } finally {

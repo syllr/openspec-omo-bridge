@@ -291,9 +291,14 @@ export function generateOpenSpecTasks(plan: OmoPlan): string {
     for (const task of tasks) {
       subCounter++
       const taskNumber = `${waveIndex}.${subCounter}`
-      const checkbox = task.completed ? "[x]" : "[ ]"
 
-      lines.push(`- ${checkbox} ${taskNumber} ${task.title}`)
+      // FVW 是用户手动验证项,不带 checkbox 状态
+      if (task.isFvw) {
+        lines.push(`- ${taskNumber} ${task.title}`)
+      } else {
+        const checkbox = task.completed ? "[x]" : "[ ]"
+        lines.push(`- ${checkbox} ${taskNumber} ${task.title}`)
+      }
       lines.push("")
 
       for (const field of task.fields) {
@@ -751,7 +756,7 @@ export const sync_tasks_from_plan = tool({
       }
     }
 
-    const synced: Array<{ change: string; total: number; completed: number; waves: number; tasksPath: string }> = []
+    const synced: Array<{ change: string; total: number; completed: number; manualVerification: number; waves: number; tasksPath: string }> = []
     const skipped: Array<{ plan: string; reason: string }> = []
 
     for (const planFile of targetPlanFiles) {
@@ -805,7 +810,8 @@ export const sync_tasks_from_plan = tool({
         synced.push({
           change: planChangeName,
           total: plan.tasks.length,
-          completed: plan.tasks.filter((t) => t.completed).length,
+          completed: plan.tasks.filter((t) => !t.isFvw && t.completed).length,
+          manualVerification: plan.tasks.filter((t) => t.isFvw).length,
           waves: new Set(plan.tasks.map((t) => t.wave)).size,
           tasksPath,
         })
@@ -822,7 +828,15 @@ export const sync_tasks_from_plan = tool({
         return {
           title: `sync_tasks_from_plan: ${s.change}`,
           output: `✅ ${s.change}: 同步完成（${s.total} tasks, ${s.completed} ✅, ${s.waves} waves）\n   ${s.tasksPath}`,
-          metadata: { mode: "single", changeName: s.change, total: s.total, completed: s.completed, waves: s.waves, tasksPath: s.tasksPath },
+          metadata: {
+            mode: "single",
+            changeName: s.change,
+            total: s.total,
+            completed: s.completed,
+            manualVerification: s.manualVerification,
+            waves: s.waves,
+            tasksPath: s.tasksPath,
+          },
         }
       }
       if (k) {

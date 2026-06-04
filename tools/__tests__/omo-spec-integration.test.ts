@@ -120,7 +120,7 @@ describe("完整 round-trip：write plan → sync → 验证", () => {
     expect(content).toContain("- [ ] 1.2 step2")
     expect(content).toContain("- [ ] 1.3 step3")
     // 1 个 FVW
-    expect(content).toContain("- [ ] 2.1 final check")
+    expect(content).toContain("- 2.1 final check")
     // 字段被 6 空格缩进保留
     expect(content).toMatch(/      \*\*What to do\*\*: a/)
     // Plan Reference 包含全部 9 section
