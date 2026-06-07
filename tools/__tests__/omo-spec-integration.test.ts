@@ -8,7 +8,7 @@
  * - 集成测试：实际调用 tool 的 execute()，涉及真实文件系统读写
  *
  * 覆盖：
- * - sync_tasks_from_plan：读 plan → 写 tasks.md
+ * - plan_to_tasks：读 plan → 写 tasks.md
  * - 完整 round-trip：write plan → 读 plan → sync → 验证 tasks.md
  * - 错误路径：plan 不存在、change 目录不存在
  */
@@ -24,7 +24,7 @@ import {
 } from "node:fs"
 import { tmpdir } from "node:os"
 import { join } from "node:path"
-import { sync_tasks_from_plan } from "../omo-spec"
+import { plan_to_tasks } from "../omo-spec"
 
 let tmp: string
 
@@ -96,7 +96,7 @@ describe("完整 round-trip：write plan → sync → 验证", () => {
     mkdirSync(join(tmp, "openspec", "changes", changeName), { recursive: true })
 
     // 2. 同步到 tasks.md（batch API：无参，自动扫所有 plan）
-    const syncResult = await (sync_tasks_from_plan as any).execute(
+    const syncResult = await (plan_to_tasks as any).execute(
       {},
       { directory: tmp }
     )
@@ -138,7 +138,7 @@ describe("完整 round-trip：write plan → sync → 验证", () => {
     writeFileSync(planPath, updatedPlan)
 
     // 5. 重新 sync（batch）
-    const reSyncResult = await (sync_tasks_from_plan as any).execute(
+    const reSyncResult = await (plan_to_tasks as any).execute(
       {},
       { directory: tmp }
     )

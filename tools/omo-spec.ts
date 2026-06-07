@@ -3,8 +3,8 @@
  *
  * 单一文件设计：所有 OMO 相关的 OpenCode tool + 纯逻辑都在此文件。
  * 工具命名（OpenCode 约定）：`omo_spec_<exportname>`
- *   - sync_tasks_from_plan       → omo_spec_sync_tasks_from_plan
- *   - validate_omo_plan          → omo_spec_validate_omo_plan
+ *   - plan_to_tasks       → omo_spec_plan_to_tasks
+ *   - check_plan          → omo_spec_check_plan
  *
  * 测试通过 `import { parseOmoPlan, generateOpenSpecTasks, validateOmoPlan } from "../omo-spec"` 复用纯函数。
  *
@@ -689,13 +689,13 @@ export function validatePlanCompletion(
 // ============================================================
 
 /**
- * Tool: omo_spec_sync_tasks_from_plan
+ * Tool: omo_spec_plan_to_tasks
  * 作用：同步 OMO plan → OpenSpec tasks.md。传 change_name 同步单个，不传批量同步全部。
  * 底层判断逻辑统一：1) plan 文件存在 2) 非归档 change 目录存在 3) 匹配则同步。
  */
-export const sync_tasks_from_plan = tool({
+export const plan_to_tasks = tool({
   description:
-    "Mirror an OMO plan to OpenSpec tasks.md. **ONLY call after the OMO plan file (`.omo/plans/<change-name>.md`) has been created or modified** — this tool is a one-way mirror from plan → tasks.md, do NOT call speculatively, as a pre-flight check, or to 'refresh' state. Typical legitimate call sites: (1) right after `validate_omo_plan` passes in the tasks phase (PHASE 5), (2) the final step before `openspec archive` in the apply phase (Step 4). **With `change_name` or `plan_file_path`**: sync only that one plan. **Without either** (batch mode): scan `.omo/plans/*.md`, for each plan look up `openspec/changes/<plan-name>/` (skipping `archive/` subdirectory), and sync if a matching non-archived change exists. Skipped plans are reported with a reason. Reentrant (safe to call multiple times) but should only be called when the plan has actually changed.",
+    "Mirror an OMO plan to OpenSpec tasks.md. **ONLY call after the OMO plan file (`.omo/plans/<change-name>.md`) has been created or modified** — this tool is a one-way mirror from plan → tasks.md, do NOT call speculatively, as a pre-flight check, or to 'refresh' state. Typical legitimate call sites: (1) right after `check_plan` passes in the tasks phase (PHASE 5), (2) the final step before `openspec archive` in the apply phase (Step 4). **With `change_name` or `plan_file_path`**: sync only that one plan. **Without either** (batch mode): scan `.omo/plans/*.md`, for each plan look up `openspec/changes/<plan-name>/` (skipping `archive/` subdirectory), and sync if a matching non-archived change exists. Skipped plans are reported with a reason. Reentrant (safe to call multiple times) but should only be called when the plan has actually changed.",
   args: {
     change_name: tool.schema
       .string()
@@ -750,7 +750,7 @@ export const sync_tasks_from_plan = tool({
 
     if (targetPlanFiles.length === 0) {
       return {
-        title: "sync_tasks_from_plan: empty",
+        title: "plan_to_tasks: empty",
         output: `ℹ️ ${plansDir} 下没有 .md plan 文件，无可同步内容`,
         metadata: { mode: resolved ? "single" : "batch", synced: [], skipped: [] },
       }
@@ -826,7 +826,7 @@ export const sync_tasks_from_plan = tool({
       const k = skipped[0]
       if (s) {
         return {
-          title: `sync_tasks_from_plan: ${s.change}`,
+          title: `plan_to_tasks: ${s.change}`,
           output: `✅ ${s.change}: 同步完成（${s.total} tasks, ${s.completed} ✅, ${s.waves} waves）\n   ${s.tasksPath}`,
           metadata: {
             mode: "single",
@@ -841,13 +841,13 @@ export const sync_tasks_from_plan = tool({
       }
       if (k) {
         return {
-          title: `sync_tasks_from_plan: skip ${cn2}`,
+          title: `plan_to_tasks: skip ${cn2}`,
           output: `⏭️ ${cn2}: ${k.reason}`,
           metadata: { mode: "single", changeName: cn2, synced: 0, reason: k.reason },
         }
       }
       return {
-        title: `sync_tasks_from_plan: empty ${cn2}`,
+        title: `plan_to_tasks: empty ${cn2}`,
         output: `ℹ️ ${cn2} 无可同步内容`,
         metadata: { mode: "single", changeName: cn2, synced: 0 },
       }
@@ -870,7 +870,7 @@ export const sync_tasks_from_plan = tool({
       }
     }
     return {
-      title: `sync_tasks_from_plan: batch (${synced.length} synced, ${skipped.length} skipped)`,
+      title: `plan_to_tasks: batch (${synced.length} synced, ${skipped.length} skipped)`,
       output: lines.join("\n"),
       metadata: { mode: "batch", synced, skipped },
     }
@@ -878,10 +878,10 @@ export const sync_tasks_from_plan = tool({
 })
 
 /**
- * Tool: omo_spec_validate_omo_plan
+ * Tool: omo_spec_check_plan
  * 作用：验证 OMO plan 是否符合 OMO 兼容性（11 项检查）
  */
-export const validate_omo_plan = tool({
+export const check_plan = tool({
   description:
     "Validate an OMO plan for OMO compatibility. 11 checks: 9 required sections (## TL;DR, ## Context, ## Work Objectives, ## Verification Strategy, ## Execution Strategy, ## TODOs, ## Final Verification Wave, ## Commit Strategy, ## Success Criteria) + 2 task-format checks (at least one `#### N. [ ]` TODO + at least one `### FN. [ ]` FVW). Returns structured result: valid, totalChecks, passedChecks, results.",
   args: {
@@ -925,7 +925,7 @@ export const validate_omo_plan = tool({
     }
 
     return {
-      title: `validate_omo_plan: ${changeName} (${validation.passedChecks}/${validation.totalChecks})`,
+      title: `check_plan: ${changeName} (${validation.passedChecks}/${validation.totalChecks})`,
       output: `✅ plan 结构检查通过（${validation.passedChecks}/${validation.totalChecks} 项全部通过）`,
       metadata: {
         changeName,

@@ -1,8 +1,8 @@
 #!/usr/bin/env bun test
 /**
  * omo-spec 2 个 tool 的 execute() 集成测试
- * - sync_tasks_from_plan（含 batch / single / skip / 子目录边界）
- * - validate_omo_plan（结构化返回）
+ * - plan_to_tasks（含 batch / single / skip / 子目录边界）
+ * - check_plan（结构化返回）
  */
 
 import { describe, expect, test } from "bun:test"
@@ -11,7 +11,8 @@ import { tmpdir } from "node:os"
 import { join } from "node:path"
 import {
   parseOmoPlan,
-  sync_tasks_from_plan,
+  plan_to_tasks,
+  check_plan,
 } from "../omo-spec"
 
 // ============================================================
@@ -90,7 +91,7 @@ describe("generateOpenSpecTasks - 空 wave 标签处理 (A9)", () => {
   })
 })
 
-describe("sync_tasks_from_plan 批量模式", () => {
+describe("plan_to_tasks 批量模式", () => {
   function setupPlan(tmp: string, name: string, content: string) {
     const plansDir = join(tmp, ".omo", "plans")
     mkdirSync(plansDir, { recursive: true })
@@ -106,7 +107,7 @@ describe("sync_tasks_from_plan 批量模式", () => {
     const tmp = mkdtempSync(join(tmpdir(), "omo-batch-empty-"))
     try {
       mkdirSync(join(tmp, ".omo", "plans"), { recursive: true })
-      const result = await (sync_tasks_from_plan as any).execute({}, { directory: tmp })
+      const result = await (plan_to_tasks as any).execute({}, { directory: tmp })
       expect(result.output).toContain("没有 .md plan 文件")
     } finally {
       rmSync(tmp, { recursive: true, force: true })
@@ -117,7 +118,7 @@ describe("sync_tasks_from_plan 批量模式", () => {
     const tmp = mkdtempSync(join(tmpdir(), "omo-batch-nodir-"))
     try {
       await expect(
-        (sync_tasks_from_plan as any).execute({}, { directory: tmp })
+        (plan_to_tasks as any).execute({}, { directory: tmp })
       ).rejects.toThrow(/plans 目录不存在/)
     } finally {
       rmSync(tmp, { recursive: true, force: true })
@@ -129,7 +130,7 @@ describe("sync_tasks_from_plan 批量模式", () => {
     try {
       setupPlan(tmp, "feature-x", "## TL;DR\nT\n## TODOs\n#### 1. [ ] task1\n## Final Verification Wave\n### F1. [ ] f\n")
       setupChange(tmp, "feature-x")
-      const result = await (sync_tasks_from_plan as any).execute({}, { directory: tmp })
+      const result = await (plan_to_tasks as any).execute({}, { directory: tmp })
       expect(result.output).toContain("1 个 change 已同步")
       expect(result.output).toContain("feature-x")
       expect(existsSync(join(tmp, "openspec", "changes", "feature-x", "tasks.md"))).toBe(true)
@@ -142,7 +143,7 @@ describe("sync_tasks_from_plan 批量模式", () => {
     const tmp = mkdtempSync(join(tmpdir(), "omo-batch-skip-"))
     try {
       setupPlan(tmp, "orphan-plan", "## TL;DR\nT\n## TODOs\n#### 1. [ ] t\n## Final Verification Wave\n### F1. [ ] f\n")
-      const result = await (sync_tasks_from_plan as any).execute({}, { directory: tmp })
+      const result = await (plan_to_tasks as any).execute({}, { directory: tmp })
       expect(result.output).toContain("1 个 plan 跳过")
       expect(result.output).toContain("无匹配的 change 目录")
     } finally {
@@ -155,7 +156,7 @@ describe("sync_tasks_from_plan 批量模式", () => {
     try {
       setupPlan(tmp, "empty-tasks", "## TL;DR\nT\n## Context\nC\n")
       setupChange(tmp, "empty-tasks")
-      const result = await (sync_tasks_from_plan as any).execute({}, { directory: tmp })
+      const result = await (plan_to_tasks as any).execute({}, { directory: tmp })
       expect(result.output).toContain("plan 中无任务（0 tasks）")
     } finally {
       rmSync(tmp, { recursive: true, force: true })
@@ -168,7 +169,7 @@ describe("sync_tasks_from_plan 批量模式", () => {
       setupPlan(tmp, "matched", "## TL;DR\nT\n## TODOs\n#### 1. [ ] t1\n## Final Verification Wave\n### F1. [ ] f\n")
       setupPlan(tmp, "orphan", "## TL;DR\nT\n## TODOs\n#### 1. [ ] t2\n## Final Verification Wave\n### F1. [ ] f\n")
       setupChange(tmp, "matched")
-      const result = await (sync_tasks_from_plan as any).execute({}, { directory: tmp })
+      const result = await (plan_to_tasks as any).execute({}, { directory: tmp })
       expect(result.output).toContain("1 个 change 已同步")
       expect(result.output).toContain("1 个 plan 跳过")
       expect(existsSync(join(tmp, "openspec", "changes", "matched", "tasks.md"))).toBe(true)
@@ -183,9 +184,9 @@ describe("sync_tasks_from_plan 批量模式", () => {
     try {
       setupPlan(tmp, "idem", "## TL;DR\nT\n## TODOs\n#### 1. [ ] t1\n#### 2. [x] t2\n## Final Verification Wave\n### F1. [ ] f\n")
       setupChange(tmp, "idem")
-      await (sync_tasks_from_plan as any).execute({}, { directory: tmp })
+      await (plan_to_tasks as any).execute({}, { directory: tmp })
       const first = readFileSync(join(tmp, "openspec", "changes", "idem", "tasks.md"), "utf-8")
-      await (sync_tasks_from_plan as any).execute({}, { directory: tmp })
+      await (plan_to_tasks as any).execute({}, { directory: tmp })
       const second = readFileSync(join(tmp, "openspec", "changes", "idem", "tasks.md"), "utf-8")
       expect(first).toBe(second)
     } finally {
@@ -199,7 +200,7 @@ describe("sync_tasks_from_plan 批量模式", () => {
       setupPlan(tmp, "archived-old", "## TL;DR\nT\n## TODOs\n#### 1. [ ] t\n## Final Verification Wave\n### F1. [ ] f\n")
       const archiveDir = join(tmp, "openspec", "changes", "archive", "archived-old")
       mkdirSync(archiveDir, { recursive: true })
-      const result = await (sync_tasks_from_plan as any).execute({}, { directory: tmp })
+      const result = await (plan_to_tasks as any).execute({}, { directory: tmp })
       expect(result.output).toContain("1 个 plan 跳过")
       expect(existsSync(join(archiveDir, "tasks.md"))).toBe(false)
     } finally {
@@ -208,7 +209,7 @@ describe("sync_tasks_from_plan 批量模式", () => {
   })
 })
 
-describe("sync_tasks_from_plan single mode（传 change_name）", () => {
+describe("plan_to_tasks single mode（传 change_name）", () => {
   function setupPlan(tmp: string, name: string, content: string) {
     const plansDir = join(tmp, ".omo", "plans")
     mkdirSync(plansDir, { recursive: true })
@@ -225,7 +226,7 @@ describe("sync_tasks_from_plan single mode（传 change_name）", () => {
       setupPlan(tmp, "target", PLAN_CONTENT)
       setupPlan(tmp, "other", PLAN_CONTENT)
       setupChange(tmp, "target")
-      const result = await (sync_tasks_from_plan as any).execute(
+      const result = await (plan_to_tasks as any).execute(
         { change_name: "target" },
         { directory: tmp }
       )
@@ -243,7 +244,7 @@ describe("sync_tasks_from_plan single mode（传 change_name）", () => {
     try {
       setupPlan(tmp, "orphan", PLAN_CONTENT)
       await expect(
-        (sync_tasks_from_plan as any).execute(
+        (plan_to_tasks as any).execute(
           { change_name: "orphan" },
           { directory: tmp }
         )
@@ -258,7 +259,7 @@ describe("sync_tasks_from_plan single mode（传 change_name）", () => {
     try {
       mkdirSync(join(tmp, ".omo", "plans"), { recursive: true })
       await expect(
-        (sync_tasks_from_plan as any).execute(
+        (plan_to_tasks as any).execute(
           { change_name: "ghost" },
           { directory: tmp }
         )
@@ -272,7 +273,7 @@ describe("sync_tasks_from_plan single mode（传 change_name）", () => {
     const tmp = mkdtempSync(join(tmpdir(), "omo-single-empty-"))
     try {
       mkdirSync(join(tmp, ".omo", "plans"), { recursive: true })
-      const result = await (sync_tasks_from_plan as any).execute(
+      const result = await (plan_to_tasks as any).execute(
         { change_name: "" },
         { directory: tmp }
       )
@@ -287,7 +288,7 @@ describe("sync_tasks_from_plan single mode（传 change_name）", () => {
     const tmp = mkdtempSync(join(tmpdir(), "omo-single-null-"))
     try {
       mkdirSync(join(tmp, ".omo", "plans"), { recursive: true })
-      const result = await (sync_tasks_from_plan as any).execute(
+      const result = await (plan_to_tasks as any).execute(
         { change_name: null },
         { directory: tmp }
       )
@@ -305,7 +306,7 @@ describe("sync_tasks_from_plan single mode（传 change_name）", () => {
       setupPlan(tmp, "beta", PLAN_CONTENT)
       setupChange(tmp, "alpha")
       setupChange(tmp, "beta")
-      const singleResult = await (sync_tasks_from_plan as any).execute(
+      const singleResult = await (plan_to_tasks as any).execute(
         { change_name: "alpha" },
         { directory: tmp }
       )
@@ -325,7 +326,7 @@ describe("sync_tasks_from_plan single mode（传 change_name）", () => {
       setupPlan(tmp, "real-plan", PLAN_CONTENT)
       setupChange(tmp, "real-plan")
       mkdirSync(join(plansDir, "not-a-plan"), { recursive: true })
-      const result = await (sync_tasks_from_plan as any).execute({}, { directory: tmp })
+      const result = await (plan_to_tasks as any).execute({}, { directory: tmp })
       expect(result.output).toContain("1 个 change 已同步")
       expect(result.output).not.toContain("not-a-plan")
     } finally {
@@ -339,7 +340,7 @@ describe("sync_tasks_from_plan single mode（传 change_name）", () => {
       setupPlan(tmp, "a", PLAN_CONTENT)
       setupPlan(tmp, "orphan", PLAN_CONTENT)
       setupChange(tmp, "a")
-      const result = await (sync_tasks_from_plan as any).execute({}, { directory: tmp })
+      const result = await (plan_to_tasks as any).execute({}, { directory: tmp })
       expect(result.title).toContain("batch")
       expect(result.title).toContain("1 synced")
       expect(result.metadata.mode).toBe("batch")
@@ -360,11 +361,11 @@ describe("sync_tasks_from_plan single mode（传 change_name）", () => {
     try {
       setupPlan(tmp, "only", PLAN_CONTENT)
       setupChange(tmp, "only")
-      const result = await (sync_tasks_from_plan as any).execute(
+      const result = await (plan_to_tasks as any).execute(
         { change_name: "only" },
         { directory: tmp }
       )
-      expect(result.title).toBe("sync_tasks_from_plan: only")
+      expect(result.title).toBe("plan_to_tasks: only")
       expect(result.metadata.mode).toBe("single")
       expect(result.metadata.changeName).toBe("only")
       expect(result.metadata.total).toBe(2)
@@ -382,7 +383,7 @@ describe("sync_tasks_from_plan single mode（传 change_name）", () => {
     try {
       setupPlan(tmp, "empty-change", "## TL;DR\nT\n## Context\nC\n")
       setupChange(tmp, "empty-change")
-      const result = await (sync_tasks_from_plan as any).execute(
+      const result = await (plan_to_tasks as any).execute(
         { change_name: "empty-change" },
         { directory: tmp }
       )
@@ -402,12 +403,151 @@ describe("sync_tasks_from_plan single mode（传 change_name）", () => {
       setupPlan(tmp, "only-valid", PLAN_CONTENT)
       setupPlan(tmp, "ghost", PLAN_CONTENT)
       setupChange(tmp, "only-valid")
-      const result = await (sync_tasks_from_plan as any).execute({}, { directory: tmp })
+      const result = await (plan_to_tasks as any).execute({}, { directory: tmp })
       expect(result.title).toContain("1 synced")
       expect(result.title).toContain("1 skipped")
       const skipEntry = result.metadata.skipped.find((s: { plan: string }) => s.plan === "ghost.md")
       expect(skipEntry).toBeDefined()
       expect(skipEntry.reason).toContain("无匹配的 change 目录")
+    } finally {
+      rmSync(tmp, { recursive: true, force: true })
+    }
+  })
+})
+
+// ============================================================
+// check_plan tool execute() 集成测试
+// (Oracle review ⚪ #4: 补 check_plan 的 tool 外壳测试)
+// ============================================================
+
+describe("check_plan - tool execute() 集成", () => {
+  const VALID_PLAN = [
+    "## TL;DR",
+    "T",
+    "## Context",
+    "C",
+    "## Work Objectives",
+    "W",
+    "## Verification Strategy",
+    "V",
+    "## Execution Strategy",
+    "E",
+    "## TODOs",
+    "#### 1. [ ] task one",
+    "## Final Verification Wave",
+    "### F1. [ ] fvw one",
+    "## Commit Strategy",
+    "S",
+    "## Success Criteria",
+    "- [ ] criterion one",
+  ].join("\n")
+
+  function setupPlan(tmp: string, name: string, content: string) {
+    const plansDir = join(tmp, ".omo", "plans")
+    mkdirSync(plansDir, { recursive: true })
+    writeFileSync(join(plansDir, `${name}.md`), content)
+  }
+
+  test("happy path: 传 change_name 验证合法 plan → 11/11 通过", async () => {
+    const tmp = mkdtempSync(join(tmpdir(), "omo-check-happy-"))
+    try {
+      setupPlan(tmp, "feat", VALID_PLAN)
+      const result = await (check_plan as any).execute(
+        { change_name: "feat" },
+        { directory: tmp }
+      )
+      expect(result.title).toBe("check_plan: feat (11/11)")
+      expect(result.output).toContain("✅ plan 结构检查通过")
+      expect(result.output).toContain("11/11")
+      expect(result.metadata.valid).toBe(true)
+      expect(result.metadata.passedChecks).toBe(11)
+      expect(result.metadata.totalChecks).toBe(11)
+      expect(result.metadata.changeName).toBe("feat")
+      expect(Array.isArray(result.metadata.results)).toBe(true)
+      expect(result.metadata.results).toHaveLength(11)
+      expect(result.metadata.results.every((r: { passed: boolean }) => r.passed)).toBe(true)
+    } finally {
+      rmSync(tmp, { recursive: true, force: true })
+    }
+  })
+
+  test("happy path: 传 plan_file_path 也能成功", async () => {
+    const tmp = mkdtempSync(join(tmpdir(), "omo-check-pf-"))
+    try {
+      setupPlan(tmp, "feat2", VALID_PLAN)
+      const planPath = join(tmp, ".omo", "plans", "feat2.md")
+      const result = await (check_plan as any).execute(
+        { plan_file_path: planPath },
+        { directory: tmp }
+      )
+      expect(result.metadata.valid).toBe(true)
+      expect(result.metadata.changeName).toBe("feat2")
+      expect(result.title).toBe("check_plan: feat2 (11/11)")
+    } finally {
+      rmSync(tmp, { recursive: true, force: true })
+    }
+  })
+
+  test("失败: plan 缺少必填 section → throw 含失败清单 + 修复建议", async () => {
+    const tmp = mkdtempSync(join(tmpdir(), "omo-check-fail-"))
+    try {
+      setupPlan(tmp, "bad", "## TL;DR\nT\n")
+      await expect(
+        (check_plan as any).execute({ change_name: "bad" }, { directory: tmp })
+      ).rejects.toThrow(/plan 结构检查失败/)
+      await expect(
+        (check_plan as any).execute({ change_name: "bad" }, { directory: tmp })
+      ).rejects.toThrow(/请修复 plan 后重新运行此检查/)
+      await expect(
+        (check_plan as any).execute({ change_name: "bad" }, { directory: tmp })
+      ).rejects.toThrow(/Context/)
+    } finally {
+      rmSync(tmp, { recursive: true, force: true })
+    }
+  })
+
+  test("失败: plan 文件不存在 → throw 含清晰路径 + 修复建议", async () => {
+    const tmp = mkdtempSync(join(tmpdir(), "omo-check-nofile-"))
+    try {
+      await expect(
+        (check_plan as any).execute(
+          { change_name: "missing" },
+          { directory: tmp }
+        )
+      ).rejects.toThrow(/plan 文件不存在/)
+      await expect(
+        (check_plan as any).execute(
+          { change_name: "missing" },
+          { directory: tmp }
+        )
+      ).rejects.toThrow(/确认 \.omo\/plans\/missing\.md 已创建/)
+    } finally {
+      rmSync(tmp, { recursive: true, force: true })
+    }
+  })
+
+  test("失败: 无参数 → throw 提示至少传一个", async () => {
+    const tmp = mkdtempSync(join(tmpdir(), "omo-check-noargs-"))
+    try {
+      await expect(
+        (check_plan as any).execute({}, { directory: tmp })
+      ).rejects.toThrow(/至少传一个参数/)
+    } finally {
+      rmSync(tmp, { recursive: true, force: true })
+    }
+  })
+
+  test("失败: change_name 与 plan_file_path 推导出不一致 → throw", async () => {
+      const tmp = mkdtempSync(join(tmpdir(), "omo-check-mismatch-"))
+      try {
+        setupPlan(tmp, "alpha", VALID_PLAN)
+      const planPath = join(tmp, ".omo", "plans", "alpha.md")
+      await expect(
+        (check_plan as any).execute(
+          { change_name: "beta", plan_file_path: planPath },
+          { directory: tmp }
+        )
+      ).rejects.toThrow(/不一致/)
     } finally {
       rmSync(tmp, { recursive: true, force: true })
     }

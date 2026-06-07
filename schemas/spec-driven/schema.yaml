@@ -318,8 +318,8 @@ artifacts:
       consultation), multi-agent review, and tasks.md mirroring.
       Validates specs, runs Oracle gap analysis, generates
       .omo/plans/<name>.md (OMO plan), reviews it via
-      omo_spec_validate_omo_plan + Oracle + Momus, and syncs to
-      tasks.md via omo_spec_sync_tasks_from_plan tool.
+      omo_spec_check_plan + Oracle + Momus, and syncs to
+      tasks.md via omo_spec_plan_to_tasks tool.
     template: tasks.md
     tracks: tasks.md
     instruction: |
@@ -335,6 +335,18 @@ artifacts:
       1. 立即停止当前 PHASE
       2. 向用户报告：「🔴 [PHASE 名] 中断：[agent/tool/skill 名] 调用失败。[错误信息]」
       3. 等待用户介入
+
+      === OpenCode Tool 调用约定（必读，重要）===
+
+      本阶段涉及 2 个 **OpenCode plugin 工具**（由本 session 的 tool registry 自动加载，不要走 shell）：
+
+      - `omo_spec_check_plan` — 验证 OMO plan 结构（11 项检查）
+      - `omo_spec_plan_to_tasks` — 镜像 plan → tasks.md
+
+      ✅ **正确**：通过 OpenCode tool 机制直接调用，工具面板会自动展示 JSON 参数
+      ❌ **错误**：在 bash 中执行 kebab-case 形式（如 `omo-spec-plan-to-tasks`）——这些 **不是 CLI 二进制**，执行会报 `command not found: omo-spec-plan-to-tasks`
+
+      **判断口诀**：snake_case 名称 + OpenCode plugin tool = 走 tool 机制，不要走 bash。
 
       === PHASE 1：读取上下文 + Spec 验证 ===
 
@@ -454,7 +466,7 @@ artifacts:
 
       3. AI **直接**写 OMO 兼容 plan markdown 到 `.omo/plans/<change-name>.md`
 
-      **OMO plan 格式规范**（必须严格遵守，validate_omo_plan 会校验）：
+      **OMO plan 格式规范**（必须严格遵守，check_plan 会校验）：
 
       ```markdown
       ## 1. TL;DR
@@ -527,7 +539,7 @@ artifacts:
       - [ ] 软性指标 1
       ```
 
-      **关键约束**（validate_omo_plan 11 项检查的硬性要求）：
+      **关键约束**（check_plan 11 项检查的硬性要求）：
       - 9 个 section 标题必须存在（可用 `## 1. TL;DR` 或 `## TL;DR` 两种格式，**推荐编号**以匹配 OMO 项目惯例）
       - TODOs section 必须含至少 1 个 `#### N. [ ] <title>` 格式任务
       - Final Verification Wave section 必须含至少 1 个 `### FN. [ ] <title>` 格式任务
@@ -537,7 +549,7 @@ artifacts:
       - 用 `write` 工具直接写文件到 `.omo/plans/<change-name>.md`
       - 不要手动 mkdir（write 工具会处理父目录）
 
-      4. 调用 `omo_spec_validate_omo_plan` OpenCode tool（参数：`change_name=<change-name>`）做 11 项 OMO 兼容性检查
+      4. **通过 OpenCode tool 机制**调用 `omo_spec_check_plan`（参数：`change_name=<change-name>`，**不要走 bash**）做 11 项 OMO 兼容性检查
       - ✅ 通过（11/11）→ 进入 PHASE 4
       - ❌ 失败 → tool 会 throw 错误，按错误信息修复 plan 后重新验证（最多 3 轮）
 
@@ -545,7 +557,7 @@ artifacts:
 
       **4.1 plan 结构检查（OMO 兼容性）**：
 
-      调用 `omo_spec_validate_omo_plan` OpenCode tool（参数：`change_name=<change-name>`）做 11 项 OMO 兼容性检查（9 个 section + 2 个任务格式）。检查项详见 tool 自身描述。
+      **通过 OpenCode tool 机制**调用 `omo_spec_check_plan`（参数：`change_name=<change-name>`，**不要走 bash**）做 11 项 OMO 兼容性检查（9 个 section + 2 个任务格式）。检查项详见 tool 自身描述。
 
       tool 返回 `✅ 全部通过` → 进入 PHASE 4.2 启动 Oracle+Momus 审查。
       tool 返回 `❌ 失败` → **AI 自动修复 plan**（按 tool 输出的失败项调整内容），修复后重新跑 PHASE 4.1 验证。
@@ -622,7 +634,7 @@ artifacts:
 
       **仅在 PHASE 4 审查通过（用户选择 1）后执行**。
 
-      调用 `omo_spec_sync_tasks_from_plan` OpenCode tool（**batch 模式无参**）将所有 plan 批量镜像到匹配的非归档 change 的 `tasks.md`。
+      **通过 OpenCode tool 机制**调用 `omo_spec_plan_to_tasks`（**batch 模式无参**，**不要走 bash**）将所有 plan 批量镜像到匹配的非归档 change 的 `tasks.md`。
 
       **本阶段 sync tool 只调这一次**——plan 没改就不要再调。plan 是 single source of truth,tasks.md 只是镜像(apply 阶段 Step 4 还有一次最终同步,见后)。如果 plan 后续需要修改,修完后重跑一次 sync tool 即可,中间不需要周期性同步。
 
@@ -651,6 +663,17 @@ apply:
     2. 向用户报告：「🔴 [步骤名] 中断：[agent/tool/skill 名] 调用失败。[错误信息]」
     3. 等待用户介入
 
+    === OpenCode Tool 调用约定（必读，重要）===
+
+    本阶段涉及 1 个 **OpenCode plugin 工具**（由本 session 的 tool registry 自动加载，不要走 shell）：
+
+    - `omo_spec_plan_to_tasks` — 镜像 plan → tasks.md
+
+    ✅ **正确**：通过 OpenCode tool 机制直接调用，工具面板会自动展示 JSON 参数
+    ❌ **错误**：在 bash 中执行 kebab-case 形式（如 `omo-spec-plan-to-tasks`）——这些 **不是 CLI 二进制**，执行会报 `command not found: omo-spec-plan-to-tasks`
+
+    **判断口诀**：snake_case 名称 + OpenCode plugin tool = 走 tool 机制，不要走 bash。
+
     === 关键：与 openspec-apply-change skill 的冲突 ===
 
     本 apply 阶段由 `openspec-apply-change` skill 触发，但本系统使用自定义的 `spec-driven` schema，与标准 skill 的行为**完全不同**。
@@ -658,14 +681,14 @@ apply:
     **优先级声明**：本 instruction 中的所有命令优先级**高于** `openspec-apply-change` skill 的步骤。AI 必须按本 instruction 执行，**忽略** skill 中任何与本 instruction 冲突的步骤。
 
     **绝对禁止**（如违反会产生错误的 tasks.md）：
-    1. ❌ 禁止**手动**重写或重新生成 `tasks.md`（无论是 `1.1` 格式还是其他格式）— tasks.md 只能由 `omo_spec_sync_tasks_from_plan` tool 写入
+    1. ❌ 禁止**手动**重写或重新生成 `tasks.md`（无论是 `1.1` 格式还是其他格式）— tasks.md 只能由 `omo_spec_plan_to_tasks` tool 写入（**走 tool 机制，不要 bash**）
     2. ❌ 禁止读取 `tasks.md` 作为任务列表（apply 阶段读 `.omo/plans/<change-name>.md` 即可，tasks.md 是镜像）
     3. ❌ 禁止**手动**标记 `tasks.md` 中的 checkbox — checkbox 由 sync tool 从 plan 镜像
     4. ❌ 禁止执行 skill 的 Step 6（"Mark task complete in the tasks file"）
     5. ❌ 禁止从 `openspec/changes/archive/` 等历史目录复制旧的 N.M 格式
     6. ❌ 禁止调用 `openspec-apply-change` skill 中的任何写入/读取 tasks.md 的步骤（如果它被自动加载，请忽略它的所有步骤）
 
-    **唯一允许的 tasks.md 写操作**：Step 4（apply 结束前）调用 `omo_spec_sync_tasks_from_plan` tool。
+    **唯一允许的 tasks.md 写操作**：Step 4（apply 结束前）**通过 tool 机制**调用 `omo_spec_plan_to_tasks`（**不要走 bash**）。
 
     === Step 1：验证 tasks 阶段已完成 ===
 
@@ -753,12 +776,12 @@ apply:
          超限（3 轮后仍有 🔴/🟡）→ 汇总所有剩余展示给用户
     3. 如果 ⚠️ CONDITIONAL → 汇总 ⚪ 展示给用户
 
-    **注意**：Step 4 的 `omo_spec_sync_tasks_from_plan` tool 调用是 apply 阶段**唯一**的 tasks.md 写操作。
+    **注意**：Step 4 的 `omo_spec_plan_to_tasks` tool 调用（**走 tool 机制，不要 bash**）是 apply 阶段**唯一**的 tasks.md 写操作。
     任务完成状态通过 sync tool 从 plan 文件的 checkbox 镜像而来。
 
     === Step 4：最终同步 tasks.md 镜像 ===
 
-    Step 3 验证结束后（无论 PASS / CONDITIONAL / 超限），**最终**调用一次 `omo_spec_sync_tasks_from_plan` tool（batch 模式无参）同步所有 plan 状态到 tasks.md。
+    Step 3 验证结束后（无论 PASS / CONDITIONAL / 超限），**最终**通过 OpenCode tool 机制调用一次 `omo_spec_plan_to_tasks`（batch 模式无参，**不要走 bash**）同步所有 plan 状态到 tasks.md。
 
     **apply 阶段 sync tool 只调这一次**——不要在 Step 1/2/3 中"预防性"或"刷新"式地调。plan 是 single source of truth,tasks.md 是镜像,plan 没改就无需再同步。
 
