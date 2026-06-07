@@ -315,17 +315,17 @@ artifacts:
     generates: tasks.md
     description: >
       Spec validation, gap analysis, plan generation (with Metis
-      consultation), multi-agent review, and tasks.md mirroring.
+      consultation), multi-agent review, and tasks.md placeholder creation.
       Validates specs, runs Oracle gap analysis, generates
       .omo/plans/<name>.md (OMO plan), reviews it via
-      omo_spec_check_plan + Oracle + Momus, and syncs to
-      tasks.md via omo_spec_plan_to_tasks tool.
+      omo_spec_check_plan + Oracle + Momus, and creates an empty
+      tasks.md placeholder for the apply phase to fill with plan content.
     template: tasks.md
     tracks: tasks.md
     instruction: |
       __LANG_PLACEHOLDER__
 
-      **范围限制：不要修改任何源代码。本阶段产出：`.omo/plans/<change-name>.md` + `tasks.md`（由 sync tool 镜像生成）。**
+      **范围限制：不要修改任何源代码。本阶段产出：`.omo/plans/<change-name>.md` + `tasks.md` 空占位文件（plan 内容在 apply 阶段补充）。**
 
       === Fast Fail Rule (Global) ===
 
@@ -335,18 +335,6 @@ artifacts:
       1. 立即停止当前 PHASE
       2. 向用户报告：「🔴 [PHASE 名] 中断：[agent/tool/skill 名] 调用失败。[错误信息]」
       3. 等待用户介入
-
-      === OpenCode Tool 调用约定（必读，重要）===
-
-      本阶段涉及 2 个 **OpenCode plugin 工具**（由本 session 的 tool registry 自动加载，不要走 shell）：
-
-      - `omo_spec_check_plan` — 验证 OMO plan 结构（11 项检查）
-      - `omo_spec_plan_to_tasks` — 镜像 plan → tasks.md
-
-      ✅ **正确**：通过 OpenCode tool 机制直接调用，工具面板会自动展示 JSON 参数
-      ❌ **错误**：在 bash 中执行 kebab-case 形式（如 `omo-spec-plan-to-tasks`）——这些 **不是 CLI 二进制**，执行会报 `command not found: omo-spec-plan-to-tasks`
-
-      **判断口诀**：snake_case 名称 + OpenCode plugin tool = 走 tool 机制，不要走 bash。
 
       === PHASE 1：读取上下文 + Spec 验证 ===
 
@@ -549,21 +537,9 @@ artifacts:
       - 用 `write` 工具直接写文件到 `.omo/plans/<change-name>.md`
       - 不要手动 mkdir（write 工具会处理父目录）
 
-      4. **通过 OpenCode tool 机制**调用 `omo_spec_check_plan`（参数：`change_name=<change-name>`，**不要走 bash**）做 11 项 OMO 兼容性检查
-      - ✅ 通过（11/11）→ 进入 PHASE 4
-      - ❌ 失败 → tool 会 throw 错误，按错误信息修复 plan 后重新验证（最多 3 轮）
-
       === PHASE 4：Oracle + Momus 并行审查 Plan + Verdict 处理 ===
 
-      **4.1 plan 结构检查（OMO 兼容性）**：
-
-      **通过 OpenCode tool 机制**调用 `omo_spec_check_plan`（参数：`change_name=<change-name>`，**不要走 bash**）做 11 项 OMO 兼容性检查（9 个 section + 2 个任务格式）。检查项详见 tool 自身描述。
-
-      tool 返回 `✅ 全部通过` → 进入 PHASE 4.2 启动 Oracle+Momus 审查。
-      tool 返回 `❌ 失败` → **AI 自动修复 plan**（按 tool 输出的失败项调整内容），修复后重新跑 PHASE 4.1 验证。
-         - 最多 3 轮。3 轮后仍有失败 → 停止，提示用户手动修复。
-
-      **4.2 启动 Oracle + Momus 并行审查**：
+      **4.1 启动 Oracle + Momus 并行审查**：
 
       ```
       PLAN_REVIEW_PROMPT = "你正在审查 OMO plan。请逐一检查以下所有检查项：
@@ -620,7 +596,7 @@ artifacts:
       task(subagent_type="momus", prompt=MOMUS_PLAN_REVIEW_PROMPT)
       ```
 
-      **4.3 收集评审结果**：
+      **4.2 收集评审结果**：
       1. 读取 Oracle 和 Momus 输出，合并发现（同一问题多个 agent 都发现时取更高严重程度）
       2. 分类判定：
          - 有 🔴 或 🟡 → BLOCKED，AI 用 Read/Edit 工具直接修复 plan。只修复标记为 🔴/🟡 的问题，不要修改其他内容。修复完成后重新运行 PHASE 4（**最多 3 轮**，超限后汇总给用户）
@@ -630,18 +606,9 @@ artifacts:
 
       收集所有未解决的 ⚪ 项（来自 PHASE 2 差距分析遗留 + PHASE 4 plan 审查遗留），向用户呈现并询问。
 
-      === PHASE 5：同步 tasks.md 镜像 ===
+      === PHASE 5：创建 tasks.md 占位文件 ===
 
-      **仅在 PHASE 4 审查通过（用户选择 1）后执行**。
-
-      **通过 OpenCode tool 机制**调用 `omo_spec_plan_to_tasks`（**batch 模式无参**，**不要走 bash**）将所有 plan 批量镜像到匹配的非归档 change 的 `tasks.md`。
-
-      **本阶段 sync tool 只调这一次**——plan 没改就不要再调。plan 是 single source of truth,tasks.md 只是镜像(apply 阶段 Step 4 还有一次最终同步,见后)。如果 plan 后续需要修改,修完后重跑一次 sync tool 即可,中间不需要周期性同步。
-
-      这会生成 OpenSpec 期望的 checkbox 格式（含 Plan Reference 附录，保留全部 9 章节内容）。
-
-
-      调用成功后，tasks 阶段完成。
+      按照 `tasks.md` 模板，生成 `openspec/changes/<change-name>/tasks.md` 空文件占位（task 内容由后续 apply 阶段补充）。
     requires:
       - specs
       - design

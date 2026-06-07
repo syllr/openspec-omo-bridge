@@ -34,7 +34,8 @@ function run(cmd) {
 
 const status = run(`openspec status --change "${changeName}" --json`);
 
-const planFile = join(status.planningHome?.root ?? "", ".omo", "plans", `${changeName}.md`);
+const root = status.planningHome?.root;
+const planFile = root ? join(root, ".omo", "plans", `${changeName}.md`) : "";
 
 if (!status.changeRoot) {
   console.error("❌ changeRoot 为空,无法写入 tasks.md");
@@ -42,8 +43,8 @@ if (!status.changeRoot) {
 }
 const tasksFile = join(status.changeRoot, "tasks.md");
 
-if (!existsSync(planFile)) {
-  console.error(`❌ plan 文件不存在: ${planFile}`);
+if (!planFile || !existsSync(planFile)) {
+  console.error(`❌ plan 文件不存在: ${planFile || "(planningHome.root 为空)"}`);
   process.exit(1);
 }
 

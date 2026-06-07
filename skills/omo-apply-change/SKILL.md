@@ -8,7 +8,7 @@ metadata:
   version: "1.0"
 ---
 
-# 全局规则
+# 1. 全局规则
 
 ## Fast Fail Rule
 
@@ -20,7 +20,7 @@ metadata:
 
 禁止降级、禁止重试、禁止跳过、禁止自行替代执行。
 
-# 选 change
+# 2. 选 change
 
 可指定 change name。省略时：
 
@@ -28,7 +28,7 @@ metadata:
 - 只有一个 active change → 自动选
 - 推断不出或模糊 → 跑 `openspec list --json`，用 AskUserQuestion 让用户选
 
-# 拉 schema 状态和 change 上下文
+# 3. 拉 schema 状态和 change 上下文
 
 **目的**：跑 `inspect-apply.mjs <name>` 拿 change 上下文 JSON,读 `schemaName` / `contextFiles` / `planFile` / `planName` / `instruction` 后进入实施。
 
@@ -77,9 +77,9 @@ metadata:
 
 读 `schemaName` / `contextFiles` / `planFile` / `planName` / `instruction` 后，进入「实施 tasks」步骤。
 
-# 实施 tasks（按 contextFiles + plan）
+# 4. 实施 tasks（按 contextFiles + plan）
 
-走流程（Read → Implement → Oracle 验证 → 同步 tasks.md）：
+走流程（Read → Implement → On completion/pause）：
 
 1. **Read context files** — 按 `contextFiles` 字段读 change 所有上下文
 2. **Implement tasks (loop)** — 调 `/start-work <planName>`(传 `planName` 字段值,短名,不要传路径),让 OMO 解析 plan 驱动 task 执行。**LLM 不手动改 `tasks.md` checkbox**(由后续 sync 步骤镜像;**plan checkbox 不在此限制内**,见「Oracle 验证」步骤)。对每个 pending task：
@@ -95,7 +95,7 @@ metadata:
 - 错误/阻塞 → 报告并等待
 - 用户中断
 
-# Oracle 验证（最多 3 轮）
+# 5. Oracle 验证（最多 3 轮）
 
 /start-work 完成后，调用 Oracle agent 审查 change（artifacts 正确性 + plan 任务完成度）：
 
@@ -162,7 +162,7 @@ grep -E '^#### [0-9]+\. \[ \]|^- \[ \]' .omo/plans/<change-name>.md
    - 超限（3 轮后仍有 🔴/🟡）→ 汇总所有剩余展示给用户
 3. 如果 ⚠️ CONDITIONAL → 汇总 ⚪ 展示给用户
 
-# 最终同步 tasks.md 镜像
+# 6. 最终同步 tasks.md 镜像
 
 Oracle 验证结束后（无论 PASS / CONDITIONAL / 超限），调 skill 自带脚本(只在 apply 阶段**最后**调一次,不预防性/刷新式调):
 
