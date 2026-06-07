@@ -1,19 +1,23 @@
 #!/usr/bin/env node
 //
-// inspect-apply.mjs — 拉取 OpenSpec apply 阶段 dynamic instruction
+// inspect-apply.mjs — 拉取 OpenSpec apply 阶段 change 上下文
 //
 // 用法: scripts/inspect-apply.mjs <change-name>
 //
-// 输出: 单 JSON object(已剔除 tasks 数组)
-// 字段: schemaName, state, progress{total,complete,remaining}, contextFiles, instruction
+// 输出: 单 JSON object,字段(精简到 6 个,其他冗余字段剔除):
+//   changeName, schemaName, contextFiles, progress, state, instruction
 //
-// 为什么剔除 tasks 数组:
-//   spec-driven schema 下 tasks 数组 ≠ 执行清单。
-//   真正执行清单在 `.omo/plans/<name>.md` 的 `## 6. TODOs` 段,
-//   由 `omo-apply-change` skill §3 的 `/start-work` 驱动。
-//   tasks 数组仅作 OpenSpec 标准格式兼容,本脚本不输出。
+// 合并两个 OpenSpec CLI 调用:
+//   - openspec status --change <name> --json          (派生 schemaName + contextFiles)
+//   - openspec instructions apply --change <name> --json  (取 progress, state, instruction)
+//
+// 剔除:
+//   - OpenSpec `tasks` 数组(只来自 plan 的 ## 9. Success Criteria,≠ 执行清单,容易误导 LLM)
+//   - status 的 artifacts / artifactPaths / actionContext / planningHome / isComplete / nextSteps / applyRequires(冗余或 LLM 实施时不需)
 
 import { execSync } from "node:child_process";
+import { existsSync } from "node:fs";
+import { join } from "node:path";
 
 const changeName = process.argv[2];
 if (!changeName) {
@@ -21,28 +25,37 @@ if (!changeName) {
   process.exit(1);
 }
 
-let data;
-try {
-  const raw = execSync(
-    `openspec instructions apply --change "${changeName}" --json`,
-    { encoding: "utf8" }
-  );
-  data = JSON.parse(raw);
-} catch (err) {
-  console.error("❌ openspec 调用失败:", err.message);
-  process.exit(1);
+function run(cmd) {
+  try {
+    return JSON.parse(execSync(cmd, { encoding: "utf8" }));
+  } catch (err) {
+    console.error(`❌ 命令失败: ${cmd}\n${err.message}`);
+    process.exit(1);
+  }
 }
 
-const { schemaName, state, progress, contextFiles, instruction } = data;
+const status = run(`openspec status --change "${changeName}" --json`);
+const apply = run(`openspec instructions apply --change "${changeName}" --json`);
+
+delete apply.tasks;
+
+const schemaName = status.planningHome?.defaultSchema;
+
+const contextFiles = {};
+for (const [id, info] of Object.entries(status.artifactPaths ?? {})) {
+  contextFiles[id] = info.existingOutputPaths;
+}
+
+const planFilePath = join(status.planningHome?.root ?? "", ".omo", "plans", `${changeName}.md`);
+const planFile = existsSync(planFilePath) ? planFilePath : "";
+
 const out = {
+  changeName: status.changeName,
   schemaName,
-  state,
-  progress: {
-    total: progress.total,
-    complete: progress.complete,
-    remaining: progress.total - progress.complete,
-  },
+  planningHome: status.planningHome,
+  changeRoot: status.changeRoot,
   contextFiles,
-  instruction,
+  planFile,
+  instruction: apply.instruction,
 };
 process.stdout.write(JSON.stringify(out, null, 2) + "\n");
