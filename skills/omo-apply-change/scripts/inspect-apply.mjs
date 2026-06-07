@@ -49,6 +49,9 @@ for (const [id, info] of Object.entries(status.artifactPaths ?? {})) {
 
 const planFilePath = join(status.planningHome?.root ?? "", ".omo", "plans", `${changeName}.md`);
 const planFile = existsSync(planFilePath) ? planFilePath : "";
+// planName:basename(planFile, ".md"),专供 OMO `/start-work` 命令 args 用。
+// OMO 的 findPlanByName 用 basename 去 .md 后严格匹配,传路径会匹配失败。
+const planName = planFile ? planFile.split("/").pop().replace(/\.md$/, "") : "";
 
 const out = {
   changeName: status.changeName,
@@ -57,6 +60,7 @@ const out = {
   changeRoot: status.changeRoot,
   contextFiles,
   planFile,
+  planName,
   instruction: apply.instruction,
 };
 process.stdout.write(JSON.stringify(out, null, 2) + "\n");
