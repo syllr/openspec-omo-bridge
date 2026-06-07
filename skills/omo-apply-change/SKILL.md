@@ -179,9 +179,15 @@ grep -E '^#### [0-9]+\. \[ \]|^- \[ \]' .omo/plans/<change-name>.md
 
 # 最终同步 tasks.md 镜像
 
-Oracle 验证结束后（无论 PASS / CONDITIONAL / 超限），**最终**通过 OpenCode tool 机制调用一次 `omo_spec_plan_to_tasks`（batch 模式无参，**走 tool 机制，不要走 bash**）同步所有 plan 状态到 tasks.md。
+Oracle 验证结束后（无论 PASS / CONDITIONAL / 超限），调 skill 自带脚本(只在 apply 阶段**最后**调一次,不预防性/刷新式调):
 
-**apply 阶段 sync tool 只调这一次**——不要在「实施 tasks」或「Oracle 验证」步骤中"预防性"或"刷新"式地调。plan 是 single source of truth，tasks.md 是镜像，plan 没改就无需再同步。
+```bash
+~/.config/opencode/skills/omo-apply-change/scripts/sync-plan-to-tasks.mjs "<name>"
+```
+
+脚本把 `.omo/plans/<name>.md` 内容镜像到 `<changeRoot>/tasks.md`,加 OpenSpec 标准头部和"Plan Reference"段。
+
+**apply 阶段 sync 只调这一次**——不要在「实施 tasks」或「Oracle 验证」步骤中"预防性"或"刷新"式地调。plan 是 single source of truth，tasks.md 是镜像，plan 没改就无需再同步。
 
 **目的**：保证 apply 阶段结束时 tasks.md 100% 反映 plan checkbox 最终状态。归档时（`openspec archive`）能读到准确完成度。
 
