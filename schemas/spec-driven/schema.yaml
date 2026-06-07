@@ -318,7 +318,7 @@ artifacts:
       consultation), multi-agent review, and tasks.md placeholder creation.
       Validates specs, runs Oracle gap analysis, generates
       .omo/plans/<name>.md (OMO plan), reviews it via
-      omo_spec_check_plan + Oracle + Momus, and creates an empty
+      Oracle + Momus, and creates an empty
       tasks.md placeholder for the apply phase to fill with plan content.
     template: tasks.md
     tracks: tasks.md
@@ -454,7 +454,7 @@ artifacts:
 
       3. AI **直接**写 OMO 兼容 plan markdown 到 `.omo/plans/<change-name>.md`
 
-      **OMO plan 格式规范**（必须严格遵守，check_plan 会校验）：
+      **OMO plan 格式规范**（必须严格遵守，Oracle + Momus 会校验）：
 
       ```markdown
       ## 1. TL;DR
@@ -527,7 +527,7 @@ artifacts:
       - [ ] 软性指标 1
       ```
 
-      **关键约束**（check_plan 11 项检查的硬性要求）：
+      **关键约束**（Oracle + Momus 审查的硬性要求）：
       - 9 个 section 标题必须存在（可用 `## 1. TL;DR` 或 `## TL;DR` 两种格式，**推荐编号**以匹配 OMO 项目惯例）
       - TODOs section 必须含至少 1 个 `#### N. [ ] <title>` 格式任务
       - Final Verification Wave section 必须含至少 1 个 `### FN. [ ] <title>` 格式任务
