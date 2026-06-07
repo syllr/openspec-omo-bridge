@@ -22,11 +22,42 @@ metadata:
 
 # 2. 选 change
 
-可指定 change name。省略时：
+## 2.1 规范化为纯 change name
 
-- 从对话上下文推断（用户前几轮提到过的 change）
-- 只有一个 active change → 自动选
-- 推断不出或模糊 → 跑 `openspec list --json`，用 AskUserQuestion 让用户选
+**用户可能给 3 种格式（含 typo），必须先 normalize 成纯 change name（如 `fix-token-heartbeat-auth`）再传给后续脚本**——`inspect-apply.mjs` 直接把 `process.argv[2]` 当 `changeName`,传路径或带 `.md` 会导致 `openspec status` 查不到、planFile 拼错。
+
+| 用户输入示例                                                                          | 规范化结果                                       |
+| ------------------------------------------------------------------------------------- | ------------------------------------------------ |
+| `fix-token-heartbeat-auth`                                                            | `fix-token-heartbeat-auth`                       |
+| `fix-token-heartbeat-auth.md`                                                         | 去 `.md` → `fix-token-heartbeat-auth`            |
+| `/Users/yutao/WebstormProjects/origin-seed-vc/.omo/plans/fix-token-heartbeat-auth.md` | `basename` 去 `.md` → `fix-token-heartbeat-auth` |
+
+**规范化算法**（按顺序尝试）：
+
+1. **去前后空白**（用户可能复制粘贴带了换行/空格）
+2. **路径化**：`/foo` 或 `./foo` 或 `~/foo` 或 `C:\foo` 开头 → 视为路径
+3. **取 basename**：用 `node -e "console.log(require('path').basename(process.argv[1], '.md'))" "<input>"`（或 LLM 直接字符串切最后一段 `/` 或 `\`、再去 `.md`）
+4. **去扩展名**：剥掉末尾的 `.md`（大小写不敏感）
+5. **空白转 `-`**：把内部空格转成 `-`（容错用户口语化输入如 `fix token heartbeat`）
+
+**typo 容错**：规范化后先试 `openspec status --change "<normalized>" --json`,失败再走 §2.3 模糊匹配。
+
+## 2.2 选 change 的优先级
+
+1. **用户显式指定**（任一格式）→ §2.1 normalize 后使用
+2. **从对话上下文推断**（用户前几轮提到过的 change）
+3. **只有一个 active change** → 自动选
+4. **推断不出 / normalize 后 `openspec status` 查不到 / 模糊** → 走 §2.3
+
+## 2.3 模糊匹配与用户确认
+
+跑 `openspec list --json` 拿所有 change 列表，做 fuzzy match：
+
+- **规范化结果在列表里**（exact match）→ 直接用
+- **规范化结果不在列表里但有 1 个高相似度候选**（Levenshtein 距离 ≤ 2 或公共子串 ≥ 80%）→ 报告候选（如「你是不是指 `fix-token-heartbeat-aurth`?」），等用户确认
+- **多个候选或无候选** → 用 `question` 工具（`AskUserQuestion`）列出全部让用户选
+
+**禁止**在 normalize 失败后直接报错退出 —— typo 是高频场景，必须走 fuzzy + 用户确认。
 
 # 3. 拉 schema 状态和 change 上下文
 
