@@ -2,13 +2,14 @@
 #
 # sync.sh — 统一同步脚本
 #
-# 用途：把仓库内的 tools 和 schemas 同步到 OpenCode/OpenSpec 全局目录
+# 用途：把仓库内的 tools / schemas / skills 同步到 OpenCode/OpenSpec 全局目录
 # 模式：单向同步（仓库 → 全局），可重入
 #
 # 用法：
-#   scripts/sync.sh                      # 同步全部（tools + schemas）
+#   scripts/sync.sh                      # 同步全部（tools + schemas + skills）
 #   scripts/sync.sh --tools-only         # 只同步 tools
 #   scripts/sync.sh --schemas-only       # 只同步 schemas
+#   scripts/sync.sh --skills-only        # 只同步 skills
 #   scripts/sync.sh --lang zh            # schemas 语言占位符替换为中文
 #   scripts/sync.sh --lang en            # schemas 语言占位符替换为英文
 #   scripts/sync.sh --dry-run             # 只显示会复制哪些文件，不实际执行
@@ -19,22 +20,26 @@ set -euo pipefail
 REPO_DIR="$(cd "$(dirname "$0")/.." && pwd)"
 REPO_TOOLS_DIR="${REPO_DIR}/tools"
 REPO_SCHEMAS_DIR="${REPO_DIR}/schemas"
+REPO_SKILLS_DIR="${REPO_DIR}/skills"
 OPENCODE_TOOLS_DIR="${HOME}/.config/opencode/tools"
 OPENSPEC_SCHEMAS_DIR="${HOME}/.local/share/openspec/schemas"
+OPENCODE_SKILLS_DIR="${HOME}/.config/opencode/skills"
 
 DRY_RUN=false
 SYNC_TOOLS=true
 SYNC_SCHEMAS=true
+SYNC_SKILLS=true
 LANG_ARG=""
 
 usage() {
   cat <<EOF
 用法：scripts/sync.sh [选项]
 
-默认同步全部（tools + schemas）。可用选项：
+默认同步全部（tools + schemas + skills）。可用选项：
 
   --tools-only          只同步 tools
   --schemas-only        只同步 schemas
+  --skills-only         只同步 skills
   --lang <zh|en>        schemas 语言占位符处理（zh=中文, en=英文, 默认=删除占位符）
   --dry-run, -n         只显示会复制哪些文件，不实际执行
   --help, -h            显示帮助信息
@@ -44,14 +49,21 @@ EOF
 # 解析参数
 while [[ $# -gt 0 ]]; do
   case "$1" in
-    --tools-only)
-      SYNC_SCHEMAS=false
-      shift
-      ;;
-    --schemas-only)
-      SYNC_TOOLS=false
-      shift
-      ;;
+      --tools-only)
+        SYNC_SCHEMAS=false
+        SYNC_SKILLS=false
+        shift
+        ;;
+      --schemas-only)
+        SYNC_TOOLS=false
+        SYNC_SKILLS=false
+        shift
+        ;;
+      --skills-only)
+        SYNC_TOOLS=false
+        SYNC_SCHEMAS=false
+        shift
+        ;;
     --lang)
       if [[ -z "${2:-}" || ! "$2" =~ ^(zh|en)$ ]]; then
         echo "❌ --lang 参数必须是 zh 或 en"
@@ -226,9 +238,79 @@ sync_schemas() {
 }
 
 # ============================================================
+# 同步 skills
+# ============================================================
+sync_skills() {
+  if [[ ! -d "${REPO_SKILLS_DIR}" ]]; then
+    echo "❌ skills 目录不存在：${REPO_SKILLS_DIR}"
+    return 1
+  fi
+
+  mkdir -p "${OPENCODE_SKILLS_DIR}"
+
+  echo ""
+  echo "🎯 skills 同步"
+  echo "  源：${REPO_SKILLS_DIR}"
+  echo "  目标：${OPENCODE_SKILLS_DIR}"
+  echo ""
+
+  local copied=0
+  local updated=0
+  local found_any=false
+
+  for item in "${REPO_SKILLS_DIR}"/*/; do
+    [ -d "$item" ] || continue
+    found_any=true
+    local skill_name="$(basename "$item")"
+    local target="${OPENCODE_SKILLS_DIR}/${skill_name}"
+
+    if [[ "${DRY_RUN}" == true ]]; then
+      if [ -d "$target" ]; then
+        echo "    [DRY] ${skill_name} (update) → ${target}"
+      else
+        echo "    [DRY] ${skill_name} (new) → ${target}"
+      fi
+      copied=$((copied + 1))
+      continue
+    fi
+
+    if [ -d "$target" ]; then
+      rm -rf "$target"
+      updated=$((updated + 1))
+    else
+      copied=$((copied + 1))
+    fi
+    cp -R "${item%/}" "${OPENCODE_SKILLS_DIR}/"
+    echo "    ✓ ${skill_name}"
+  done
+
+  [[ "${found_any}" == false ]] && {
+    echo "  ⚠️  未找到任何 skill 目录"
+    return 0
+  }
+
+  echo ""
+  if [[ "${DRY_RUN}" == true ]]; then
+    echo "  🔍 DRY RUN：${copied} 个 skill 将被处理（未实际执行）"
+  else
+    echo "  ✅ skill 同步完成：${copied} 个目录处理（${updated} 更新）"
+    echo ""
+    echo "  ⚠️  重启 OpenCode 后生效。同步的 skill（按 frontmatter name）："
+    for skill_dir in "${REPO_SKILLS_DIR}"/*/; do
+      [ -d "$skill_dir" ] || continue
+      [[ -f "${skill_dir}/SKILL.md" ]] || continue
+      local skill_name
+      skill_name=$(grep -E '^name:' "${skill_dir}/SKILL.md" 2>/dev/null | head -1 | sed -E 's/^name:\s*//' || true)
+      [[ -n "${skill_name}" ]] && echo "    - ${skill_name}"
+    done
+  fi
+}
+
+# ============================================================
 # 主流程
 # ============================================================
 [[ "${SYNC_TOOLS}" == true ]] && sync_tools
 [[ "${SYNC_SCHEMAS}" == true ]] && sync_schemas
+[[ "${SYNC_SKILLS}" == true ]] && sync_skills
 echo ""
 echo "🎉 全部完成"
