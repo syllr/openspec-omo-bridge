@@ -43,6 +43,7 @@ const schemaName = status.planningHome?.defaultSchema;
 
 const contextFiles = {};
 for (const [id, info] of Object.entries(status.artifactPaths ?? {})) {
+  if (id === "tasks") continue;
   contextFiles[id] = info.existingOutputPaths;
 }
 

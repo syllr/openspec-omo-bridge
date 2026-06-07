@@ -65,14 +65,13 @@ metadata:
   },
   "changeRoot": "/Users/yutao/.../fix-token-heartbeat-auth",
   "contextFiles": {
-    "proposal": ["/Users/yutao/.../proposal.md"],
+    "proposal": ["/Users/yotao/.../proposal.md"],
     "design": ["/Users/yotao/.../design.md"],
     "specs": [
       "/.../cp-instance-mtls/spec.md",
       "/.../ha-five-node-deployment/spec.md",
       "/.../ws-session-lifecycle/spec.md"
-    ],
-    "tasks": ["/Users/yutao/.../tasks.md"]
+    ]
   },
   "planFile": "/Users/yutao/.../origin-seed-vc/.omo/plans/fix-token-heartbeat-auth.md",
   "instruction": "<apply 阶段 dynamic instruction 字符串>"
@@ -85,7 +84,7 @@ metadata:
 - `schemaName` — 当前用的 schema（如 `spec-driven` / `constitution`），LLM 据此路由不同工作流。**数据源**：`status.planningHome.defaultSchema` 派生
 - `planningHome` — 包含 `kind`（repo/workspace）/ `root`（项目根绝对路径）/ `changesDir`（changes 目录绝对路径）/ `defaultSchema`（默认 schema）。**数据源**：`status.planningHome`
 - `changeRoot` — change 根目录绝对路径。**数据源**：`status.changeRoot`
-- `contextFiles` — 各 artifact 的**绝对文件路径映射**（proposal/design/specs/tasks 各自的文件路径数组）。**数据源**：`status.artifactPaths.X.existingOutputPaths` 扁平化
+- `contextFiles` — 各 artifact 的**绝对文件路径映射**（含 `proposal` / `design` / `specs` 三个子键，各子键值为文件路径数组）。**剔除 `tasks` 子键**（不用 `tasks.md` 实施，用 `planFile` 路径上的 plan 驱动）。**数据源**：`status.artifactPaths.X.existingOutputPaths` 扁平化（脚本内跳过 `tasks`）
 - `planFile` — plan 文件路径**校验结果**（string 类型，Node 脚本用 `fs.existsSync` 检查拼接路径是否存在）：
   - **plan 存在** → 字段值 = 拼接路径（`<planningHome.root>/.omo/plans/<changeName>.md`），LLM 可直接 Read
   - **plan 不存在** → 字段值 = `""`（空字符串），LLM 提示用户先完成 plan 阶段
