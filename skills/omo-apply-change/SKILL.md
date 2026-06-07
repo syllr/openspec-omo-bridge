@@ -1,6 +1,6 @@
 ---
 name: omo-apply-change
-description: 触发 OpenSpec apply 阶段。拉 schema 动态 instruction 并按其执行(spec-driven 走 OMO plan 路径;constitution 走文档生成路径)。
+description: 触发 OpenSpec apply 阶段。跑 inspect-apply.mjs 拿 change 上下文,调 OMO `/start-work` 命令执行 `.omo/plans/<name>.md` plan 文件,完成实施 + Oracle 验证 + tasks.md 镜像同步(跨 schema 通用)。
 license: MIT
 compatibility: Requires openspec CLI.
 metadata:
