@@ -43,7 +43,7 @@ metadata:
 
 # 拉 schema 状态和 change 上下文
 
-**目的**：把 OpenSpec 标准的 Step 2（Check status）+ Step 3（Get apply instructions）合并成一个脚本调用。脚本内部同时跑 `openspec status` + `openspec instructions apply`，输出**单 JSON object**给 LLM 直接消费（保留 LLM apply 阶段需要的 7 字段，剔除冗余字段 + apply 的 `tasks` 数组）。
+**目的**：跑 `inspect-apply.mjs <name>` 拿 change 上下文 JSON,读 `contextFiles` / `planFile` / `instruction` 后进入实施。
 
 **调用**：
 
@@ -89,7 +89,7 @@ metadata:
 - `planFile` — plan 文件路径**校验结果**（string 类型，Node 脚本用 `fs.existsSync` 检查拼接路径是否存在）：
   - **plan 存在** → 字段值 = 拼接路径（`<planningHome.root>/.omo/plans/<changeName>.md`），LLM 可直接 Read
   - **plan 不存在** → 字段值 = `""`（空字符串），LLM 提示用户先完成 plan 阶段
-- `instruction` — apply 阶段的 dynamic instruction 全文（schema.yaml 注入的最高优先级执行依据）。**数据源**：`openspec instructions apply`
+- `instruction` — apply 阶段的 dynamic instruction 全文,**不同 schema 的 instruction 是对当前 `omo-apply-change` skill 内容的补充**(内容因 schema 而异)。**冲突优先级**:与本 skill 中内容冲突时,以 `instruction` 字段为准
 
 **剔除字段**（7 个，对 LLM apply 流程非必需）：
 
