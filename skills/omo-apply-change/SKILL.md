@@ -20,19 +20,6 @@ metadata:
 
 禁止降级、禁止重试、禁止跳过、禁止自行替代执行。
 
-## OpenCode Tool 约定
-
-`omo_spec_plan_to_tasks` 和 `omo_spec_check_plan` 是 **OpenCode plugin tool**：
-
-- ✅ 正确：通过 OpenCode tool 机制直接调用（工具面板自动展示 JSON 参数）
-- ❌ 错误：在 bash 中执行 kebab-case 形式（如 `omo-spec-plan-to-tasks`）—— 这些不是 CLI 二进制，执行会报 `command not found: omo-spec-plan-to-tasks`
-
-**判断口诀**：snake_case 名称 + OpenCode plugin tool = 走 tool 机制，不要走 bash。
-
-## 优先级
-
-跑 `inspect-apply.mjs` 后,JSON 里的 `instruction` 字段是最高优先级执行依据,所有冲突步骤以它为准。
-
 # 选 change
 
 可指定 change name。省略时：
@@ -85,11 +72,11 @@ metadata:
 - `schemaName` — 当前用的 schema（如 `spec-driven` / `constitution`），LLM 据此路由不同工作流
 - `planningHome` — 包含 `kind`（repo/workspace）/ `root`（项目根绝对路径）/ `changesDir`（changes 目录绝对路径）/ `defaultSchema`（默认 schema）
 - `changeRoot` — change 根目录绝对路径
-- `contextFiles` — 各 artifact 的**绝对文件路径映射**，包含 change 的所有上下文(各 schema 的 artifact 类型不同,字段名以实际返回为准)。**冲突优先级**:多个 artifact 之间冲突时,以在 `contextFiles` 中的位置为准——**越靠前的 artifact 可信度越高**。
+- `contextFiles` — 各 artifact 的**绝对文件路径映射**，包含 change 的所有上下文(各 schema 的 artifact 类型不同,字段名以实际返回为准)。**冲突优先级**:多个 artifact 之间冲突时,以在 `contextFiles` 中的位置为准——**越靠前的 artifact 可信度越高**
 - `planFile` — plan 文件路径**校验结果**（string 类型，Node 脚本用 `fs.existsSync` 检查拼接路径是否存在）：
   - **plan 存在** → 字段值 = 拼接路径（`<planningHome.root>/.omo/plans/<changeName>.md`），LLM 可直接 Read
   - **plan 不存在** → 字段值 = `""`（空字符串），LLM 提示用户先完成 plan 阶段
-- `planName` — plan 文件的**短名**（`basename(planFile, ".md")`），专供调 OMO `/start-work` 命令的 args 用。**不要传路径**(绝对/相对路径都会导致 OMO `findPlanByName` 匹配失败,见 OMO 源码 `src/hooks/start-work/context-info-builder.ts:33-49`)
+- `planName` — plan 文件的**短名**（`basename(planFile, ".md")`），专供调 OMO `/start-work` 命令的 args 用
 - `instruction` — apply 阶段的 dynamic instruction 全文,**不同 schema 的 instruction 是对当前 `omo-apply-change` skill 内容的补充**(内容因 schema 而异)。**冲突优先级**:与本 skill 中内容冲突时,以 `instruction` 字段为准
 
 读 `schemaName` / `planFile` / `contextFiles` / `instruction` 后，进入「实施 tasks」步骤。
