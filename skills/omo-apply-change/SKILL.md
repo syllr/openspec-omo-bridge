@@ -81,10 +81,10 @@ metadata:
 **字段含义**：
 
 - `changeName` — change 名（从 `status.changeName` 取，作权威源）
-- `schemaName` — 当前用的 schema（如 `spec-driven` / `constitution`），LLM 据此路由不同工作流。**数据源**：`status.planningHome.defaultSchema` 派生
-- `planningHome` — 包含 `kind`（repo/workspace）/ `root`（项目根绝对路径）/ `changesDir`（changes 目录绝对路径）/ `defaultSchema`（默认 schema）。**数据源**：`status.planningHome`
-- `changeRoot` — change 根目录绝对路径。**数据源**：`status.changeRoot`
-- `contextFiles` — 各 artifact 的**绝对文件路径映射**，包含 change 的所有上下文(各 schema 的 artifact 类型不同,字段名以实际返回为准)。**冲突优先级**:多个 artifact 之间冲突时,以在 `contextFiles` 中的位置为准——**越靠前的 artifact 可信度越高**。脚本会剔除 `tasks` 子键(不用 `tasks.md` 实施,用 `planFile` 路径上的 plan 驱动)。**数据源**:`status.artifactPaths.X.existingOutputPaths` 扁平化
+- `schemaName` — 当前用的 schema（如 `spec-driven` / `constitution`），LLM 据此路由不同工作流
+- `planningHome` — 包含 `kind`（repo/workspace）/ `root`（项目根绝对路径）/ `changesDir`（changes 目录绝对路径）/ `defaultSchema`（默认 schema）
+- `changeRoot` — change 根目录绝对路径
+- `contextFiles` — 各 artifact 的**绝对文件路径映射**，包含 change 的所有上下文(各 schema 的 artifact 类型不同,字段名以实际返回为准)。**冲突优先级**:多个 artifact 之间冲突时,以在 `contextFiles` 中的位置为准——**越靠前的 artifact 可信度越高**。
 - `planFile` — plan 文件路径**校验结果**（string 类型，Node 脚本用 `fs.existsSync` 检查拼接路径是否存在）：
   - **plan 存在** → 字段值 = 拼接路径（`<planningHome.root>/.omo/plans/<changeName>.md`），LLM 可直接 Read
   - **plan 不存在** → 字段值 = `""`（空字符串），LLM 提示用户先完成 plan 阶段
@@ -96,7 +96,7 @@ metadata:
 
 走 OpenSpec 标准 4 步流程，配合 spec-driven 的 `/start-work` 路径：
 
-1. **Read context files** — 按 `contextFiles` 字段读 proposal / design / specs / tasks 路径下的所有文件
+1. **Read context files** — 按 `contextFiles` 字段读 change 所有上下文
 2. **Show current progress** — 展示 schema 名 + "N/M tasks complete"（来自 `progress` 字段）+ 剩余任务概览
 3. **Implement tasks (loop)** — 调 `/start-work .omo/plans/<name>.md`，让 OMO 解析 plan 驱动 task 执行。**LLM 不手动改 `tasks.md` checkbox**（由后续 Step sync tool 镜像）。对每个 pending task：
    - 展示正在做的 task
