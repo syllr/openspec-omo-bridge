@@ -12,7 +12,11 @@ metadata:
 
 ## 1. 选 change
 
-未指定时,跑 `openspec list --json`,用 AskUserQuestion 让用户选。
+可指定 change name。省略时:
+
+- 从对话上下文推断(用户前几轮提到过的 change)
+- 只有一个 active change → 自动选
+- 推断不出或模糊 → 跑 `openspec list --json`,用 AskUserQuestion 让用户选
 
 ## 2. 拉 schema 状态 + apply instruction
 
