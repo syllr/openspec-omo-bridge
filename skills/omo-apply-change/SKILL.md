@@ -97,12 +97,11 @@ metadata:
 走 OpenSpec 标准 4 步流程，配合 spec-driven 的 `/start-work` 路径：
 
 1. **Read context files** — 按 `contextFiles` 字段读 change 所有上下文
-2. **Show current progress** — 展示 schema 名 + "N/M tasks complete"（来自 `progress` 字段）+ 剩余任务概览
-3. **Implement tasks (loop)** — 调 `/start-work .omo/plans/<name>.md`，让 OMO 解析 plan 驱动 task 执行。**LLM 不手动改 `tasks.md` checkbox**（由后续 Step sync tool 镜像）。对每个 pending task：
+2. **Implement tasks (loop)** — 调 `/start-work .omo/plans/<name>.md`，让 OMO 解析 plan 驱动 task 执行。**LLM 不手动改 `tasks.md` checkbox**（由后续 Step sync tool 镜像）。对每个 pending task：
    - 展示正在做的 task
    - 做代码改动（保持最小、聚焦）
    - 继续下一个
-4. **On completion/pause** — 展示 "Tasks completed this session" + "Overall progress"，失败/暂停时原样展示错误信息
+3. **On completion/pause** — 展示 "Tasks completed this session" + "Overall progress"，失败/暂停时原样展示错误信息
 
 **Pause 条件：**
 
