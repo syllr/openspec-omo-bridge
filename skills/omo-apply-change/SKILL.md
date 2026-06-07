@@ -30,7 +30,7 @@ metadata:
 
 # 拉 schema 状态和 change 上下文
 
-**目的**：跑 `inspect-apply.mjs <name>` 拿 change 上下文 JSON,读 `contextFiles` / `planFile` / `instruction` 后进入实施。
+**目的**：跑 `inspect-apply.mjs <name>` 拿 change 上下文 JSON,读 `schemaName` / `contextFiles` / `planFile` / `planName` / `instruction` 后进入实施。
 
 **调用**：
 
@@ -38,30 +38,26 @@ metadata:
 ~/.config/opencode/skills/omo-apply-change/scripts/inspect-apply.mjs "<name>"
 ```
 
-**输出**（单 JSON object，7 字段精简版）：
+**输出**（单 JSON object，8 字段精简版）：
 
 ```json
 {
-  "changeName": "fix-token-heartbeat-auth",
+  "changeName": "<change-name>",
   "schemaName": "spec-driven",
   "planningHome": {
     "kind": "repo",
-    "root": "/Users/yutao/.../origin-seed-vc",
-    "changesDir": "/Users/yutao/.../openspec/changes",
+    "root": "<project-root>",
+    "changesDir": "<changes-dir>",
     "defaultSchema": "spec-driven"
   },
-  "changeRoot": "/Users/yutao/.../fix-token-heartbeat-auth",
+  "changeRoot": "<change-root>",
   "contextFiles": {
-    "proposal": ["/Users/yotao/.../proposal.md"],
-    "design": ["/Users/yotao/.../design.md"],
-    "specs": [
-      "/.../cp-instance-mtls/spec.md",
-      "/.../ha-five-node-deployment/spec.md",
-      "/.../ws-session-lifecycle/spec.md"
-    ]
+    "proposal": ["<proposal-path>"],
+    "design": ["<design-path>"],
+    "specs": ["<spec-path-1>", "<spec-path-2>", "<spec-path-3>"]
   },
-  "planFile": "/Users/yutao/.../origin-seed-vc/.omo/plans/fix-token-heartbeat-auth.md",
-  "planName": "fix-token-heartbeat-auth",
+  "planFile": "<plan-file>",
+  "planName": "<plan-name>",
   "instruction": "<apply 阶段 dynamic instruction 字符串>"
 }
 ```
@@ -77,16 +73,16 @@ metadata:
   - **plan 存在** → 字段值 = 拼接路径（`<planningHome.root>/.omo/plans/<changeName>.md`），LLM 可直接 Read
   - **plan 不存在** → 字段值 = `""`（空字符串），LLM 提示用户先完成 plan 阶段
 - `planName` — plan 文件的**短名**（`basename(planFile, ".md")`），专供调 OMO `/start-work` 命令的 args 用
-- `instruction` — apply 阶段的 dynamic instruction 全文,**不同 schema 的 instruction 是对当前 `omo-apply-change` skill 内容的补充**(内容因 schema 而异)。**冲突优先级**:与本 skill 中内容冲突时,以 `instruction` 字段为准
+- `instruction` — apply 阶段的 dynamic instruction 全文,**不同 schema 的 instruction 是对当前 `omo-apply-change` skill 内容的补充**(内容因 schema 而异)。**冲突优先级**:与本 skill 中内容冲突时,以 `instruction` 字段为准(`instruction` 为空字符串时,本 skill 内容为唯一权威源)
 
-读 `schemaName` / `planFile` / `contextFiles` / `instruction` 后，进入「实施 tasks」步骤。
+读 `schemaName` / `contextFiles` / `planFile` / `planName` / `instruction` 后，进入「实施 tasks」步骤。
 
 # 实施 tasks（按 contextFiles + plan）
 
-走 OpenSpec 标准 4 步流程，配合 spec-driven 的 `/start-work` 路径：
+走 OpenSpec apply 流程（Read → Implement → Oracle 验证 → 同步 tasks.md）：
 
 1. **Read context files** — 按 `contextFiles` 字段读 change 所有上下文
-2. **Implement tasks (loop)** — 调 `/start-work <planName>`(传 `planName` 字段值,短名,不要传路径),让 OMO 解析 plan 驱动 task 执行。**LLM 不手动改 `tasks.md` checkbox**(由后续 Step sync tool 镜像)。对每个 pending task：
+2. **Implement tasks (loop)** — 调 `/start-work <planName>`(传 `planName` 字段值,短名,不要传路径),让 OMO 解析 plan 驱动 task 执行。**LLM 不手动改 `tasks.md` checkbox**(由后续 sync 步骤镜像;**plan checkbox 不在此限制内**,见「Oracle 验证」步骤)。对每个 pending task：
    - 展示正在做的 task
    - 做代码改动（保持最小、聚焦）
    - 继续下一个

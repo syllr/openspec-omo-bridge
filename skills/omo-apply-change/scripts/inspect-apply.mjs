@@ -4,20 +4,20 @@
 //
 // 用法: scripts/inspect-apply.mjs <change-name>
 //
-// 输出: 单 JSON object,字段(精简到 6 个,其他冗余字段剔除):
-//   changeName, schemaName, contextFiles, progress, state, instruction
+// 输出: 单 JSON object,8 字段精简版:
+//   changeName, schemaName, planningHome, changeRoot,
+//   contextFiles, planFile, planName, instruction
 //
 // 合并两个 OpenSpec CLI 调用:
-//   - openspec status --change <name> --json          (派生 schemaName + contextFiles)
-//   - openspec instructions apply --change <name> --json  (取 progress, state, instruction)
+//   - openspec status --change <name> --json
+//   - openspec instructions apply --change <name> --json  (取 instruction)
 //
 // 剔除:
-//   - OpenSpec `tasks` 数组(只来自 plan 的 ## 9. Success Criteria,≠ 执行清单,容易误导 LLM)
-//   - status 的 artifacts / artifactPaths / actionContext / planningHome / isComplete / nextSteps / applyRequires(冗余或 LLM 实施时不需)
+//   - `openspec instructions apply` 返回的 `tasks` 数组(OMO 用 plan 驱动实施,不需要此数组)
 
 import { execSync } from "node:child_process";
 import { existsSync } from "node:fs";
-import { join } from "node:path";
+import { basename, join } from "node:path";
 
 const changeName = process.argv[2];
 if (!changeName) {
@@ -47,11 +47,13 @@ for (const [id, info] of Object.entries(status.artifactPaths ?? {})) {
   contextFiles[id] = info.existingOutputPaths;
 }
 
-const planFilePath = join(status.planningHome?.root ?? "", ".omo", "plans", `${changeName}.md`);
-const planFile = existsSync(planFilePath) ? planFilePath : "";
+const root = status.planningHome?.root;
+const planFile = root && existsSync(join(root, ".omo", "plans", `${changeName}.md`))
+  ? join(root, ".omo", "plans", `${changeName}.md`)
+  : "";
 // planName:basename(planFile, ".md"),专供 OMO `/start-work` 命令 args 用。
 // OMO 的 findPlanByName 用 basename 去 .md 后严格匹配,传路径会匹配失败。
-const planName = planFile ? planFile.split("/").pop().replace(/\.md$/, "") : "";
+const planName = planFile ? basename(planFile, ".md") : "";
 
 const out = {
   changeName: status.changeName,

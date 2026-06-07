@@ -14,8 +14,8 @@
 // 没改就不必再同步。
 
 import { execSync } from "node:child_process";
-import { existsSync, readFileSync, writeFileSync } from "node:fs";
-import { join } from "node:path";
+import { existsSync, mkdirSync, readFileSync, writeFileSync } from "node:fs";
+import { dirname, join } from "node:path";
 
 const changeName = process.argv[2];
 if (!changeName) {
@@ -35,6 +35,11 @@ function run(cmd) {
 const status = run(`openspec status --change "${changeName}" --json`);
 
 const planFile = join(status.planningHome?.root ?? "", ".omo", "plans", `${changeName}.md`);
+
+if (!status.changeRoot) {
+  console.error("❌ changeRoot 为空,无法写入 tasks.md");
+  process.exit(1);
+}
 const tasksFile = join(status.changeRoot, "tasks.md");
 
 if (!existsSync(planFile)) {
@@ -62,8 +67,17 @@ const footer = `
 
 This tasks.md was mirrored from: \`.omo/plans/${changeName}.md\`
 
-To re-sync after plan changes, run the \`omo_spec_sync_tasks_from_plan\` tool.
+To re-sync after plan changes, run:
+\`\`\`bash
+~/.config/opencode/skills/omo-apply-change/scripts/sync-plan-to-tasks.mjs "${changeName}"
+\`\`\`
 `;
+
+// 确保 tasks.md 所在目录存在(changeRoot 可能尚未创建)
+const tasksDir = dirname(tasksFile);
+if (!existsSync(tasksDir)) {
+  mkdirSync(tasksDir, { recursive: true });
+}
 
 writeFileSync(tasksFile, header + planContent + footer);
 console.log(`✅ ${tasksFile} 已同步`);
