@@ -652,27 +652,7 @@ apply:
   instruction: |
     __LANG_PLACEHOLDER__
 
-    **STOP — 在执行任何操作前，请完整阅读本指令。**
-
-    === Fast Fail Rule (Global) ===
-
-    **任何 task()、tool() 或 skill() 调用失败（超时、agent 不可用、返回错误等），立即停止工作流，不得降级、不得重试、不得跳过、不得自行替代执行。**
-
-    失败处理流程：
-    1. 立即停止当前 PHASE/Step
-    2. 向用户报告：「🔴 [步骤名] 中断：[agent/tool/skill 名] 调用失败。[错误信息]」
-    3. 等待用户介入
-
-    === OpenCode Tool 调用约定（必读，重要）===
-
-    本阶段涉及 1 个 **OpenCode plugin 工具**（由本 session 的 tool registry 自动加载，不要走 shell）：
-
-    - `omo_spec_plan_to_tasks` — 镜像 plan → tasks.md
-
-    ✅ **正确**：通过 OpenCode tool 机制直接调用，工具面板会自动展示 JSON 参数
-    ❌ **错误**：在 bash 中执行 kebab-case 形式（如 `omo-spec-plan-to-tasks`）——这些 **不是 CLI 二进制**，执行会报 `command not found: omo-spec-plan-to-tasks`
-
-    **判断口诀**：snake_case 名称 + OpenCode plugin tool = 走 tool 机制，不要走 bash。
+    > ⚠️ 通用规则（Fast Fail / Tool 约定 / 优先级）详见 omo-apply-change skill
 
     === 关键：与 openspec-apply-change skill 的冲突 ===
 
