@@ -91,15 +91,6 @@ metadata:
   - **plan 不存在** → 字段值 = `""`（空字符串），LLM 提示用户先完成 plan 阶段
 - `instruction` — apply 阶段的 dynamic instruction 全文,**不同 schema 的 instruction 是对当前 `omo-apply-change` skill 内容的补充**(内容因 schema 而异)。**冲突优先级**:与本 skill 中内容冲突时,以 `instruction` 字段为准
 
-**剔除字段**（7 个，对 LLM apply 流程非必需）：
-
-- `state` / `progress` — apply 状态 + 任务进度，LLM 实施时不需直接读
-- `artifacts` / `actionContext` / `nextSteps` / `applyRequires` / `artifactPaths` — status 元信息或 OpenSpec 提示
-
-**剔除字段说明**：
-
-- `apply.tasks` 数组 — OpenSpec 标准的误导字段（只来自 plan 的 `## 9. Success Criteria`，≠ 执行清单）
-
 读 `schemaName` / `planFile` / `contextFiles` / `instruction` 后，进入「实施 tasks」步骤。
 
 # 实施 tasks（按 contextFiles + plan）
