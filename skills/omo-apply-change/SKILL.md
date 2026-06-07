@@ -79,7 +79,7 @@ metadata:
 
 # 实施 tasks（按 contextFiles + plan）
 
-走 OpenSpec apply 流程（Read → Implement → Oracle 验证 → 同步 tasks.md）：
+走流程（Read → Implement → Oracle 验证 → 同步 tasks.md）：
 
 1. **Read context files** — 按 `contextFiles` 字段读 change 所有上下文
 2. **Implement tasks (loop)** — 调 `/start-work <planName>`(传 `planName` 字段值,短名,不要传路径),让 OMO 解析 plan 驱动 task 执行。**LLM 不手动改 `tasks.md` checkbox**(由后续 sync 步骤镜像;**plan checkbox 不在此限制内**,见「Oracle 验证」步骤)。对每个 pending task：
