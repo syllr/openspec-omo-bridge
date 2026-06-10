@@ -77,7 +77,6 @@ artifacts:
 
       AI 用 Read/Write 工具直接创建 scan.md：
 
-      - 读取模板：schemas/constitution/templates/scan.md
       - 用户选择的维度：[填入]
       - 适用技术栈：[填入用户确认的技术栈，或"通用"]
       - 用户需求摘要：[填入用户描述的具体需求]
@@ -139,7 +138,6 @@ artifacts:
 
        AI 用 Read/Write 工具直接创建 design.md：
 
-       - 读取模板：schemas/constitution/templates/design.md
        - 读取 Scan：openspec/changes/<change-name>/scan.md
        - 读取 Research：openspec/changes/<change-name>/research/<dimension>/（如果存在）
        - 聚焦维度：[填入]

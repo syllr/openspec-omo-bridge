@@ -17,11 +17,6 @@ artifacts:
 
       **任何 task()、tool() 或 skill() 调用失败（超时、agent 不可用、返回错误等），立即停止工作流，不得降级、不得重试、不得跳过、不得自行替代执行。**
 
-      失败处理流程：
-      1. 立即停止当前 PHASE
-      2. 向用户报告：「🔴 [PHASE 名] 中断：[agent/tool/skill 名] 调用失败。[错误信息]」
-      3. 等待用户介入
-
       === PHASE 1：上下文提取 ===
 
       在编写 proposal 之前，系统性地回顾当前对话，提取所有与本变更相关的信息。
@@ -53,8 +48,6 @@ artifacts:
 
       === PHASE 2：生成 ===
 
-      读取模板文件 `schemas/spec-driven/templates/proposal.md`，了解确切的输出结构。
-
       在 `openspec/changes/<change-name>/proposal.md` 创建提案文档。
 
       按模板结构编写全部 4 个部分：
@@ -77,19 +70,33 @@ artifacts:
       - `## Capabilities`（能力清单，含 New/Modified/Removed）
       - `## Impact`（影响）
 
-      缺少任一部分 → 重新生成。**不**进入 PHASE 3。
+      缺少任一部分 → 重新生成直到全部满足为止。
+    requires: []
+  - id: design
+    generates: design.md
+    description: Technical design document with implementation details (generated before specs)
+    template: design.md
+    tracks: design.md
+    instruction: |
+      __LANG_PLACEHOLDER__
 
-      === PHASE 3：Oracle 审查 ===
+      **范围限制：不要修改任何源代码。仅生成 design.md。**
 
-      启动 1 个 Oracle agent 审查生成的 proposal。
+      === Fast Fail Rule (Global) ===
+
+      **任何 task()、tool() 或 skill() 调用失败（超时、agent 不可用、返回错误等），立即停止工作流，不得降级、不得重试、不得跳过、不得自行替代执行。**
+
+      === PHASE 0：Oracle 审查 proposal ===
+
+      启动 1 个 Oracle agent 审查上游 proposal.md（在 PHASE 1 读取它之前，确保设计基于已验证的输入）。
       调用前将占位符替换为实际内容。
 
       ```
       task(subagent_type="oracle", prompt="
-      你正在审查一个 OpenSpec 变更提案。请逐一检查以下所有检查项：
+      你正在审查一个 OpenSpec 变更提案（proposal），目的是确保下游 design 阶段基于正确的输入。请逐一检查以下所有检查项：
 
       PHASE 1 的上下文提取结果：
-      [将 PHASE 1 的提取输出粘贴此处]
+      [将 PHASE 1 的上下文提取输出粘贴此处]
 
       生成的 proposal.md 路径：openspec/changes/<change-name>/proposal.md
 
@@ -112,34 +119,8 @@ artifacts:
       **收集评审结果：**
       1. 读取 Oracle 输出，列出所有 🔴/🟡/⚪ 发现
       2. 分类判定：
-         - 有 🔴 或 🟡 → BLOCKED，AI 用 Read/Edit 工具直接修复 proposal.md。只修复标记为 🔴/🟡 的问题，不要修改其他内容。修复完成后重新运行 PHASE 3（最多 3 轮）
-         - 仅 ⚪ → 展示给用户
-
-
-      === PHASE 4：循环与继续 ===
-
-       - 如果在 PHASE 3 中发现 🔴：修复 proposal.md，从 PHASE 3 重新运行
-       - 最多 3 轮。3 轮后仍有 🔴：将剩余问题展示给用户
-       - 全部清除：proposal 完成，进入下一个 artifact
-    requires: []
-  - id: design
-    generates: design.md
-    description: Technical design document with implementation details (generated before specs)
-    template: design.md
-    tracks: design.md
-    instruction: |
-      __LANG_PLACEHOLDER__
-
-      **范围限制：不要修改任何源代码。仅生成 design.md。**
-
-      === Fast Fail Rule (Global) ===
-
-      **任何 task()、tool() 或 skill() 调用失败（超时、agent 不可用、返回错误等），立即停止工作流，不得降级、不得重试、不得跳过、不得自行替代执行。**
-
-      失败处理流程：
-      1. 立即停止当前 PHASE
-      2. 向用户报告：「🔴 [PHASE 名] 中断：[agent/tool/skill 名] 调用失败。[错误信息]」
-      3. 等待用户介入
+         - 有 🔴 或 🟡 → BLOCKED，AI 用 Read/Edit 工具直接修复 proposal.md。只修复标记为 🔴/🟡 的问题，不要修改其他内容。修复完成后重新运行 PHASE 0（最多 3 轮）
+         - 仅 ⚪ → 进入 PHASE 1
 
       === PHASE 1：读取输入 ===
 
@@ -230,11 +211,6 @@ artifacts:
       === Fast Fail Rule (Global) ===
 
       **任何 task()、tool() 或 skill() 调用失败（超时、agent 不可用、返回错误等），立即停止工作流，不得降级、不得重试、不得跳过、不得自行替代执行。**
-
-      失败处理流程：
-      1. 立即停止当前 PHASE
-      2. 向用户报告：「🔴 [PHASE 名] 中断：[agent/tool/skill 名] 调用失败。[错误信息]」
-      3. 等待用户介入
 
       === PHASE 1：读取输入 ===
 
@@ -330,11 +306,6 @@ artifacts:
       === Fast Fail Rule (Global) ===
 
       **任何 task()、tool() 或 skill() 调用失败（超时、agent 不可用、返回错误等），立即停止工作流，不得降级、不得重试、不得跳过、不得自行替代执行。**
-
-      失败处理流程：
-      1. 立即停止当前 PHASE
-      2. 向用户报告：「🔴 [PHASE 名] 中断：[agent/tool/skill 名] 调用失败。[错误信息]」
-      3. 等待用户介入
 
       === PHASE 1：读取上下文 + Spec 验证 ===
 
