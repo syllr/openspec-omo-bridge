@@ -19,8 +19,6 @@ artifacts:
 
       === PHASE 1：上下文提取 ===
 
-      在编写 proposal 之前，系统性地回顾当前对话，提取所有与本变更相关的信息。
-
       **如果对话超过 30 条消息（用户 + AI 的交流）：**
       1. 将对话分为三段：前期、中期、后期
       2. 从每段中分别提取关键点（每段 3-8 条）
@@ -40,9 +38,9 @@ artifacts:
          每个标记为 `[NEEDS INVESTIGATION]`
       6. **影响系统**：用户提到的代码、API、依赖、团队
 
-      **这是思考步骤——不写入文件。**
+      **这是思考步骤——不写入文件。**`[NEEDS INVESTIGATION]` 标记仅用于 AI 内部推理，在 proposal.md 中以"待调研"或"TBD"注明即可，无需保留原标记格式。
 
-      **输入验证**：如果以下核心类别为空（"核心动机"或"变更范围"或"影响系统"任意一个为空），停止工作流，提示用户：「🔴 proposal 上下文不足。请补充：核心动机 / 变更范围 / 影响系统 至少一项，否则无法生成完整 proposal。」
+      **输入验证**：如果以下核心类别为空（"核心动机"或"变更范围"或"影响系统"任意一个为空），停止工作流，提示用户：「🔴 proposal 上下文不足。请补充缺失的核心类别（核心动机 / 变更范围 / 影响系统 三项均不可缺），否则无法生成完整 proposal。」
       - 这 3 类是 proposal.md 的**最低信息要求**，缺一不可
       - 其他 3 类（显式约束、显式非目标、不确定信号）允许为空
 
@@ -56,13 +54,12 @@ artifacts:
       - **Capabilities**（能力清单）：
         - New Capabilities（新能力）：kebab-case 命名，每个对应一个 spec 文件
         - Modified Capabilities（修改的能力）：检查 `openspec/specs/` 中已有的名称
+        - Removed Capabilities（移除的能力）：说明移除原因
       - **Impact**（影响）：受影响的代码、API、依赖、系统
 
-      **完整性优先**——覆盖 PHASE 1 中的所有要点。保持语言简洁，但不以覆盖度为代价。
+      **完整性优先**——覆盖 PHASE 1 中已确认的要点（排除 `[NEEDS INVESTIGATION]` 项）。保持语言简洁，但不以覆盖度为代价。
 
-      提案应让技术和非技术读者都能理解。
-
-      编写后验证输出是否完全遵循模板结构。
+      对输出执行以下结构验证：
 
       **模板结构验证**（AI 自检）：proposal.md 必须包含模板的 4 个部分：
       - `## Why`（动机）
@@ -90,12 +87,12 @@ artifacts:
 
       在 PHASE 1 读取它之前，调用 1 个 Oracle agent 审查上游 proposal.md，确保 design 阶段基于已验证的输入。
 
-      **主 agent 职责**：基于当前上下文（PHASE 1 提取的要点 + 实际 proposal.md 路径）动态构造 `task(subagent_type="oracle", prompt=...)` 的 prompt。prompt 必须包含：
+      **主 agent 职责**：基于当前上下文（proposal.md 完整内容 + 实际 proposal.md 路径）动态构造 `task(subagent_type="oracle", prompt=...)` 的 prompt。prompt 必须包含：
 
       - 审查目标：proposal.md 文件路径（`openspec/changes/<change-name>/proposal.md`）
       - 审查目的：作为 design 阶段的输入门禁
       - 至少覆盖以下 10 项检查（主 agent 可根据上下文增减/调整措辞）：
-        1. 内容完整性 — PHASE 1 提取的所有要点是否在 proposal 中体现？
+        1. 内容完整性 — change 目标所需的所有核心内容是否在 proposal 中体现？
         2. 范围控制 — 是否有对话中未讨论的内容（范围蔓延）？
         3. 结构完整性 — 必需部分是否齐全且格式正确？
         4. 格式卫生 — 有无空部分、未替换占位符、`[TODO]`/`[TBD]` 标记？
@@ -144,7 +141,7 @@ artifacts:
 
         3. **用户确认**：向用户展示所有调研结果的摘要，**等待用户明确确认后才能继续**。
 
-           **超时处理**：如果用户超过 10 分钟未回复，提示用户：「⚠️ 调研结果已准备好超过 10 分钟未确认，请明确确认或拒绝」。**不要自动确认**（避免未审视的调研结论被采纳）。
+           **不要自动确认**（避免未审视的调研结论被采纳）。如后续用户消息中表达了与确认/拒绝无关的其他意图，主动提醒调研结果待确认。
 
           确认后的最终结构：
 
@@ -183,7 +180,7 @@ artifacts:
            - 每个设计决策必须对应至少一个 proposal 中的 Capability
            - 如果存在 research findings，在相关 Decisions 中引用，用 `详见 research/<topic>/notes.md` 格式
            - 解释每个技术决策背后的"为什么"
-           - 保持聚焦和可执行")
+           - 保持聚焦和可执行
 
 
        生成后验证 design.md 是否覆盖所有必需部分。如果 research/ 存在，确认调研发现已在 Decisions 中被引用。
@@ -219,14 +216,11 @@ artifacts:
 
       === PHASE 2：生成 spec 文件 ===
 
-      读取以下文件提取必要信息：
-      - `openspec/changes/<change-name>/proposal.md` — 动机和 Capabilities
-      - `openspec/changes/<change-name>/design.md` — 技术决策和设计细节
-      - `openspec/changes/<change-name>/research/` — 技术调研结论（如果存在）
+      复用 PHASE 1 已读取的 proposal.md、design.md 和 research/ 内容。
 
       用 Write 工具为 proposal 的 Capabilities 部分列出的每个能力创建一个 spec 文件：
-      - 新能力：使用 proposal 中确切的 kebab-case 名称（specs/<capability>/spec.md）
-      - 修改的能力：使用 openspec/specs/<capability> 中已有的 spec 文件夹名称
+      - 新能力：使用 proposal 中确切的 kebab-case 名称（openspec/changes/<change-name>/specs/<capability>/spec.md）
+      - 修改的能力：使用 openspec/changes/<change-name>/specs/<capability> 中已有的 spec 文件夹名称（对应 base spec 在 openspec/specs/<capability>/spec.md）
 
       **VALIDATION RULES**（openspec validate 强制检查以下规则）：
       1. 每个 requirement 必须以 `### Requirement: <name>` 开头
@@ -247,12 +241,10 @@ artifacts:
       1. 在 openspec/specs/<capability>/spec.md 中找到现有 requirement
       2. 复制完整的 requirement 块（从 ### Requirement: 到所有 scenarios）
       3. 粘贴到 ## MODIFIED Requirements 下，编辑以反映新行为
-      4. 确保标题文本精确匹配
+      4. 确保 Requirement 标题文本与源 spec（openspec/specs/<capability>/spec.md）中原始标题完全一致
 
-      **常见陷阱**：使用 MODIFIED 但内容部分丢失，会在归档时丢失细节。
+      **常见陷阱**：使用 MODIFIED 但未复制完整的 requirement 块（遗漏 scenarios 或字段），归档时该 requirement 被部分覆盖，丢失原有细节。
       如果添加不改变现有行为的新关注点，请使用 ADDED。
-
-      **Spec 应该是可测试的** —— 每个 scenario 都是一个潜在的测试用例。
 
       **Example 格式参考**：
       ```
@@ -274,7 +266,7 @@ artifacts:
       - 命令不存在 → 停止，提示用户：「🔴 OpenSpec CLI 未安装。请先运行 `npm install -g @fission-ai/openspec`。」
       - 返回 ERROR → 修复所有 ERROR 后重新运行，直到通过
       - 返回 WARNING → 展示给用户，由用户决定是否修复（不得自行决定忽略）
-      - 返回 OK → 继续
+      - 返回 OK → 展示所有 spec 文件路径及摘要给用户，等待用户 review 后再进入下一个 artifact
     requires:
       - proposal
       - design
@@ -292,7 +284,7 @@ artifacts:
     instruction: |
       __LANG_PLACEHOLDER__
 
-      **范围限制：不要修改任何源代码。本阶段产出：`.omo/plans/<change-name>.md` + `tasks.md` 空占位文件（plan 内容在 apply 阶段补充）。**
+      **范围限制：不要修改任何源代码。本阶段产出：(1) `.omo/plans/<change-name>.md` 完整 9-section OMO plan；(2) `openspec/changes/<change-name>/tasks.md` 空占位文件（plan 内容镜像由 apply 阶段通过 `omo_spec_plan_to_tasks` tool 同步生成）。**
 
       === Fast Fail Rule (Global) ===
 
@@ -325,7 +317,7 @@ artifacts:
          - 调用 Metis agent 提供 plan 策略咨询
          - 输入：4 个 artifacts 内容（proposal/specs/design/research）
          - 输出：plan 应该包含哪些关键 task、Wave 划分建议、潜在风险与依赖、Acceptance Criteria 重点
-         - **用法**：AI 拿到 Metis 建议后**融入**自己生成的 9 个 section 内容中（不机械照抄）
+         - **用法**：AI 综合 Metis 建议后自行撰写 plan 的 9 个 section 内容。若 Metis 建议与 design 冲突，以 design 为准
 
          ```
          METIS_PLAN_CONSULT_PROMPT = "你是一个 Plan Consultant，正在为一个 OpenSpec change 提供 plan 策略建议。
@@ -338,7 +330,7 @@ artifacts:
          - `openspec/changes/<change-name>/research/`（如果存在）
 
          请输出**简短、聚焦**的策略建议（不要写完整 plan，只给方向）：
-         1. **关键 task 清单**：列出 3-8 个最关键的任务（含编号建议 N./FN.）
+         1. **关键 task 清单**：列出 3-8 个最关键的任务（给出任务描述和所属 Wave 建议，无需给编号——编号由 plan 作者编排时决定）
          2. **Wave 划分建议**：如何分组（按依赖/按能力/按并行度）
          3. **风险与依赖**：最值得关注的 2-3 个风险点
          4. **Acceptance Criteria 重点**：哪些场景必须覆盖
@@ -407,6 +399,9 @@ artifacts:
       - **QA Scenarios**:
         - **Happy**: 正常路径
         - **Exception**: 异常路径
+        - **Edge**: 边界输入（空、极大、特殊字符）
+        - **Performance**: 性能/资源消耗（如适用）
+        - **Security**: 权限/注入/敏感数据（如适用）
       - **Parallelization**: 可与 Task 2 并发
       - **Evidence**: `.omo/evidence/xxx.txt`
       - **Commit**: YES
@@ -432,8 +427,8 @@ artifacts:
 
       **关键约束**（Oracle + Momus 审查的硬性要求）：
       - 9 个 section 标题必须存在（可用 `## 1. TL;DR` 或 `## TL;DR` 两种格式，**推荐编号**以匹配 OMO 项目惯例）
-      - TODOs section 必须含至少 1 个 `#### N. [ ] <title>` 格式任务
-      - Final Verification Wave section 必须含至少 1 个 `### FN. [ ] <title>` 格式任务
+      - TODOs section 必须含至少 1 个 `#### {number}. [ ] <title>` 格式任务（{number} 替换为 1/2/3…）
+      - Final Verification Wave section 必须含至少 1 个 `### F{number}. [ ] <title>` 格式任务（{number} 替换为 1/2/3…）
       - Wave 标题（如 `### 6.1 Wave 1: 标题`）用 3 个 `#` + 数字 sub-number + 中英文冒号 `:` 或 `：`
 
       **写 plan 时**：
@@ -459,10 +454,10 @@ artifacts:
       3. Verification 覆盖——Verification Strategy 是否覆盖了 all spec 的 scenarios？
       4. Success Criteria——是否可衡量？是否覆盖了所有 capability？
       5. research 引用——research/ 的调研发现是否在 plan 中被正确引用？
-      6. 结构格式——是否使用 summary + link 模式？非 Task sections 是否引用了其他 artifacts？
+      6. 结构格式——是否使用 summary + link 模式（即每个非 Task section 顶部用 1-2 句概述该 section 关键内容 + 末尾附上对应 artifact 的相对路径引用，如 `详见 proposal.md → Capabilities`）？非 Task sections 是否引用了其他 artifacts？
       7. Tasks 质量——每个 task 是否包含 What to do / Must NOT do / Agent Profile / References / Acceptance Criteria / QA Scenarios / Parallelization / Evidence / Commit？内容是否有意义（非占位符）？
-      8. QA Scenarios 质量——每个 QA Scenario 是否有五要素？是否至少覆盖 1 个成功场景 + 1 个异常场景？
-      9. 可执行性——FVW 是否合理？执行策略是否可行？任务依赖真实？
+      8. QA Scenarios 质量——每个 task 的 QA Scenarios 是否列出 5 个标准要素（Happy / Exception / Edge / Performance / Security，Performance/Security 不适用时填 "N/A" 仍视为已列出）？是否至少覆盖 1 个 Happy + 1 个 Exception？
+      9. 可执行性——FVW 任务是否可直接执行（每项含具体验证命令或观察点）？执行策略是否可行？任务依赖真实？
       10. 潜在问题——是否有遗漏的边界场景？逻辑漏洞？矛盾？
 
       严重程度：🔴 阻塞 / 🟡 警告 / ⚪ 建议
@@ -484,7 +479,7 @@ artifacts:
       2. QA Scenarios 是否至少包含一个成功场景（happy path）+ 一个异常场景？
       3. Commit Strategy 是否合理？是否有多人协作的冲突风险？
       4. Success Criteria 是否真正可衡量？
-      5. 如果 research/ 存在：是否有 research 发现未被 plan 覆盖？
+      5. 如果 research/ 存在：是否有 research 发现未被 plan 覆盖？（仅检查 plan 内部对 research 发现的引用是否自洽——无需读取 research/ 源文件）
 
       审查文件：
       - plan: .omo/plans/<change-name>.md
@@ -502,16 +497,16 @@ artifacts:
       **3.2 收集评审结果**：
       1. 读取 Oracle 和 Momus 输出，合并发现（同一问题多个 agent 都发现时取更高严重程度）
       2. 分类判定：
-         - 有 🔴 或 🟡 → BLOCKED，AI 用 Read/Edit 工具直接修复 plan。只修复标记为 🔴/🟡 的问题，不要修改其他内容。修复完成后重新运行 PHASE 3（**最多 3 轮**，超限后汇总给用户）
-         - 仅 ⚪ → 进入 3.4 Verdict 处理
+         - 有 🔴 或 🟡 → BLOCKED，AI 用 Read/Edit 工具直接修复 plan。只修复标记为 🔴/🟡 的问题，不要修改其他内容。修复完成后重新运行 PHASE 3 全量审查（**最多 3 轮 = 完整 PHASE 3 最多跑 3 次**，超限后汇总给用户；修复可能引入新问题，因此重跑不跳过已通过项）
+         - 仅 ⚪ → 进入 3.3 Verdict 处理
 
-      **3.4 Verdict 处理**：
+      **3.3 Verdict 处理**：
 
       收集所有未解决的 ⚪ 项（来自 PHASE 3 plan 审查遗留），向用户呈现并询问。
 
       === PHASE 4：创建 tasks.md 占位文件 ===
 
-      按照 `tasks.md` 模板，生成 `openspec/changes/<change-name>/tasks.md` 空文件占位（task 内容由后续 apply 阶段补充）。
+      按 `schemas/spec-driven/templates/tasks.md` 模板的元数据头（仅 front matter / 模板结构，不含 task 列表），生成 `openspec/changes/<change-name>/tasks.md` 空占位文件。task 列表由 apply 阶段通过 `omo_spec_plan_to_tasks` tool 从 plan 镜像生成。
     requires:
       - specs
       - design
