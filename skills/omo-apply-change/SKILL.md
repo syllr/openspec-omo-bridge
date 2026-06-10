@@ -1,8 +1,6 @@
 ---
 name: omo-apply-change
 description: 触发 OpenSpec apply 阶段。跑 inspect-apply.ts 拿 change 上下文,调 OMO `/start-work <planName>` 命令实施 plan,完成 Oracle 验证 + tasks.md 镜像同步(跨 schema 通用)。
-license: MIT
-compatibility: Requires openspec CLI.
 metadata:
   author: openspec-omo-bridge
   version: "1.0"
