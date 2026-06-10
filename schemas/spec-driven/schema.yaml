@@ -83,15 +83,10 @@ artifacts:
 
       **任何 task()、tool() 或 skill() 调用失败（超时、agent 不可用、返回错误等），立即停止工作流，不得降级、不得重试、不得跳过、不得自行替代执行。**
 
-      === PHASE 1：读取输入 ===
-
-      读取以下文件提取设计所需信息：
-      - `openspec/changes/<change-name>/proposal.md` — 动机和能力
-
-      === PHASE 2：技术调研 ===
+      === PHASE 1：技术调研 ===
 
       **触发条件**：仅当 `openspec/changes/<change-name>/proposal.md` 中**显式包含 `[NEEDS INVESTIGATION]` 标记**时执行本阶段。
-      如果 proposal.md 没有 `[NEEDS INVESTIGATION]` 标记 → **跳过整个 PHASE 2**，直接进入 PHASE 3。
+      如果 proposal.md 没有 `[NEEDS INVESTIGATION]` 标记 → **跳过整个 PHASE 1**，直接进入 PHASE 2。
 
       对于每个标记为 `[NEEDS INVESTIGATION]` 的点：
 
@@ -128,7 +123,7 @@ artifacts:
               └── ...
           ```
 
-       === PHASE 3：生成 design.md ===
+       === PHASE 2：生成 design.md ===
 
        AI 用 Read/Write 工具直接创建 design.md：
 
@@ -152,11 +147,11 @@ artifacts:
        - 保持聚焦和可执行
 
 
-       **3.1 验证**（与 PHASE 0 审查格式对齐）：
-       1. 6 个必需部分全部存在且顺序正确
-       2. 每个 `## Decisions` 至少对应 1 个 proposal Capability
-       3. 若 research/ 存在，每个 research finding 至少在 1 个 Decision 中被引用
-       4. 全部通过 → 继续；任一不通过 → 用 Read/Edit 工具修复 design.md（仅改不通过项），修复后重跑本验证（最多 3 轮，超限后汇总给用户）
+        **2.1 验证**：
+        1. 6 个必需部分全部存在且顺序正确
+        2. 每个 `## Decisions` 至少对应 1 个 proposal Capability
+        3. 若 research/ 存在，每个 research finding 至少在 1 个 Decision 中被引用
+        4. 全部通过 → 继续；任一不通过 → 用 Read/Edit 工具修复 design.md（仅改不通过项），修复后重跑本验证（最多 3 轮，超限后汇总给用户）
     requires:
       - proposal
   - id: specs
