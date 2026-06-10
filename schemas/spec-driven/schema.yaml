@@ -57,7 +57,7 @@ artifacts:
         - Removed Capabilities（移除的能力）：说明移除原因
       - **Impact**（影响）：受影响的代码、API、依赖、系统
 
-      **完整性优先**——覆盖 PHASE 1 中已确认的要点（排除 `[NEEDS INVESTIGATION]` 项）。保持语言简洁，但不以覆盖度为代价。
+      **完整性优先**——覆盖 PHASE 1 中已确认的要点（排除 `[NEEDS INVESTIGATION]` 项）。
 
       对输出执行以下结构验证：
 
@@ -67,7 +67,7 @@ artifacts:
       - `## Capabilities`（能力清单，含 New/Modified/Removed）
       - `## Impact`（影响）
 
-      缺少任一部分 → 重新生成直到全部满足为止。
+      缺少任一部分 → 重新生成（最多 3 次），仍不满足则停止并提示用户补充信息。
     requires: []
   - id: design
     generates: design.md
@@ -149,7 +149,7 @@ artifacts:
 
         **2.1 验证**：
         1. 6 个必需部分全部存在且顺序正确
-        2. 每个 `## Decisions` 至少对应 1 个 proposal Capability
+        2. `## Decisions` 节中每项决策至少对应 1 个 proposal Capability
         3. 若 research/ 存在，每个 research finding 至少在 1 个 Decision 中被引用
         4. 全部通过 → 继续；任一不通过 → 用 Read/Edit 工具修复 design.md（仅改不通过项），修复后重跑本验证（最多 3 轮，超限后汇总给用户）
     requires:
@@ -206,7 +206,7 @@ artifacts:
       - **RENAMED Requirements**（重命名的需求）：仅名称变更，使用 FROM:/TO: 格式
 
       **MODIFIED requirements 工作流**：
-      1. 在 openspec/specs/<capability>/spec.md 中找到现有 requirement
+      1. 在 `openspec/specs/<capability>/spec.md` 中找到现有 requirement
       2. 复制完整的 requirement 块（从 ### Requirement: 到所有 scenarios）
       3. 粘贴到 ## MODIFIED Requirements 下，编辑以反映新行为
       4. 确保 Requirement 标题文本与源 spec（openspec/specs/<capability>/spec.md）中原始标题完全一致
@@ -241,12 +241,11 @@ artifacts:
   - id: tasks
     generates: tasks.md
     description: >
-      Spec validation, gap analysis, plan generation (with Metis
-      consultation), multi-agent review, and tasks.md placeholder creation.
-      Validates specs, runs Oracle gap analysis, generates
-      .omo/plans/<name>.md (OMO plan), reviews it via
-      Oracle + Momus, and creates an empty
-      tasks.md placeholder for the apply phase to fill with plan content.
+      Spec validation, gap analysis, plan generation, multi-agent review,
+      and tasks.md placeholder creation.
+      Validates specs, generates .omo/plans/<name>.md (OMO plan), reviews it
+      via Oracle + Momus, and creates an empty tasks.md placeholder for the
+      apply phase to fill with plan content.
     template: tasks.md
     tracks: tasks.md
     instruction: |
@@ -277,41 +276,9 @@ artifacts:
 
       生成 `.omo/plans/<change-name>.md` — OMO 兼容的执行计划。
 
-      由当前 AI 直接执行，**但先咨询 Metis**（Plan Consultant 角色），再写 plan。
+      复用 PHASE 1.1 已读取的 4 个 artifact 内容（proposal.md、specs/、design.md、research/），无需重新读取。
 
-      **执行流程**：
-
-      1. **Plan Consultant 咨询**（先于 plan 生成）：
-         - 调用 Metis agent 提供 plan 策略咨询
-         - 输入：4 个 artifacts 内容（proposal/specs/design/research）
-         - 输出：plan 应该包含哪些关键 task、Wave 划分建议、潜在风险与依赖、Acceptance Criteria 重点
-         - **用法**：AI 综合 Metis 建议后自行撰写 plan 的 9 个 section 内容。若 Metis 建议与 design 冲突，以 design 为准
-
-         ```
-         METIS_PLAN_CONSULT_PROMPT = "你是一个 Plan Consultant，正在为一个 OpenSpec change 提供 plan 策略建议。
-         你的输出会被 AI 用来生成 9-section OMO 计划。
-
-         输入文件（请直接读取以下文件获取完整内容）：
-         - `openspec/changes/<change-name>/proposal.md`
-         - `openspec/changes/<change-name>/specs/`
-         - `openspec/changes/<change-name>/design.md`
-         - `openspec/changes/<change-name>/research/`（如果存在）
-
-         请输出**简短、聚焦**的策略建议（不要写完整 plan，只给方向）：
-         1. **关键 task 清单**：列出 3-8 个最关键的任务（给出任务描述和所属 Wave 建议，无需给编号——编号由 plan 作者编排时决定）
-         2. **Wave 划分建议**：如何分组（按依赖/按能力/按并行度）
-         3. **风险与依赖**：最值得关注的 2-3 个风险点
-         4. **Acceptance Criteria 重点**：哪些场景必须覆盖
-
-         严重程度：🔴 阻塞 / 🟡警告 / ⚪ 建议
-         输出格式：按以上 4 个小节分点列出"
-         ```
-
-         task(subagent_type="metis", prompt=METIS_PLAN_CONSULT_PROMPT)
-
-       2. 复用 PHASE 1.1 已读取的 4 个 artifact 内容（proposal.md、specs/、design.md、research/），无需重新读取。
-
-      3. AI **直接**写 OMO 兼容 plan markdown 到 `.omo/plans/<change-name>.md`
+      AI **直接**写 OMO 兼容 plan markdown 到 `.omo/plans/<change-name>.md`
 
       **OMO plan 格式规范**（必须严格遵守，Oracle + Momus 会校验）：
 

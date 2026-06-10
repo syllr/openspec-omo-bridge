@@ -118,7 +118,7 @@ scripts/sync.sh --dry-run             # 预览
 ## Quality gates (spec-driven tasks 阶段)
 
 1. **PHASE 1.2** Spec validation（强制）
-2. **PHASE 2** Metis plan consultation（1 次）+ AI 写 `.omo/plans/<name>.md`
+2. **PHASE 2** AI 写 `.omo/plans/<name>.md`
 3. **PHASE 3.1** `omo_spec_check_plan`（11 项结构检查）
 4. **PHASE 3.2** Oracle + Momus 并行 review（Oracle 看 OMO 兼容性，Momus 给 OKAY/REJECT verdict）
 5. **PHASE 3.4** Verdict 处理：🔴 BLOCKED → 修复重审（最多 3 轮，超出问用户接受风险/手动修/停）；🟡/⚪ → 问用户
@@ -126,7 +126,7 @@ scripts/sync.sh --dry-run             # 预览
 7. **apply Step 3** Oracle 验证 — 直接读 `openspec instructions apply` 的 `contextFiles` + 自己跑 `git diff`（不通过 tool）
 8. **Fast Fail**（全局）：任何 task/tool/skill 调用失败 → 立即停，不重试/降级/跳过
 
-agent 数量上限：`oracle` 可并行 · `metis` 每个 tasks 阶段 ≤ 1 次 · `momus` 每个 tasks 阶段 ≤ 1 次（与 oracle 并行）。
+agent 数量上限：`oracle` 可并行 · `momus` 每个 tasks 阶段 ≤ 1 次（与 oracle 并行）。
 
 ## Architecture constraints (do NOT modify)
 
