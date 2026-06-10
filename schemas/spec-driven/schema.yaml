@@ -356,15 +356,11 @@ artifacts:
       - [ ] 软性指标 1
       ```
 
-      **关键约束**（Oracle + Momus 审查的硬性要求）：
+      **关键约束**：
       - 9 个 section 标题必须存在（可用 `## 1. TL;DR` 或 `## TL;DR` 两种格式，**推荐编号**以匹配 OMO 项目惯例）
       - TODOs section 必须含至少 1 个 `#### {number}. [ ] <title>` 格式任务（{number} 替换为 1/2/3…）
       - Final Verification Wave section 必须含至少 1 个 `### F{number}. [ ] <title>` 格式任务（{number} 替换为 1/2/3…）
       - Wave 标题（如 `### 6.1 Wave 1: 标题`）用 3 个 `#` + 数字 sub-number + 中英文冒号 `:` 或 `：`
-
-      **写 plan 时**：
-      - 用 `write` 工具直接写文件到 `.omo/plans/<change-name>.md`
-      - 不要手动 mkdir（write 工具会处理父目录）
 
       === PHASE 3：Oracle + Momus 并行审查 Plan + Verdict 处理 ===
 
