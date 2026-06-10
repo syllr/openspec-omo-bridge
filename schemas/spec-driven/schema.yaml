@@ -88,33 +88,24 @@ artifacts:
 
       === PHASE 0：Oracle 审查 proposal ===
 
-      启动 1 个 Oracle agent 审查上游 proposal.md（在 PHASE 1 读取它之前，确保设计基于已验证的输入）。
-      调用前将占位符替换为实际内容。
+      在 PHASE 1 读取它之前，调用 1 个 Oracle agent 审查上游 proposal.md，确保 design 阶段基于已验证的输入。
 
-      ```
-      task(subagent_type="oracle", prompt="
-      你正在审查一个 OpenSpec 变更提案（proposal），目的是确保下游 design 阶段基于正确的输入。请逐一检查以下所有检查项：
+      **主 agent 职责**：基于当前上下文（PHASE 1 提取的要点 + 实际 proposal.md 路径）动态构造 `task(subagent_type="oracle", prompt=...)` 的 prompt。prompt 必须包含：
 
-      PHASE 1 的上下文提取结果：
-      [将 PHASE 1 的上下文提取输出粘贴此处]
-
-      生成的 proposal.md 路径：openspec/changes/<change-name>/proposal.md
-
-      1. 内容完整性——PHASE 1 提取的所有要点是否在 proposal 中体现？
-      2. 范围控制——提案中是否有对话中未讨论的内容（范围蔓延）？
-      3. 结构完整性——所有必需的部分是否存在且格式正确？
-      4. 格式卫生——有无空部分、未替换占位符、[TODO]/[TBD] 标记？
-      5. 命名规范——Capabilities 是否使用 kebab-case？
-      6. Capability 粒度——每个 Capability 是否独立可测？有无过粗（应拆分为多个 spec）或过细（可合并）的情况？
-      7. 边界清晰——What Changes / Capabilities / Impact 是否没有混淆？
-      8. 可操作性——Capabilities 是否具体到可以衍生 specs？Impact 是否明确？
-      9. 模糊性——表达是否清晰？有无 AI-slop（模糊空洞的表述）？
-      10. 不确定信号——需要调研的点是否已用 [NEEDS INVESTIGATION] 标记？
-
-      严重程度：🔴 阻塞 / 🟡警告 / ⚪ 建议
-      输出格式：按严重程度列出发现，对每个 🔴/🟡 给出具体修改建议
-      ")
-      ```
+      - 审查目标：proposal.md 文件路径（`openspec/changes/<change-name>/proposal.md`）
+      - 审查目的：作为 design 阶段的输入门禁
+      - 至少覆盖以下 10 项检查（主 agent 可根据上下文增减/调整措辞）：
+        1. 内容完整性 — PHASE 1 提取的所有要点是否在 proposal 中体现？
+        2. 范围控制 — 是否有对话中未讨论的内容（范围蔓延）？
+        3. 结构完整性 — 必需部分是否齐全且格式正确？
+        4. 格式卫生 — 有无空部分、未替换占位符、`[TODO]`/`[TBD]` 标记？
+        5. 命名规范 — Capabilities 是否使用 kebab-case？
+        6. Capability 粒度 — 每个 Capability 是否独立可测？有无过粗或过细？
+        7. 边界清晰 — What Changes / Capabilities / Impact 是否没有混淆？
+        8. 可操作性 — Capabilities 是否具体到可以衍生 specs？Impact 是否明确？
+        9. 模糊性 — 表达是否清晰？有无 AI-slop（模糊空洞的表述）？
+        10. 不确定信号 — 需要调研的点是否已用 `[NEEDS INVESTIGATION]` 标记？
+      - 输出格式：按严重程度（🔴 阻塞 / 🟡 警告 / ⚪ 建议）列出发现，对每个 🔴/🟡 给出具体修改建议
 
       **收集评审结果：**
       1. 读取 Oracle 输出，列出所有 🔴/🟡/⚪ 发现
@@ -322,66 +313,7 @@ artifacts:
       - 通过 → 继续
       - 失败 → 显示错误给用户，由用户决定如何修复。不得自行修复。
 
-      === PHASE 2：Oracle 差距分析 ===
-
-      在生成 plan 之前，调用 Oracle 做差距分析。
-
-      ```
-      GAP_ANALYSIS_PROMPT = "你正在审查一个 OpenSpec change 的产物，为生成 OMO plan 做准备。
-
-      审查文件：
-      - `openspec/changes/<change-name>/proposal.md` — 动机和能力
-      - `openspec/changes/<change-name>/specs/` — 需求和验收场景
-      - `openspec/changes/<change-name>/design.md` — 技术方案、决策、风险
-      - `openspec/changes/<change-name>/research/` — 技术调研（如果存在）
-
-      信源规则：
-      - #1（遗漏/溢出）：以 proposal.md 为范围锚点
-      - #3（验收标准）：以 specs 为权威来源
-      - #5（一致性）：不做自动裁决，发现矛盾时同时列出双方原文，由人类判定
-
-      请按以下三组顺序逐一检查，组内按编号顺序执行，不得跳过。
-
-      === A. 宏观一致性 ===
-      1. 遗漏与溢出——proposal 中的要点未被 specs/design 覆盖？反之，specs/design 中是否有 proposal 未提及的内容？
-      2. artifacts 一致性——specs 和 design 之间是否有矛盾？（发现矛盾时列出双方原文，不做自动裁决）
-      3. research 完整性——proposal 中标记 [NEEDS INVESTIGATION] 的不确定点是否都有对应的 research/ 产出？结论是否在 design 中被引用？
-      4. decision 理由——design 中的关键技术决策是否都有明确的选型理由？有无"选 X 但没说为什么"的情况？
-
-      === B. 微观质量 ===
-      5. 缺失的验收标准——每个 requirement 是否有明确的 WHEN/THEN 验收场景？
-      6. 边界情况覆盖——错误路径、并发、权限、空输入、超大输入等是否被识别？（注：识别了但未写验收标准的归入 #5）
-      7. 表达模糊——是否存在：(a) 同一概念在不同 artifact 中使用不同术语；(b) 使用了无量化指标的形容词且未定义度量方式；(c) 代词指代不明
-
-      === C. 可执行性 ===
-      8. scope creep——是否有 proposal 未提及的新增范围？（注：#1 检查"有没有覆盖"，本项检查"是否该做"）
-      9. task 可衍生性——每个 requirement 是否涉及 ≤1 个独立代码变更？若涉及 ≥2 个不同文件/模块的变更，标记为需要拆分
-      10. 依赖隐含——task 之间是否有未声明的先后依赖关系？
-
-      严重程度判定锚点：
-      🔴 阻塞：会导致 plan 生成错误或 task 无法执行（遗漏核心需求、验收标准缺失、artifacts 矛盾）
-      🟡 警告：不阻塞但会降低 plan 质量（表达模糊、scope creep、边界情况未覆盖）
-      ⚪ 建议：可改进但不影响执行（命名不一致、缺少注释）
-
-      输出格式（严格遵守）：
-      ### Findings
-      [序号] 严重程度 检查项名称
-          发现：具体描述
-          建议：具体修改建议
-
-      ### Summary
-      🔴: N | 🟡: N | ⚪: N
-
-      如果所有检查项均无发现，输出：### Summary\n✅ 全部通过，无发现"
-      ```
-
-      **收集评审结果：**
-      1. 读取 Oracle 输出，列出所有 🔴/🟡/⚪ 发现
-      2. 分类判定：
-         - 有 🔴 或 🟡 → BLOCKED，AI 用 Read/Edit 工具直接修复 artifacts。只修复标记为 🔴/🟡 的问题，不要修改其他内容。修复完成后重新运行 PHASE 2（最多 3 轮）
-         - 仅 ⚪ → 留到 PHASE 4 末尾统一展示给用户
-
-      === PHASE 3：生成 OMO 计划 ===
+      === PHASE 2：生成 OMO 计划 ===
 
       生成 `.omo/plans/<change-name>.md` — OMO 兼容的执行计划。
 
@@ -508,9 +440,9 @@ artifacts:
       - 用 `write` 工具直接写文件到 `.omo/plans/<change-name>.md`
       - 不要手动 mkdir（write 工具会处理父目录）
 
-      === PHASE 4：Oracle + Momus 并行审查 Plan + Verdict 处理 ===
+      === PHASE 3：Oracle + Momus 并行审查 Plan + Verdict 处理 ===
 
-      **4.1 启动 Oracle + Momus 并行审查**：
+      **3.1 启动 Oracle + Momus 并行审查**：
 
       ```
       PLAN_REVIEW_PROMPT = "你正在审查 OMO plan。请逐一检查以下所有检查项：
@@ -567,17 +499,17 @@ artifacts:
       task(subagent_type="momus", prompt=MOMUS_PLAN_REVIEW_PROMPT)
       ```
 
-      **4.2 收集评审结果**：
+      **3.2 收集评审结果**：
       1. 读取 Oracle 和 Momus 输出，合并发现（同一问题多个 agent 都发现时取更高严重程度）
       2. 分类判定：
-         - 有 🔴 或 🟡 → BLOCKED，AI 用 Read/Edit 工具直接修复 plan。只修复标记为 🔴/🟡 的问题，不要修改其他内容。修复完成后重新运行 PHASE 4（**最多 3 轮**，超限后汇总给用户）
-         - 仅 ⚪ → 进入 4.4 Verdict 处理
+         - 有 🔴 或 🟡 → BLOCKED，AI 用 Read/Edit 工具直接修复 plan。只修复标记为 🔴/🟡 的问题，不要修改其他内容。修复完成后重新运行 PHASE 3（**最多 3 轮**，超限后汇总给用户）
+         - 仅 ⚪ → 进入 3.4 Verdict 处理
 
-      **4.4 Verdict 处理**：
+      **3.4 Verdict 处理**：
 
-      收集所有未解决的 ⚪ 项（来自 PHASE 2 差距分析遗留 + PHASE 4 plan 审查遗留），向用户呈现并询问。
+      收集所有未解决的 ⚪ 项（来自 PHASE 3 plan 审查遗留），向用户呈现并询问。
 
-      === PHASE 5：创建 tasks.md 占位文件 ===
+      === PHASE 4：创建 tasks.md 占位文件 ===
 
       按照 `tasks.md` 模板，生成 `openspec/changes/<change-name>/tasks.md` 空文件占位（task 内容由后续 apply 阶段补充）。
     requires:
