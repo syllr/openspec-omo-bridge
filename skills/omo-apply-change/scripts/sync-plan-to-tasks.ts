@@ -1,8 +1,8 @@
 #!/usr/bin/env bun
 //
-// sync-plan-to-tasks.mjs — 把 OMO plan 文件同步到 OpenSpec tasks.md
+// sync-plan-to-tasks.ts — 把 OMO plan 文件同步到 OpenSpec tasks.md
 //
-// 用法: scripts/sync-plan-to-tasks.mjs <change-name>
+// 用法: scripts/sync-plan-to-tasks.ts <change-name>
 //
 // 作用:
 //   读 `<planningHome.root>/.omo/plans/<change-name>.md`,解析为结构化
@@ -264,7 +264,7 @@ function generateOpenSpecTasks(plan) {
 
 const changeName = process.argv[2];
 if (!changeName) {
-  console.error("❌ 用法: sync-plan-to-tasks.mjs <change-name>");
+  console.error("❌ 用法: sync-plan-to-tasks.ts <change-name>");
   process.exit(1);
 }
 

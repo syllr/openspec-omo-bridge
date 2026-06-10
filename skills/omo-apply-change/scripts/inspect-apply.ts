@@ -1,8 +1,8 @@
 #!/usr/bin/env node
 //
-// inspect-apply.mjs — 拉取 OpenSpec apply 阶段 change 上下文
+// inspect-apply.ts — 拉取 OpenSpec apply 阶段 change 上下文
 //
-// 用法: scripts/inspect-apply.mjs <change-name>
+// 用法: scripts/inspect-apply.ts <change-name>
 //
 // 输出: 单 JSON object,8 字段精简版:
 //   changeName, schemaName, planningHome, changeRoot,
@@ -21,7 +21,7 @@ import { basename, join } from "node:path";
 
 const changeName = process.argv[2];
 if (!changeName) {
-  console.error("❌ 用法: inspect-apply.mjs <change-name>");
+  console.error("❌ 用法: inspect-apply.ts <change-name>");
   process.exit(1);
 }
 
