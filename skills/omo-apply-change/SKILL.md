@@ -36,7 +36,7 @@ metadata:
 
 1. **去前后空白**（用户可能复制粘贴带了换行/空格）
 2. **路径化**：`/foo` 或 `./foo` 或 `~/foo` 或 `C:\foo` 开头 → 视为路径
-3. **取 basename**：用 `node -e "console.log(require('path').basename(process.argv[1], '.md'))" "<input>"`（或 LLM 直接字符串切最后一段 `/` 或 `\`、再去 `.md`）
+3. **取 basename**（统一用 `node -e "console.log(require('path').basename(process.argv[1]))" "<input>"`，或 LLM 字符串切最后一段 `/` 或 `\`）—— **步骤 4 统一处理扩展名剥离，此处不剥**
 4. **去扩展名**：剥掉末尾的 `.md`（大小写不敏感）
 5. **空白转 `-`**：把内部空格转成 `-`（容错用户口语化输入如 `fix token heartbeat`）
 
@@ -99,7 +99,7 @@ metadata:
 - `schemaName` — 当前用的 schema（如 `spec-driven` / `constitution`），LLM 据此路由不同工作流
 - `planningHome` — 包含 `kind`（repo/workspace）/ `root`（项目根绝对路径）/ `changesDir`（changes 目录绝对路径）/ `defaultSchema`（默认 schema）
 - `changeRoot` — change 根目录绝对路径
-- `contextFiles` — 各 artifact 的**绝对文件路径映射**，包含 change 的所有上下文(各 schema 的 artifact 类型不同,字段名以实际返回为准)。**冲突优先级**:多个 artifact 之间冲突时,以在 `contextFiles` 中的位置为准——**越靠前的 artifact 可信度越高**
+- `contextFiles` — 各 artifact 的**绝对文件路径映射**，包含 change 的所有上下文(各 schema 的 artifact 类型不同,字段名以实际返回为准)。**冲突优先级**:多个 artifact 之间冲突时,以在 `contextFiles` 中的位置为准——**越靠前的 artifact 可信度越高**（优先级按 `inspect-apply.ts` 返回 JSON 中 `contextFiles` 字段的 key 插入顺序，即 artifacts 的排列顺序）
 - `planFile` — plan 文件路径**校验结果**（string 类型，Node 脚本用 `fs.existsSync` 检查拼接路径是否存在）：
   - **plan 存在** → 字段值 = 拼接路径（`<planningHome.root>/.omo/plans/<changeName>.md`），LLM 可直接 Read
   - **plan 不存在** → 字段值 = `""`（空字符串），LLM 提示用户先完成 plan 阶段
@@ -113,7 +113,7 @@ metadata:
 走流程（Read → Implement → On completion/pause）：
 
 1. **Read context files** — 按 `contextFiles` 字段读 change 所有上下文
-2. **Implement tasks (loop)** — 调 `/start-work <planName>`(传 `planName` 字段值,短名,不要传路径),让 OMO 解析 plan 驱动 task 执行。**LLM 不手动改 `tasks.md` checkbox**(由后续 sync 步骤镜像;**plan checkbox 不在此限制内**,见「Oracle 验证」步骤)。对每个 pending task：
+2. **Implement tasks (loop)** — 调 `/start-work <planName>`(传 `planName` 字段值,短名,不要传路径)启动工作会话。`/start-work` 将 plan 加载到当前会话上下文后，LLM 按 plan 的 TODOs 逐项推进。**LLM 不手动改 `tasks.md` checkbox**(由后续 sync 步骤镜像;**plan checkbox 不在此限制内**,见「Oracle 验证」步骤)。对每个 pending task：
    - 展示正在做的 task
    - 做代码改动（保持最小、聚焦）
    - 继续下一个
@@ -121,12 +121,12 @@ metadata:
 
 **Pause 条件：**
 
-- Task 不清 → 询问
+- Task 描述不清晰或无法确定实现范围 → 询问用户澄清
 - 实现暴露设计问题 → 建议更新 artifacts
 - 错误/阻塞 → 报告并等待
-- 用户中断
+- 用户中断 → 停止当前 task 并等待用户指示继续/跳过/回退
 
-# 5. Oracle 验证（最多 3 轮）
+# 5. Oracle 验证（最多 3 轮——仅约束 BLOCKED 判决触发的修复-重审循环；PASS / CONDITIONAL 不计入轮次）
 
 /start-work 完成后，调用 Oracle agent 审查 change（artifacts 正确性 + plan 任务完成度）：
 
@@ -167,31 +167,33 @@ PLAN_UPDATES:
 status 仅 `completed` / `incomplete`（不含 `in_progress`——本审计只区分 done / not done）。")
 ```
 
-**处理 PLAN_UPDATES**：对 Oracle 标 `completed` 的每项，用 Read + Edit 工具把 plan 中对应 checkbox 改 `[x]`：
+**每轮循环内依次执行以下 3 步（BLOCKED 判决触发，最多 3 轮）：**
 
-- TODOs section：`#### N. [ ]` → `#### N. [x]`
-- Success Criteria section：`- [ ]` → `- [x]`
+1. **处理 PLAN_UPDATES** — 对 Oracle 标 `completed` 的每项，用 Read + Edit 工具把 plan 中对应 checkbox 改 `[x]`。定位策略：通过 task 描述文本在 `## TODOs` section 内搜索匹配行；优先匹配编号前缀（如 Oracle 的 `1.1` 对应 plan 的 `#### 1.` 内的 task），编号不匹配时用描述文本模糊匹配。
 
-**循环退出条件**（每轮修复前先检查）：
+   - TODOs section：`#### N. [ ]` → `#### N. [x]`
+   - Success Criteria section：`- [ ]` → `- [x]`
 
-用 Read 工具重读 `.omo/plans/<change-name>.md`,grep 未完成模式：
+2. **循环退出条件**（每轮修复前先检查）：
+
+   运行 grep 命令检查未完成模式（grep 会自行读文件，无需先 Read 工具）：
 
 ```
 grep -E '^#### [0-9]+\. \[ \]|^- \[ \]' .omo/plans/<change-name>.md
 ```
 
-- 0 匹配 → 所有 TODOs 和 Success Criteria 都已 `[x]` 标记 → **直接退出循环**，进入「最终同步 tasks.md 镜像」步骤。即便 Oracle 报 🔴/🟡，plan checkbox 已被全部标记就不再修
-- 有匹配 → 继续走下面的流程
+- 0 匹配 → 所有 TODOs 和 Success Criteria 都已 `[x]` 标记 → **直接退出循环**，进入「最终同步 tasks.md 镜像」步骤。即便 Oracle 报 🔴/🟡，plan checkbox 已被全部标记就不再修（plan 完成度是镜像同步的权威源；剩余 🔴/🟡 已随 Oracle 报告交用户知悉，由用户决定是否另开 change 修复）
+- 有匹配 → 继续走第 3 步
 
-读取 Oracle 输出的最终判定：
+3. **读取 Oracle 输出的最终判定**：
 
-1. 如果 ✅ PASS → 完成
-2. 如果 🔴 或 🟡 BLOCKED（**最多 3 轮**）：
-   AI 用 Read/Edit 工具直接修复实现：
-   - 只修复标记为 🔴/🟡 的问题，不要修改其他内容
-   - 修复完成后用 read 工具重新读 4 个 artifact 路径 + 重跑 Oracle 验证
-   - 超限（3 轮后仍有 🔴/🟡）→ 汇总所有剩余展示给用户
-3. 如果 ⚠️ CONDITIONAL → 汇总 ⚪ 展示给用户
+   1. 如果 ✅ PASS → 完成
+   2. 如果 🔴 或 🟡 BLOCKED（**最多 3 轮**）：
+      AI 用 Read/Edit 工具直接修复实现：
+      - 只修复标记为 🔴/🟡 的问题，不要修改其他内容
+      - 修复完成后用 read 工具重新读 4 个 artifact 路径 + 重跑 Oracle 验证（回到本循环体的"3 步"开头）
+      - 超限（3 轮后仍有 🔴/🟡）→ 汇总所有剩余展示给用户
+   3. 如果 ⚠️ CONDITIONAL → 汇总所有非阻塞项（🟡 警告 + ⚪ 建议）展示给用户，退出循环
 
 # 6. 最终同步 tasks.md 镜像
 

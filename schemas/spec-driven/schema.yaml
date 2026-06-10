@@ -143,7 +143,7 @@ artifacts:
 
            **不要自动确认**（避免未审视的调研结论被采纳）。如后续用户消息中表达了与确认/拒绝无关的其他意图，主动提醒调研结果待确认。
 
-          确认后的最终结构：
+          确认后的最终结构（注意：research/ 目录仅在 proposal 包含 `[NEEDS INVESTIGATION]` 标记时创建，notes.md 须含**代码示例 + 调用方式**）：
 
           ```
           openspec/changes/<change-name>/research/
@@ -155,35 +155,35 @@ artifacts:
               └── ...
           ```
 
-       **重要**：
-       - research/ 目录是**可选的** — 只有 proposal 中存在 `[NEEDS INVESTIGATION]` 标记时才创建
-       - notes.md 应包含**代码示例 + 调用方式**
+       === PHASE 3：生成 design.md ===
 
-      === PHASE 3：生成 design.md ===
+       AI 用 Read/Write 工具直接创建 design.md：
 
-      AI 用 Read/Write 工具直接创建 design.md：
+       - 读取 `openspec/changes/<change-name>/proposal.md` — 动机和能力
+       - 读取 `openspec/changes/<change-name>/research/` — 技术调研（如果存在）
 
-      - 读取 `openspec/changes/<change-name>/proposal.md` — 动机和能力
-      - 读取 `openspec/changes/<change-name>/research/` — 技术调研（如果存在）
+       设计文档必须包含以下 6 个部分（顺序固定）：
 
-      设计文档必须包含以下部分：
+       1. **Context**（上下文）：背景、当前状态、约束、干系人
+       2. **Goals / Non-Goals**（目标/非目标）：设计要实现的和明确排除的
+       3. **Decisions**（决策）：关键技术选择及理由（为什么选 X 不选 Y？）。包含考虑过的替代方案
+       4. **Risks / Trade-offs**（风险/权衡）：已知限制和可能出错的地方。格式：[风险] → 缓解措施
+       5. **Migration Plan**（迁移计划）：部署步骤、回滚策略（如适用）
+       6. **Open Questions**（未决问题）：尚未解决的决策或未知事项
 
-           1. **Context**（上下文）：背景、当前状态、约束、干系人
-           2. **Goals / Non-Goals**（目标/非目标）：设计要实现的和明确排除的
-           3. **Decisions**（决策）：关键技术选择及理由（为什么选 X 不选 Y？）。包含考虑过的替代方案
-           4. **Risks / Trade-offs**（风险/权衡）：已知限制和可能出错的地方。格式：[风险] → 缓解措施
-           5. **Migration Plan**（迁移计划）：部署步骤、回滚策略（如适用）
-           6. **Open Questions**（未决问题）：尚未解决的决策或未知事项
-
-           关键要求：
-           - 关注架构和方法，而非逐行实现
-           - 每个设计决策必须对应至少一个 proposal 中的 Capability
-           - 如果存在 research findings，在相关 Decisions 中引用，用 `详见 research/<topic>/notes.md` 格式
-           - 解释每个技术决策背后的"为什么"
-           - 保持聚焦和可执行
+       关键要求：
+       - 关注架构和方法，而非逐行实现
+       - 每个设计决策必须对应至少一个 proposal 中的 Capability
+       - 如果存在 research findings，在相关 Decisions 中引用，用 `详见 research/<topic>/notes.md` 格式
+       - 解释每个技术决策背后的"为什么"
+       - 保持聚焦和可执行
 
 
-       生成后验证 design.md 是否覆盖所有必需部分。如果 research/ 存在，确认调研发现已在 Decisions 中被引用。
+       **3.1 验证**（与 PHASE 0 审查格式对齐）：
+       1. 6 个必需部分全部存在且顺序正确
+       2. 每个 `## Decisions` 至少对应 1 个 proposal Capability
+       3. 若 research/ 存在，每个 research finding 至少在 1 个 Decision 中被引用
+       4. 全部通过 → 继续；任一不通过 → 用 Read/Edit 工具修复 design.md（仅改不通过项），修复后重跑本验证（最多 3 轮，超限后汇总给用户）
     requires:
       - proposal
   - id: specs
@@ -218,9 +218,9 @@ artifacts:
 
       复用 PHASE 1 已读取的 proposal.md、design.md 和 research/ 内容。
 
-      用 Write 工具为 proposal 的 Capabilities 部分列出的每个能力创建一个 spec 文件：
-      - 新能力：使用 proposal 中确切的 kebab-case 名称（openspec/changes/<change-name>/specs/<capability>/spec.md）
-      - 修改的能力：使用 openspec/changes/<change-name>/specs/<capability> 中已有的 spec 文件夹名称（对应 base spec 在 openspec/specs/<capability>/spec.md）
+      用 Write 工具为 proposal 的 Capabilities 部分列出的每个能力创建一个 spec 文件（输出路径统一为 `openspec/changes/<change-name>/specs/<capability>/spec.md`）：
+      - 新能力：使用 proposal 中确切的 kebab-case 名称
+      - 修改的能力：使用与 proposal 中 Modified capability 同名的 kebab-case 名称（base spec 位于 `openspec/specs/<capability>/spec.md`）
 
       **VALIDATION RULES**（openspec validate 强制检查以下规则）：
       1. 每个 requirement 必须以 `### Requirement: <name>` 开头
@@ -341,11 +341,7 @@ artifacts:
 
          task(subagent_type="metis", prompt=METIS_PLAN_CONSULT_PROMPT)
 
-      2. 读取以下 4 个输入文件：
-         - `openspec/changes/<change-name>/proposal.md` — 动机和能力
-         - `openspec/changes/<change-name>/specs/` — 需求和验收场景
-         - `openspec/changes/<change-name>/design.md` — 技术方案、决策、风险
-         - `openspec/changes/<change-name>/research/` — 技术调研（如果存在）
+       2. 复用 PHASE 1.1 已读取的 4 个 artifact 内容（proposal.md、specs/、design.md、research/），无需重新读取。
 
       3. AI **直接**写 OMO 兼容 plan markdown 到 `.omo/plans/<change-name>.md`
 
@@ -472,7 +468,7 @@ artifacts:
       2. 每个 task 的 Acceptance Criteria 是否可执行？（必须是具体的命令，如 `bun test`、`curl`）
       3. 有无明显的执行顺序错误？
       4. FVW 是否覆盖了关键验证点？
-      5. 如果 research/ 存在：调研结论是否被 plan 正确引用？
+      5. 如果 research/ 存在：调研结论是否被 plan 正确引用？（仅检查 plan 内部对 research 结论的引用是否自洽——无需读取 research/ 源文件）
 
       **Part B — 风险矩阵审查（遗漏覆盖）**：
       1. 是否有遗漏的边界场景（空值、错误路径、并发冲突、权限不足）？
