@@ -10,7 +10,7 @@ import { describe, expect, test } from "bun:test"
 import {
   generateOpenSpecTasks,
   parseOmoPlan,
-} from "../omo-spec"
+} from "../sync-plan-to-tasks"
 
 // ============================================================
 // 1. 章节标题解析

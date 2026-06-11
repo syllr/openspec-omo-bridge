@@ -42,7 +42,7 @@ function stripSectionNumber(rawTitle) {
  * @param {string} changeName OpenSpec change 名称
  * @returns {{ changeName: string, sections: any[], tasks: any[], successCriteria: any[] }}
  */
-function parseOmoPlan(content, changeName) {
+export function parseOmoPlan(content, changeName) {
   if (!content) {
     return { changeName, sections: [], tasks: [], successCriteria: [] };
   }
@@ -182,7 +182,7 @@ function parseOmoPlan(content, changeName) {
  * @param {{ changeName: string, sections: any[], tasks: any[] }} plan
  * @returns {string} tasks.md 完整 markdown
  */
-function generateOpenSpecTasks(plan) {
+export function generateOpenSpecTasks(plan) {
   const lines = [];
 
   lines.push("## Tasks");
@@ -259,48 +259,66 @@ function generateOpenSpecTasks(plan) {
 }
 
 // ============================================================
+// syncPlanToTasksFile
+// ============================================================
+
+export function syncPlanToTasksFile(
+  planFilePath: string,
+  changeRoot: string,
+  changeName: string
+): { tasksContent: string; tasksFile: string } {
+  if (!planFilePath || !existsSync(planFilePath)) {
+    throw new Error(`plan 文件不存在: ${planFilePath || "(path 为空)"}`);
+  }
+  if (!changeRoot) {
+    throw new Error("changeRoot 为空,无法写入 tasks.md");
+  }
+
+  const planContent = readFileSync(planFilePath, "utf-8");
+  const plan = parseOmoPlan(planContent, changeName);
+  const tasksContent = generateOpenSpecTasks(plan);
+
+  const tasksFile = join(changeRoot, "tasks.md");
+  const tasksDir = dirname(tasksFile);
+  if (!existsSync(tasksDir)) {
+    mkdirSync(tasksDir, { recursive: true });
+  }
+
+  writeFileSync(tasksFile, tasksContent);
+  return { tasksContent, tasksFile };
+}
+
+// ============================================================
 // 主流程
 // ============================================================
 
-const changeName = process.argv[2];
-if (!changeName) {
-  console.error("❌ 用法: sync-plan-to-tasks.ts <change-name>");
-  process.exit(1);
-}
+if (import.meta.main) {
+  const changeName = process.argv[2];
+  if (!changeName) {
+    console.error("❌ 用法: sync-plan-to-tasks.ts <change-name>");
+    process.exit(1);
+  }
 
-function run(cmd) {
+  function run(cmd) {
+    try {
+      return JSON.parse(execSync(cmd, { encoding: "utf8" }));
+    } catch (err) {
+      console.error(`❌ 命令失败: ${cmd}\n${err.message}`);
+      process.exit(1);
+    }
+  }
+
+  const status = run(`openspec status --change "${changeName}" --json`);
+
+  const root = status.planningHome?.root;
+  const planFile = root ? join(root, ".omo", "plans", `${changeName}.md`) : "";
+
   try {
-    return JSON.parse(execSync(cmd, { encoding: "utf8" }));
+    const { tasksFile } = syncPlanToTasksFile(planFile, status.changeRoot ?? "", changeName);
+    console.log(`✅ ${tasksFile} 已同步`);
   } catch (err) {
-    console.error(`❌ 命令失败: ${cmd}\n${err.message}`);
+    const message = err instanceof Error ? err.message : String(err);
+    console.error(`❌ ${message}`);
     process.exit(1);
   }
 }
-
-const status = run(`openspec status --change "${changeName}" --json`);
-
-const root = status.planningHome?.root;
-const planFile = root ? join(root, ".omo", "plans", `${changeName}.md`) : "";
-
-if (!status.changeRoot) {
-  console.error("❌ changeRoot 为空,无法写入 tasks.md");
-  process.exit(1);
-}
-const tasksFile = join(status.changeRoot, "tasks.md");
-
-if (!planFile || !existsSync(planFile)) {
-  console.error(`❌ plan 文件不存在: ${planFile || "(planningHome.root 为空)"}`);
-  process.exit(1);
-}
-
-const planContent = readFileSync(planFile, "utf-8");
-const plan = parseOmoPlan(planContent, changeName);
-const tasksContent = generateOpenSpecTasks(plan);
-
-const tasksDir = dirname(tasksFile);
-if (!existsSync(tasksDir)) {
-  mkdirSync(tasksDir, { recursive: true });
-}
-
-writeFileSync(tasksFile, tasksContent);
-console.log(`✅ ${tasksFile} 已同步`);

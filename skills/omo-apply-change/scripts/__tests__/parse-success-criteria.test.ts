@@ -4,7 +4,7 @@
  */
 
 import { describe, expect, test } from "bun:test"
-import { parseOmoPlan } from "../omo-spec"
+import { parseOmoPlan } from "../sync-plan-to-tasks"
 
 const PLAN_WITH_SC = `## 1. TL;DR
 T

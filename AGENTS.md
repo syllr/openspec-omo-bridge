@@ -1,8 +1,8 @@
 # openspec-omo-bridge
 
-OpenSpec `spec-driven` + `constitution` 自定义 schema + 2 个 OpenCode tool，把 OpenSpec 工作流桥接到 oh-my-openagent (OMO) plan 执行。
+OpenSpec `spec-driven` + `constitution` 自定义 schema + 2 个 omo-apply-change 脚本（`inspect-apply` / `sync-plan-to-tasks`），把 OpenSpec 工作流桥接到 oh-my-openagent (OMO) plan 执行。
 
-**这是一个配置仓库**，不是代码项目。AI 在 OMO 里跑 OpenSpec 工作流时用这些 schema/tool。
+**这是一个配置仓库**，不是代码项目。AI 在 OMO 里跑 OpenSpec 工作流时用这些 schema/script。
 
 ## Setup
 
@@ -16,17 +16,18 @@ bun install                                # 跑 bun test 前
 
 ## Layout
 
-| 路径                           | 用途                                                                                       |
-| ------------------------------ | ------------------------------------------------------------------------------------------ |
-| `schemas/spec-driven/`         | 主 schema：4 artifacts（proposal → design → specs → tasks）+ apply。`schema.yaml` 445 行。 |
-| `schemas/constitution/`        | 简化 schema：2 artifacts（scan → design）+ apply。`schema.yaml` 285 行。                   |
-| `schemas/*/templates/`         | 各 artifact 的 markdown 模板。                                                             |
-| `tools/omo-spec.ts`            | 单文件 940 行。**2 个 tool**（`plan_to_tasks` / `check_plan`）+ 6 个纯函数 + 类型定义。    |
-| `tools/__tests__/`             | 8 个测试文件 / 334 测试。`bun test tools/__tests__/`。                                     |
-| `scripts/sync.sh`              | 部署 schemas + skills（**不部署 tools**）。详见下节。                                      |
-| `.opencode/skills/openspec-*/` | 11 个项目级 OpenSpec skill，gitignore，不被 sync.sh 处理。                                 |
-| `skills/omo-apply-change/`     | 同步到全局的 OMO apply skill（含内嵌脚本，从 `tools/omo-spec.ts` 复制）。                  |
-| `openspec/config.yaml`         | OpenSpec 工作区配置（默认 `schema: spec-driven`）。                                        |
+| 路径                                                    | 用途                                                                                                                                                              |
+| ------------------------------------------------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `schemas/spec-driven/`                                  | 主 schema：4 artifacts（proposal → design → specs → tasks）+ apply。`schema.yaml` 445 行。                                                                        |
+| `schemas/constitution/`                                 | 简化 schema：2 artifacts（scan → design）+ apply。`schema.yaml` 285 行。                                                                                          |
+| `schemas/*/templates/`                                  | 各 artifact 的 markdown 模板。                                                                                                                                    |
+| `skills/omo-apply-change/scripts/sync-plan-to-tasks.ts` | 模块 + 脚本双身份：3 个 export（`parseOmoPlan` / `generateOpenSpecTasks` / `syncPlanToTasksFile`）+ CLI 主流程。`import.meta.main` 保护，被 import 时不执行 CLI。 |
+| `skills/omo-apply-change/scripts/inspect-apply.ts`      | 拉取 apply 阶段 change 上下文的 CLI 工具（合并 `openspec status` + `openspec instructions apply`）。                                                              |
+| `skills/omo-apply-change/scripts/__tests__/`            | 5 个测试文件 / 264 测试。`bun test skills/omo-apply-change/scripts/__tests__/`。                                                                                  |
+| `scripts/sync.sh`                                       | 部署 schemas + skills（**不部署 scripts**——scripts 随 skill 同步到全局）。详见下节。                                                                              |
+| `.opencode/skills/openspec-*/`                          | 11 个项目级 OpenSpec skill，gitignore，不被 sync.sh 处理。                                                                                                        |
+| `skills/omo-apply-change/`                              | 同步到全局的 OMO apply skill（含 scripts/）。                                                                                                                     |
+| `openspec/config.yaml`                                  | OpenSpec 工作区配置（默认 `schema: spec-driven`）。                                                                                                               |
 
 ## Workflow
 
@@ -48,7 +49,7 @@ constitution: scan → design → apply（无 tasks/critic；2 artifacts + apply
 | `schemas/*/` | `~/.local/share/openspec/schemas/` |
 | `skills/*/`  | `~/.config/opencode/skills/`       |
 
-**注意：sync.sh 不复制 `tools/*.ts`**——tools 供本地测试 + OpenCode 项目级加载，不通过 sync.sh 部署。
+**注意：sync.sh 不复制 `scripts/*.ts`**——scripts 随 `skills/omo-apply-change/` 同步到 `~/.config/opencode/skills/omo-apply-change/scripts/`,scripts 在那里被 OpenCode skill 调用。
 
 选项：
 
@@ -64,25 +65,16 @@ scripts/sync.sh --help                # 详细
 
 部署完 **必须重启 OpenCode** 才生效。`__LANG_PLACEHOLDER__` 处理：中文替换为 `**语言**: 所有生成的文档必须使用中文。`；英文替换为 `**Language**: All generated documents MUST be written in English.`；默认删除该行。
 
-## The 2 tools
+## The 2 scripts
 
-| Tool                     | 作用                                                   | 参数                                                 |
-| ------------------------ | ------------------------------------------------------ | ---------------------------------------------------- |
-| `omo_spec_plan_to_tasks` | `.omo/plans/*.md` → `openspec/changes/*/tasks.md` 镜像 | `{ change_name?, plan_file_path? }` — 都不传 → batch |
-| `omo_spec_check_plan`    | 验证 plan 11 项 OMO 兼容性                             | `{ change_name?, plan_file_path? }` — 至少传一个     |
+| 脚本                    | 作用                                                                                                                                       | 用法                                  |
+| ----------------------- | ------------------------------------------------------------------------------------------------------------------------------------------ | ------------------------------------- |
+| `inspect-apply.ts`      | 拉取 apply 阶段 change 上下文（8 字段精简 JSON：changeName/schemaName/planningHome/changeRoot/contextFiles/planFile/planName/instruction） | `inspect-apply.ts <change-name>`      |
+| `sync-plan-to-tasks.ts` | `.omo/plans/<change>.md` → `openspec/changes/<change>/tasks.md` 镜像                                                                       | `sync-plan-to-tasks.ts <change-name>` |
 
-**命名规则**：`omo_spec_<exportname>`（`<file>_<exportname>`，hyphen → underscore）。`omo-spec.ts` → `omo_spec_`。
+**模块 + 脚本双身份**：`sync-plan-to-tasks.ts` 既是 CLI 脚本（直接运行读 argv 干活）也是 module（测试 import 3 个 export）。`import.meta.main` 保护：被 import 时只导出函数，不执行主流程。
 
-**ToolResult 协议**（OpenCode plugin `string | { title?, output, metadata? }`）：
-
-- 成功 `output` 给 LLM 看：`✅ 标题`；`metadata` 给程序消费（`mode / changeName / total / completed / waves / tasksPath` 等）。
-- 抛错统一格式：`❌ 标题\n   详情\n   修复：建议`。
-
-**参数解析**（两 tool 共享，纯函数 `resolveChangeContext(args, projectRoot)` 推导 `changeName / planPath / changeDir`）：
-
-- `check_plan`：两参数都可选，**至少传一个**，否则 throw。
-- `plan_to_tasks`：两都不传 → batch 模式（扫所有 `.omo/plans/*.md`）。
-- 优先级：`plan_file_path` 的 basename 推 `change_name`；仅传 `change_name` 拼 `<root>/.omo/plans/<name>.md`；两者都传则验证一致性。
+**Oracle 验证上下文**不再走 tool：Oracle agent 通过 `openspec instructions apply` 的 `contextFiles` + 自己跑 `git diff --name-only HEAD` 拿变更文件（避免 Bun.spawn 跨运行时依赖）。
 
 ## OMO plan 9 章节（`.omo/plans/<name>.md`）
 
@@ -97,22 +89,11 @@ TL;DR / Context / Work Objectives / **Verification Strategy** / Execution Strate
 - 每个 requirement ≥ 1 scenario，含 WHEN/THEN
 - 写完 specs 跑 `openspec validate <change-name>`
 
-## 4 pure functions（`tools/omo-spec.ts`）
+## 3 exports（`sync-plan-to-tasks.ts`）
 
-`parseOmoPlan(content, changeName): OmoPlan` · `generateOpenSpecTasks(plan): string` · `validateOmoPlan(content, changeName): OmoPlanValidation` · `resolveChangeContext(args, projectRoot): ResolvedChangeContext`
+`parseOmoPlan(content, changeName): OmoPlan` · `generateOpenSpecTasks(plan): string` · `syncPlanToTasksFile(planFilePath, changeRoot, changeName): { tasksContent, tasksFile }`
 
-零 OpenCode 依赖，可独立 import。测试 import 这 4 个 + `updatePlanTaskStatus` / `validatePlanCompletion` 复用纯函数。
-
-## Plugin 懒加载
-
-`omo-spec.ts` 用 `require("@opencode-ai/plugin")` + `try/catch`：
-
-- **生产**（OpenCode 加载 tool）：plugin 存在，用真实 `tool()` helper + chainable schema
-- **测试**（本地 `bun test`）：plugin 不在，chainable Proxy stub 兜底
-
-测试里大量 `(tool as any).execute(...)`——绕过 stub 的 `unknown` 返回类型（**预期用法**，不是脏代码）。
-
-Oracle 验证上下文**不再走 tool**：Oracle agent 通过 `openspec instructions apply` 的 `contextFiles` + 自己跑 `git diff --name-only HEAD` 拿变更文件（避免 Bun.spawn 跨运行时依赖）。
+零 OpenCode 依赖，可独立 import。`syncPlanToTasksFile` 是纯 fs 函数（不依赖 openspec CLI），集成测试用它做 round-trip 验证。
 
 ## Format conversion: OMO plan ↔ OpenSpec tasks.md
 
@@ -124,17 +105,17 @@ Oracle 验证上下文**不再走 tool**：Oracle agent 通过 `openspec instruc
 | FVW    | `### F1. [ ] 标题`                        | `- 8.1 标题`（**无 checkbox**）        |
 | 字段   | `- **Field**: value`                      | `      **Field**: value`（6 空格缩进） |
 
-**单向同步**：plan → tasks.md。tasks.md 是 plan 镜像，**不要手动编辑**（会被下次同步覆盖）。`plan_to_tasks` 幂等。
+**单向同步**：plan → tasks.md。tasks.md 是 plan 镜像，**不要手动编辑**（会被下次同步覆盖）。`syncPlanToTasksFile` 幂等。
 
 ## Quality gates（spec-driven tasks 阶段）
 
 1. **PHASE 1.2** Spec validation（强制）
 2. **PHASE 2** AI 写 `.omo/plans/<name>.md`
-3. **PHASE 3.1** `omo_spec_check_plan`（11 项结构检查）
+3. **PHASE 3.1** Oracle/Momus 按 OMO 9 章节格式做结构 review（原 `omo_spec_check_plan` 11 项检查已合并到 review checklist）
 4. **PHASE 3.2** Oracle + Momus 并行 review（Oracle 看 OMO 兼容性，Momus 给 OKAY/REJECT verdict）
 5. **PHASE 3.4** Verdict 处理：🔴 BLOCKED → 修复重审（最多 3 轮，超出问用户）；🟡/⚪ → 问用户
-6. **PHASE 4** `omo_spec_plan_to_tasks` batch 镜像 plan → tasks.md
-7. **apply Step 3** Oracle 验证 — 直接读 `openspec instructions apply` 的 `contextFiles` + 自己跑 `git diff`（不通过 tool）
+6. **PHASE 4** `sync-plan-to-tasks.ts <change>` 镜像 plan → tasks.md
+7. **apply Step 3** Oracle 验证 — 直接读 `openspec instructions apply` 的 `contextFiles` + 自己跑 `git diff`（不通过 tool/script）
 8. **Fast Fail**（全局）：任何 task/tool/skill 调用失败 → 立即停，不重试/降级/跳过
 
 agent 数量上限：`oracle` 可并行 · `momus` 每个 tasks 阶段 ≤ 1 次（与 oracle 并行）。
@@ -159,13 +140,13 @@ agent 数量上限：`oracle` 可并行 · `momus` 每个 tasks 阶段 ≤ 1 次
 ## Test + verify
 
 ```bash
-bun test tools/__tests__/                          # 8 文件 / 334 测试 (~11s)
+bun test skills/omo-apply-change/scripts/__tests__/  # 5 文件 / 264 测试 (~0.5s)
 openspec schema validate spec-driven              # schema 结构验证
 openspec schema validate constitution             # 同上
 bash scripts/sync.sh --dry-run                     # 预览部署
 ```
 
-源文件 0 处 `as any`（测试里 29 处是绕过 stub type 的预期用法），1 处 `@ts-expect-error`（plugin 懒加载 require）。
+源文件 0 处 `as any`，0 处 `@ts-expect-error`（scripts 是纯 fs + OpenSpec CLI 调用，不需要 plugin 懒加载）。
 
 ## Reference repositories (`refs/`)
 
@@ -173,16 +154,16 @@ bash scripts/sync.sh --dry-run                     # 预览部署
 
 ### 类别一：AI Coding Spec / SDD 工具
 
-| 仓库                  | 定位                                                     | 与本仓库关系                                               |
-| --------------------- | -------------------------------------------------------- | ---------------------------------------------------------- |
-| `OpenSpec/`           | 最轻量 AI-native spec 框架，schema.yaml 驱动 workflow    | **上游依赖**（本仓库是它的配置层）                         |
-| `spec-kit/`           | GitHub 官方 SDD 工具包，"规范可执行"，Python             | **核心参考**（constitution + 强制 clarify）                |
-| `BMAD-METHOD/`        | 全生命周期 AI 敏捷，12+ 命名 Agent 协作                  | 设计灵感（多 Agent 编排，Oracle + Momus 受其启发）         |
-| `gsd-core/`           | 跨 10+ AI agent 运行时的 SDD + context engineering       | 设计灵感（Phase loop + 跨运行时 sync.sh）                  |
-| `gstack/`             | Garry Tan 的 AI 软件工厂，23+ specialist + 真实浏览器 QA | 设计灵感（多角色 review pipeline → quality gates）         |
-| `superpowers/`        | 纯 Markdown + JSON hooks，skills **自动触发**            | 设计灵感（auto-trigger hooks + subagent-driven）           |
-| `claude-task-master/` | PRD → `tasks.json` 的 AI 任务管理（MCP server）          | 同类参考（思路相似但层级不同：平面 vs 多层 artifact）      |
-| `flow-kit/`           | 纯 Markdown 工作流方法论，零运行时，artifact-gated       | 近亲参考（相同 `.specs/` 哲学；无 OpenCode tool/OMO plan） |
+| 仓库                  | 定位                                                     | 与本仓库关系                                                      |
+| --------------------- | -------------------------------------------------------- | ----------------------------------------------------------------- |
+| `OpenSpec/`           | 最轻量 AI-native spec 框架，schema.yaml 驱动 workflow    | **上游依赖**（本仓库是它的配置层）                                |
+| `spec-kit/`           | GitHub 官方 SDD 工具包，"规范可执行"，Python             | **核心参考**（constitution + 强制 clarify）                       |
+| `BMAD-METHOD/`        | 全生命周期 AI 敏捷，12+ 命名 Agent 协作                  | 设计灵感（多 Agent 编排，Oracle + Momus 受其启发）                |
+| `gsd-core/`           | 跨 10+ AI agent 运行时的 SDD + context engineering       | 设计灵感（Phase loop + 跨运行时 sync.sh）                         |
+| `gstack/`             | Garry Tan 的 AI 软件工厂，23+ specialist + 真实浏览器 QA | 设计灵感（多角色 review pipeline → quality gates）                |
+| `superpowers/`        | 纯 Markdown + JSON hooks，skills **自动触发**            | 设计灵感（auto-trigger hooks + subagent-driven）                  |
+| `claude-task-master/` | PRD → `tasks.json` 的 AI 任务管理（MCP server）          | 同类参考（思路相似但层级不同：平面 vs 多层 artifact）             |
+| `flow-kit/`           | 纯 Markdown 工作流方法论，零运行时，artifact-gated       | 近亲参考（相同 `.specs/` 哲学；无 OpenCode tool/OMO plan/script） |
 
 ### 类别二：AI 工具类（OpenCode + OMO 生态）
 

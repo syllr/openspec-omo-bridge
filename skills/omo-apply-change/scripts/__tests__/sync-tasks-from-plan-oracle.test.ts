@@ -8,7 +8,7 @@ import { describe, expect, test } from "bun:test"
 import {
   generateOpenSpecTasks,
   parseOmoPlan,
-} from "../omo-spec"
+} from "../sync-plan-to-tasks"
 
 // ============================================================
 // 🔴 高优先级 - 真实场景会发生

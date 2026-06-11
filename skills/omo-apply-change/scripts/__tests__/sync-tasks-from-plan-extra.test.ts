@@ -7,7 +7,7 @@ import { describe, expect, test } from "bun:test"
 import {
   generateOpenSpecTasks,
   parseOmoPlan,
-} from "../omo-spec"
+} from "../sync-plan-to-tasks"
 
 describe("嵌套结构", () => {
   test("三层嵌套列表", () => {
