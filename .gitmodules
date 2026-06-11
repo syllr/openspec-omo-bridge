@@ -25,3 +25,12 @@
 [submodule "refs/OpenSpec"]
 	path = refs/OpenSpec
 	url = git@github.com:Fission-AI/OpenSpec.git
+[submodule "refs/opencode"]
+	path = refs/opencode
+	url = git@github.com:anomalyco/opencode.git
+[submodule "refs/oh-my-openagent"]
+	path = refs/oh-my-openagent
+	url = git@github.com:code-yeongyu/oh-my-openagent.git
+[submodule "refs/oh-my-openagent-toolkit"]
+	path = refs/oh-my-openagent-toolkit
+	url = git@github.com:HanTechnology/oh-my-openagent-toolkit.git
