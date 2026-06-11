@@ -4,7 +4,7 @@
 **日期**:2026-06-11
 **作者**:omo-spec 设计会话(用户 + Sisyphus 协作)
 
-本文档存档 omo-spec 2.0 体系的完整设计决策、选型理由、风险点与未来扩展方向。
+本文档存档 omo-spec 体系的完整设计决策、选型理由、风险点与未来扩展方向。
 
 ## 1. 背景与动机
 
@@ -16,7 +16,7 @@ OpenSpec 1.0 工作流由 11 个 skill 驱动(`.opencode/skills/openspec-*`),核
 用户 → /openspec-new-change → SKILL.md 让 AI 跑 openspec CLI
      → CLI 返回 JSON {context, rules, template, instruction, ...}
      → AI 从 JSON 里读 instruction 字段执行
-     → 循环 4 次(proposal → design → specs → tasks)
+     → 循环 3 次(proposal → design → specs)
      → /omo-apply-change → inspect-apply.ts 又 fetch 一次
      → /start-work 实施
 ```
@@ -50,15 +50,15 @@ OpenSpec 1.0 工作流由 11 个 skill 驱动(`.opencode/skills/openspec-*`),核
 
 ### 3.1 决策一:omo-spec 独立目录,老 skill 完全不动
 
-**问题**:2.0 流程怎么放?改造老 skill?新增并列 skill?覆盖老 skill?
+**问题**:omo-spec 流程怎么放?改造老 skill?新增并列 skill?覆盖老 skill?
 
 **选定**:**新增独立目录 `omo-spec/`**,与 1.0 平行存在。老的 11 个 skill 1 行都不改。
 
 **理由**:
 
 - 零迁移成本:老用户无感
-- 切换双向:用户可选择 1.0 或 2.0
-- 风险隔离:2.0 bug 不影响 1.0
+- 切换双向:用户可选择 原流程或 omo-spec
+- 风险隔离:omo-spec bug 不影响 1.0
 - 仓库干净:`git status` 老文件 0 diff
 
 **否决方案**:
@@ -119,7 +119,7 @@ OpenSpec 1.0 工作流由 11 个 skill 驱动(`.opencode/skills/openspec-*`),核
 - 读 source plan 骨架
 - 基于对话上下文填 1-5/9 章
 - 写回 `.omo/plans/source-<change-name>.md`
-- **不**调 OpenSpec CLI(2.0 的核心原则)
+- **不**调 OpenSpec CLI(omo-spec 的核心原则)
 
 ### 3.4 决策四:每个 Wave 后停下 review
 
@@ -146,7 +146,7 @@ OpenSpec 1.0 工作流由 11 个 skill 驱动(`.opencode/skills/openspec-*`),核
 
 **理由**:
 
-- 1.0 的 apply 阶段已经成熟(inspect-apply.ts + sync-plan-to-tasks.ts)
+- 1.0 的 apply 阶段已经成熟(inspect-apply.ts)
 - compile plan 格式和 1.0 的 OMO plan 完全一致
 - `inspect-apply.ts` 不需要改——它只是检查 `.omo/plans/<name>.md` 是否存在
 - 重写 apply 阶段 = 重造轮子 + 引入新 bug
@@ -194,7 +194,7 @@ OpenSpec 1.0 工作流由 11 个 skill 驱动(`.opencode/skills/openspec-*`),核
 
 ```
 ┌─────────────────────────────────────────────────────────────────┐
-│                        omo-spec 2.0 架构                         │
+│                        omo-spec 架构                         │
 ├─────────────────────────────────────────────────────────────────┤
 │                                                                 │
 │  /omo-spec-source-plan (SKILL.md)                              │
@@ -217,7 +217,7 @@ OpenSpec 1.0 工作流由 11 个 skill 驱动(`.opencode/skills/openspec-*`),核
 │  /start-work source-<change-name> (OMO 内置)                   │
 │       │                                                         │
 │       │ 执行 source plan,产出:                                  │
-│       ├─► openspec/changes/<name>/{proposal,design,specs,tasks}.md │
+│       ├─► openspec/changes/<name>/{proposal,design,specs}.md │
 │       └─► .omo/plans/<name>.md (compile plan)                  │
 │                                                                 │
 │       │ 用户跑                                                  │
@@ -229,7 +229,7 @@ OpenSpec 1.0 工作流由 11 个 skill 驱动(`.opencode/skills/openspec-*`),核
 │  /start-work <name> (OMO 内置,实施 compile plan)              │
 │       │                                                         │
 │       │ Oracle 验证 ≤ 3 轮                                     │
-│       │ sync-plan-to-tasks.ts 镜像 tasks.md                    │
+│       │                     │
 │       ▼                                                         │
 │  /openspec-archive-change <name> (1.0 复用)                   │
 │                                                                 │
@@ -259,7 +259,7 @@ openspec/changes/<name>/
     ├─ proposal.md   (Wave 1)
     ├─ design.md     (Wave 2)
     ├─ specs/*.md    (Wave 3,可能多个)
-    └─ tasks.md      (Wave 4 占位)
+    └─ 
     │
     │ (Wave 4 同步生成)
     ▼
@@ -270,9 +270,9 @@ openspec/changes/<name>/
 /start-work <name> (实施 compile plan)
     │
     │ Oracle 验证
-    │ sync tasks.md 镜像
+    │ 
     ▼
-代码改动 + tasks.md 最终态
+代码改动
 ```
 
 ## 5. 关键文件清单
@@ -431,7 +431,7 @@ CLI 加 `--check-schema` 模式:比对 source plan 头部的 `generatedAt` 和 `
 | 脚本生成骨架 + LLM 填          | LLM 全程主导 / 脚本全生成            | 业务内容只有 LLM 知道;确定性内容脚本生成更稳               |
 | 命名 `source-<name>.md`        | 子目录 `.omo/plans/<name>/source.md` | 扁平,易于 inspect-apply.ts 不感知                          |
 | `/omo-spec-source-plan` 单入口 | 多入口                               | 降低维护成本,1.0 的 11 个入口教训                          |
-| 复用 1.0 apply 阶段            | 自实现 apply                         | 1.0 已成熟,inspect-apply.ts / sync-plan-to-tasks.ts 0 改动 |
+| 复用 1.0 apply 阶段            | 自实现 apply                         | 1.0 已成熟,inspect-apply.ts 0 改动 |
 | `OPENSPEC_LANG` 环境变量       | 命令行 `--lang`                      | 与老 sync.sh 行为一致,降低学习成本                         |
 | 每个 Wave 后停下 review        | 全跑完再 review                      | 保留 1.0 review 机会,跳过 stop-turn 开销                   |
 

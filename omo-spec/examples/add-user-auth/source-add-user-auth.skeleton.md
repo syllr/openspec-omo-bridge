@@ -1,12 +1,12 @@
-# omo-spec Source Plan Template — spec-driven schema
+# omo-spec Source Plan Template
 
 > 本文件是 `gen-source-plan.ts` 脚本读取的骨架模板,用于生成 `.omo/plans/source-<change-name>.md`。
-> 脚本只替换 `{{...}}` 占位符(由 SCHEMA 自动填入),不动 `<!-- LLM_FILL: ... -->` 标记(由 LLM 填充)。
+> 脚本只替换 `{{...}}` 占位符,不动 `<!-- LLM_FILL: ... -->` 标记。
 >
 > **LLM 填充规则**:
 >
 > - 看到 `<!-- LLM_FILL: 描述 -->` 标记 → 用对应的 markdown 内容替换整行注释
-> - 看到 `<!-- TODO_NN: 描述 -->` 标记 → 视为业务内容占位符,逐个替换
+> - 看到 `_(待 LLM 填充)_` 标记 → 同上
 > - **绝不**删除或修改任何 `{{...}}` 占位符(脚本会报错)
 > - **绝不**展开第 7/8 章的静态嵌入内容(已由脚本嵌入完毕,LLM 应当引用而非重写)
 
@@ -17,9 +17,9 @@
   章节结构说明
   ═══════════════════════════════════════════════════════════════════
   - 第 1-5 章: LLM 填充业务内容(基于对话上下文)
-  - 第 6 章:   脚本按 schema.artifacts 顺序生成 Wave 块(LLM 不动)
-  - 第 7 章:   脚本嵌入 schema.yaml 每个 artifact 的 instruction 全文
-  - 第 8 章:   脚本嵌入 templates/ 每个 artifact 的 template 全文
+  - 第 6 章:   脚本按用户选的 artifacts 顺序生成 Wave 块(LLM 不动)
+  - 第 7 章:   脚本嵌入每个 artifact 的 instruction 全文
+  - 第 8 章:   脚本嵌入每个 artifact 的 template 全文
   - 第 9 章:   LLM 填充"如何把 artifacts 翻译成 compile plan"的指引
 -->
 
@@ -27,14 +27,12 @@
 
 mode: source
 generator: omo-spec
-schema: spec-driven
 changeName: add-user-auth
 generatedAt: "2026-06-11"
 targetArtifacts:
-  - proposal.md
-  - design.md
-  - specs/**/*.md
-  - tasks.md
+  - proposal
+  - design
+  - spec
 compilePlanOutput: .omo/plans/add-user-auth.md
 reviewCheckpointPolicy: per-wave-pause
 
@@ -42,9 +40,9 @@ reviewCheckpointPolicy: per-wave-pause
 
 # omo-spec Source Plan: add-user-auth
 
-> **本文件由 `omo-spec-source-plan` skill 生成,跑 `/start-work source-add-user-auth` 执行。**
-> 生成器版本:omo-spec 1.0 | schema:spec-driven
-> 阅读时长:预计 3-5 分钟(全部 9 章节)| 执行时长:预计 10-30 分钟(每个 Wave 1 个 artifact)
+> **本文件由 `omo-spec` skill 生成,跑 `/start-work source-add-user-auth` 执行。**
+> 生成器版本:omo-spec
+> 阅读时长:预计 3-5 分钟 | 执行时长:预计 10-30 分钟(每个 Wave 1 个 artifact)
 
 ---
 
@@ -77,7 +75,7 @@ _(待 LLM 填充)_
 
 ## 4. Verification Strategy
 
-<!-- LLM_FILL: 描述如何验证 4 个 OpenSpec artifacts 生成正确 -->
+<!-- LLM_FILL: 描述如何验证 artifacts 生成正确 -->
 
 - **Artifact 结构验证**:
   - 每个 artifact 包含模板必需的 sections(详见第 7/8 章)
@@ -93,13 +91,8 @@ _(待 LLM 填充)_
 
 <!-- LLM_FILL: 关键路径 / 并发上限 / 顺序约束 -->
 
-- **Critical Path**: proposal → design → specs → tasks → compile-plan(严格顺序)
-- **Max Concurrent**: 1(spec-driven 4 个 artifact 之间存在硬依赖)
-- **Sequential Constraints**:
-  - Wave 1 (proposal) 必须最先完成
-  - Wave 2 (design) 依赖 Wave 1 输出
-  - Wave 3 (specs) 依赖 Wave 1 + Wave 2 输出
-  - Wave 4 (tasks placeholder + compile plan) 依赖 Wave 1-3 输出
+- **Critical Path**: 按 artifacts 依赖顺序(严格顺序)
+- **Max Concurrent**: 1(artifacts 之间存在硬依赖)
 - **Hard Failure Rule**:
   - 任何 `task()` / `tool()` / `skill()` 调用失败 → 立即停止,不得降级/重试/跳过/自行替代执行
   - 任何 LLM 内容理解错误导致 artifact 模板结构缺失 → 停下问用户,不擅自重写
@@ -108,8 +101,8 @@ _(待 LLM 填充)_
 
 ## 6. TODOs
 
-> **本章节由脚本按 schema.artifacts 顺序自动生成,LLM 不修改。**
-> 每个 Wave 对应 schema 中的一个 artifact,Wave 内仅含 1 个 task。
+> **本章节由脚本按用户选的 artifacts 顺序自动生成,LLM 不修改。**
+> 每个 Wave 对应一个 artifact,Wave 内仅含 1 个 task。
 > task 的 **Embedded Reference** 字段显式指向第 7/8 章的静态嵌入内容——LLM 在执行 task 时必须读这些章节作为行为约束。
 
 ### 6.1 Wave 1: proposal
@@ -121,7 +114,7 @@ _(待 LLM 填充)_
   2. 按第 7.1 节嵌入的 `proposal.instruction` 行为约束执行
   3. 按第 8.1 节嵌入的 `proposal template` 结构填字段
   4. 写入 OpenSpec artifact 文件
-- **Output Path**: `openspec/changes/<change-name>/proposal.md`
+- **Output Path**: `openspec/changes/<change-name>/proposal.md`(或 `specs/<capability>/spec.md`)
 - **Embedded Reference**: 第 7.1 节(`proposal.instruction` 全文)+ 第 8.1 节(`proposal template` 全文)
 - **Acceptance Criteria**:
   - 文件存在
@@ -144,7 +137,7 @@ _(待 LLM 填充)_
   2. 按第 7.2 节嵌入的 `design.instruction` 行为约束执行
   3. 按第 8.2 节嵌入的 `design template` 结构填字段
   4. 写入 OpenSpec artifact 文件
-- **Output Path**: `openspec/changes/<change-name>/design.md`
+- **Output Path**: `openspec/changes/<change-name>/design.md`(或 `specs/<capability>/spec.md`)
 - **Embedded Reference**: 第 7.2 节(`design.instruction` 全文)+ 第 8.2 节(`design template` 全文)
 - **Acceptance Criteria**:
   - 文件存在
@@ -158,18 +151,17 @@ _(待 LLM 填充)_
 
 ---
 
-### 6.3 Wave 3: specs
+### 6.3 Wave 3: spec
 
-#### 3. [ ] 生成 specs artifact
+#### 3. [ ] 生成 spec artifact
 
 - **What to do**:
   1. 读取对话上下文(最近 30 条消息或当前需求描述)
-  2. 按第 7.3 节嵌入的 `specs.instruction` 行为约束执行
-  3. 按第 8.3 节嵌入的 `specs template` 结构填字段
-  4. **若 artifact.id = specs** —— 为 proposal 的每个 Capability 创建一个 spec 文件
-  5. 写入 OpenSpec artifact 文件
-- **Output Path**: `openspec/changes/<change-name>/specs/**/*.md`(每个 capability 一个文件)
-- **Embedded Reference**: 第 7.3 节(`specs.instruction` 全文)+ 第 8.3 节(`specs template` 全文)
+  2. 按第 7.3 节嵌入的 `spec.instruction` 行为约束执行
+  3. 按第 8.3 节嵌入的 `spec template` 结构填字段
+  4. 写入 OpenSpec artifact 文件
+- **Output Path**: `openspec/changes/<change-name>/spec.md`(或 `specs/<capability>/spec.md`)
+- **Embedded Reference**: 第 7.3 节(`spec.instruction` 全文)+ 第 8.3 节(`spec template` 全文)
 - **Acceptance Criteria**:
   - 文件存在
   - 包含模板必需 sections(详见第 8.3 节)
@@ -182,41 +174,17 @@ _(待 LLM 填充)_
 
 ---
 
-### 6.4 Wave 4: tasks
+## 7. Static Schemas (from `omo-spec/artifacts/*/instruction.md`)
 
-#### 4. [ ] 生成 tasks artifact
-
-- **What to do**:
-  1. 读取对话上下文(最近 30 条消息或当前需求描述)
-  2. 按第 7.4 节嵌入的 `tasks.instruction` 行为约束执行
-  3. 按第 8.4 节嵌入的 `tasks template` 结构填字段
-  4. 写入 OpenSpec artifact 文件
-- **Output Path**: `openspec/changes/<change-name>/tasks.md`
-- **Embedded Reference**: 第 7.4 节(`tasks.instruction` 全文)+ 第 8.4 节(`tasks template` 全文)
-- **Acceptance Criteria**:
-  - 文件存在
-  - 包含模板必需 sections(详见第 8.4 节)
-  - `openspec validate <change-name>` 通过(若 schema 含 validate 步骤)
-- **Forbidden**:
-  - 写入 `<context>` / `<rules>` / `<project_context>` 字面量到 artifact 文件
-  - 修改任何源代码(本阶段只生成 spec 文件)
-- **Review Checkpoint**: 完成本 Wave 后停下,用 question 工具问用户是否继续
-- **Agent Profile**: `category="unspecified-low"` (内容生成,非复杂逻辑)
-
----
-
-## 7. Static Schemas (from `schemas/spec-driven/schema.yaml`)
-
-> **本章节由脚本嵌入。** 内容是 `schema.yaml` 中每个 artifact 的 `instruction` 字段全文,
-> 包含 PHASE 1/2/3、Fast Fail Rule、行为约束等。`__LANG_PLACEHOLDER__` 已在生成时按 `OPENSPEC_LANG` 替换。
+> **本章节由脚本嵌入。** 内容是每个 artifact 的 `instruction.md` 全文,包含 PHASE 1/2/3、Fast Fail Rule、行为约束等。`__LANG_PLACEHOLDER__` 已在生成时按 `OPENSPEC_LANG` 替换。
 >
 > **阅读指引**:执行第 6 章的 task 时,把对应章节的内容视为"必须遵守的行为指令"——
-> 它不是参考附录,而是 schema 层面的强约束,违反会导致 OpenSpec validate 失败。
+> 它不是参考附录,而是 artifact 层面的强约束,违反会导致 OpenSpec validate 失败。
 
 ### 7.1 proposal.instruction
 
 <details>
-<summary>展开 instruction 全文(schema.yaml 中 proposal 的 instruction 字段,语言已处理)</summary>
+<summary>展开 instruction 全文(proposal 的 instruction,语言已处理)</summary>
 
 ```markdown
 
@@ -286,7 +254,7 @@ _(待 LLM 填充)_
 ### 7.2 design.instruction
 
 <details>
-<summary>展开 instruction 全文(schema.yaml 中 design 的 instruction 字段,语言已处理)</summary>
+<summary>展开 instruction 全文(design 的 instruction,语言已处理)</summary>
 
 ```markdown
 
@@ -371,10 +339,10 @@ _(待 LLM 填充)_
 
 ---
 
-### 7.3 specs.instruction
+### 7.3 spec.instruction
 
 <details>
-<summary>展开 instruction 全文(schema.yaml 中 specs 的 instruction 字段,语言已处理)</summary>
+<summary>展开 instruction 全文(spec 的 instruction,语言已处理)</summary>
 
 ```markdown
 
@@ -457,210 +425,14 @@ The system SHALL allow users to export their data in CSV format.
 
 ---
 
-### 7.4 tasks.instruction
+## 8. Static Templates (from `omo-spec/artifacts/*/template.md`)
 
-<details>
-<summary>展开 instruction 全文(schema.yaml 中 tasks 的 instruction 字段,语言已处理)</summary>
-
-```markdown
-
-**范围限制：不要修改任何源代码。本阶段产出：(1) `.omo/plans/<change-name>.md` 完整 9-section OMO plan；(2) `openspec/changes/<change-name>/tasks.md` 空占位文件（plan 内容镜像由 apply 阶段通过 `omo_spec_plan_to_tasks` tool 同步生成）。**
-
-=== Fast Fail Rule (Global) ===
-
-**任何 task()、tool() 或 skill() 调用失败（超时、agent 不可用、返回错误等），立即停止工作流，不得降级、不得重试、不得跳过、不得自行替代执行。**
-
-=== PHASE 1：读取上下文 + Spec 验证 ===
-
-**1.1 读取以下文件：**
-- `openspec/changes/<change-name>/proposal.md` — 动机和能力
-- `openspec/changes/<change-name>/specs/` — 需求和验收场景
-- `openspec/changes/<change-name>/design.md` — 技术方案、决策、风险
-- `openspec/changes/<change-name>/research/` — 技术调研（如果存在）
-
-**1.2 Spec 验证**：
-
-运行 `openspec validate <change-name>` 检查 spec 格式。
-
-- 通过 → 继续
-- 失败 → 显示错误给用户，由用户决定如何修复。不得自行修复。
-
-=== PHASE 2：生成 OMO 计划 ===
-
-生成 `.omo/plans/<change-name>.md` — OMO 兼容的执行计划。
-
-复用 PHASE 1.1 已读取的 4 个 artifact 内容（proposal.md、specs/、design.md、research/），无需重新读取。
-
-AI **直接**写 OMO 兼容 plan markdown 到 `.omo/plans/<change-name>.md`
-
-**OMO plan 格式规范**（必须严格遵守，Oracle + Momus 会校验）：
-
-```markdown
-## 1. TL;DR
-
-一句话概述本次变更做什么。
-
-## 2. Context
-
-背景信息（2-3 句）。
-
-## 3. Work Objectives
-
-- **Must Have**:
-  - 目标 1
-- **Must NOT Have**:
-  - 非目标 1
-
-## 4. Verification Strategy
-
-- **Test Decision**: 单元测试 + E2E
-- **Coverage Target**: ≥ 80%
-
-## 5. Execution Strategy
-
-- **Critical Path**: 步骤 A → 步骤 B → 步骤 C
-- **Max Concurrent**: 3
-
-## 6. TODOs
-
-### 6.1 Wave 1: 标题
-
-#### 1. [ ] 任务标题
-
-- **What to do**:
-  1. 具体动作 1
-  2. 具体动作 2
-- **Must NOT do**:
-  - 不要做 X
-- **Recommended Agent Profile**: `category="quick"` 或 `deep` 等
-- **References**:
-  - `path/to/file.ts` (行号 L100-120)
-  - spec: `xxx/spec.md` "requirement 名"
-- **Acceptance Criteria**:
-  ```bash
-  test -f path/to/file.ts && grep -q "pattern" path/to/file.ts
-  ```
-- **QA Scenarios**:
-  - **Happy**: 正常路径
-  - **Exception**: 异常路径
-  - **Edge**: 边界输入（空、极大、特殊字符）
-  - **Performance**: 性能/资源消耗（如适用）
-  - **Security**: 权限/注入/敏感数据（如适用）
-- **Parallelization**: 可与 Task 2 并发
-- **Evidence**: `.omo/evidence/xxx.txt`
-- **Commit**: YES
-
-## 7. Final Verification Wave
-
-### F1. [ ] 验证项标题
-
-- **Acceptance Criteria**:
-  - 检查 1
-  - 检查 2
-
-## 8. Commit Strategy
-
-- 每个 task 一个 commit
-- 使用 Conventional Commits 格式
-
-## 9. Success Criteria
-
-- [ ] 硬性指标 1
-- [ ] 软性指标 1
-```
-
-**关键约束**：
-- 9 个 section 标题必须存在（可用 `## 1. TL;DR` 或 `## TL;DR` 两种格式，**推荐编号**以匹配 OMO 项目惯例）
-- TODOs section 必须含至少 1 个 `#### {number}. [ ] <title>` 格式任务（{number} 替换为 1/2/3…）
-- Final Verification Wave section 必须含至少 1 个 `### F{number}. [ ] <title>` 格式任务（{number} 替换为 1/2/3…）
-- Wave 标题（如 `### 6.1 Wave 1: 标题`）用 3 个 `#` + 数字 sub-number + 中英文冒号 `:` 或 `：`
-
-=== PHASE 3：Oracle + Momus 并行审查 Plan + Verdict 处理 ===
-
-**3.1 启动 Oracle + Momus 并行审查**：
-
-```
-PLAN_REVIEW_PROMPT = "你正在审查 OMO plan。请逐一检查以下所有检查项：
-
-审查文件：
-- plan: .omo/plans/<change-name>.md
-- `openspec/changes/<change-name>/proposal.md` — 动机和能力
-- `openspec/changes/<change-name>/specs/` — 需求和验收场景
-- `openspec/changes/<change-name>/design.md` — 技术方案、决策、风险
-- `openspec/changes/<change-name>/research/` — 技术调研（如果存在）
-
-1. OMO 兼容性——plan 是否使用 `## TODOs`（非 `## Tasks`）？任务格式是否为 `N. task`（非 `N.M task`）？
-2. Design 对齐——Execution Strategy 是否准确反映了 design 的技术决策和风险缓解措施？
-3. Verification 覆盖——Verification Strategy 是否覆盖了 all spec 的 scenarios？
-4. Success Criteria——是否可衡量？是否覆盖了所有 capability？
-5. research 引用——research/ 的调研发现是否在 plan 中被正确引用？
-6. 结构格式——是否使用 summary + link 模式（即每个非 Task section 顶部用 1-2 句概述该 section 关键内容 + 末尾附上对应 artifact 的相对路径引用，如 `详见 proposal.md → Capabilities`）？非 Task sections 是否引用了其他 artifacts？
-7. Tasks 质量——每个 task 是否包含 What to do / Must NOT do / Agent Profile / References / Acceptance Criteria / QA Scenarios / Parallelization / Evidence / Commit？内容是否有意义（非占位符）？
-8. QA Scenarios 质量——每个 task 的 QA Scenarios 是否列出 5 个标准要素（Happy / Exception / Edge / Performance / Security，Performance/Security 不适用时填 "N/A" 仍视为已列出）？是否至少覆盖 1 个 Happy + 1 个 Exception？
-9. 可执行性——FVW 任务是否可直接执行（每项含具体验证命令或观察点）？执行策略是否可行？任务依赖真实？
-10. 潜在问题——是否有遗漏的边界场景？逻辑漏洞？矛盾？
-
-严重程度：🔴 阻塞 / 🟡 警告 / ⚪ 建议
-输出格式：逐项检查，然后汇总问题清单，每个问题标注 severity。"
-
-ORACLE_PLAN_REVIEW_PROMPT = PLAN_REVIEW_PROMPT
-
-MOMUS_PLAN_REVIEW_PROMPT = "你正在对 OMO plan 执行双重门禁审查（Momus 评审）。
-
-**Part A — 执行路径审查（可操作性）**：
-1. Wave 依赖是否合理？同一 Wave 内的 task 是否真的可以并发？
-2. 每个 task 的 Acceptance Criteria 是否可执行？（必须是具体的命令，如 `bun test`、`curl`）
-3. 有无明显的执行顺序错误？
-4. FVW 是否覆盖了关键验证点？
-5. 如果 research/ 存在：调研结论是否被 plan 正确引用？（仅检查 plan 内部对 research 结论的引用是否自洽——无需读取 research/ 源文件）
-
-**Part B — 风险矩阵审查（遗漏覆盖）**：
-1. 是否有遗漏的边界场景（空值、错误路径、并发冲突、权限不足）？
-2. QA Scenarios 是否至少包含一个成功场景（happy path）+ 一个异常场景？
-3. Commit Strategy 是否合理？是否有多人协作的冲突风险？
-4. Success Criteria 是否真正可衡量？
-5. 如果 research/ 存在：是否有 research 发现未被 plan 覆盖？（仅检查 plan 内部对 research 发现的引用是否自洽——无需读取 research/ 源文件）
-
-审查文件：
-- plan: .omo/plans/<change-name>.md
-
-最终判定：
-- ✅ OKAY → 无 blocking issues，plan 可执行
-- 🔴 REJECT → plan 不可执行，需要修复后重新评审
-
-输出格式：先按 Part A / Part B 分别分析，最后给出综合判定。所有发现使用 🔴/🟡/⚪ 标注严重程度。"
-
-task(subagent_type="oracle", prompt=ORACLE_PLAN_REVIEW_PROMPT)
-task(subagent_type="momus", prompt=MOMUS_PLAN_REVIEW_PROMPT)
-```
-
-**3.2 收集评审结果**：
-1. 读取 Oracle 和 Momus 输出，合并发现（同一问题多个 agent 都发现时取更高严重程度）
-2. 分类判定：
-   - 有 🔴 或 🟡 → BLOCKED，AI 用 Read/Edit 工具直接修复 plan。只修复标记为 🔴/🟡 的问题，不要修改其他内容。修复完成后**只对改动的章节 spot-check 一次**（不重跑 Oracle + Momus agent，避免完整 3 轮重审的开销——修复是 surgical、点对点的，无须全量再审）。**最多 3 轮修复**（每轮修一组 BLOCKED 项，spot-check 通过则进 3.3；超 3 轮仍有 🔴/🟡 则汇总给用户）
-   - 仅 ⚪ → 进入 3.3 Verdict 处理
-
-**3.3 Verdict 处理**：
-
-收集所有未解决的 ⚪ 项（来自 PHASE 3 plan 审查遗留），向用户呈现并询问。
-
-=== PHASE 4：创建 tasks.md 占位文件 ===
-
-按 `schemas/spec-driven/templates/tasks.md` 模板的元数据头（仅 front matter / 模板结构，不含 task 列表），生成 `openspec/changes/<change-name>/tasks.md` 空占位文件。task 列表由 apply 阶段通过 `omo_spec_plan_to_tasks` tool 从 plan 镜像生成。
-```
-
-</details>
-
----
-
-## 8. Static Templates (from `schemas/spec-driven/templates/`)
-
-> **本章节由脚本嵌入。** 内容是 `templates/` 目录中每个 artifact 对应的 markdown 模板全文。
+> **本章节由脚本嵌入。** 内容是每个 artifact 的 `template.md` 全文。
 >
 > **阅读指引**:执行第 6 章的 task 时,把对应章节的内容视为"文件结构骨架"——
 > 输出的 artifact 必须包含模板的所有 sections(即使某些 section 内容为空或简略,标题必须存在)。
 
-### 8.1 proposal template (`proposal.md`)
+### 8.1 proposal template
 
 ```markdown
 ## Why
@@ -690,7 +462,7 @@ task(subagent_type="momus", prompt=MOMUS_PLAN_REVIEW_PROMPT)
 
 ---
 
-### 8.2 design template (`design.md`)
+### 8.2 design template
 
 ```markdown
 ## Context
@@ -736,7 +508,7 @@ task(subagent_type="momus", prompt=MOMUS_PLAN_REVIEW_PROMPT)
 
 ---
 
-### 8.3 specs template (`spec.md`)
+### 8.3 spec template
 
 ```markdown
 ## ADDED Requirements
@@ -768,23 +540,9 @@ task(subagent_type="momus", prompt=MOMUS_PLAN_REVIEW_PROMPT)
 
 ---
 
-### 8.4 tasks template (`tasks.md`)
-
-```markdown
-## Tasks
-
-> 本文件由 `.omo/plans/<change-name>.md` 在 apply 阶段经 `sync-plan-to-tasks.ts` 脚本镜像生成。
-> 修改 plan 后重新运行 sync tool 即可更新。
-> **不要手动编辑**——下次同步会被覆盖。
-
----
-```
-
----
-
 ## 9. Compile Plan Generation
 
-<!-- LLM_FILL: 描述如何把第 6.1-6.3 Wave 产出的 3 个 artifacts(proposal/design/specs)翻译成 compile plan 的 9 章节。compile plan 输出到 `.omo/plans/add-user-auth.md`,供 apply 阶段 `/start-work add-user-auth` 实施。 -->
+<!-- LLM_FILL: 描述如何把第 6 章产出的 artifacts 翻译成 compile plan 的 9 章节。compile plan 输出到 `.omo/plans/add-user-auth.md`,供 apply 阶段 `/start-work add-user-auth` 实施。 -->
 
 ### 9.1 翻译映射
 
@@ -817,7 +575,6 @@ task(subagent_type="momus", prompt=MOMUS_PLAN_REVIEW_PROMPT)
 ### 9.4 不需要的事
 
 - 不调 `openspec instructions`(compile plan 不再 fetch CLI)
-- 不调 `omo_spec_plan_to_tasks` / `sync-plan-to-tasks.ts`(这是 apply 阶段的事,本阶段不做)
 - 不修改任何 OpenSpec artifact 文件(它们已经是 source of truth)
 
 ---
