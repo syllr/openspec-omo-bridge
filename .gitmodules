@@ -1,0 +1,24 @@
+[submodule "refs/superpowers"]
+	path = refs/superpowers
+	url = git@github.com:obra/superpowers.git
+[submodule "refs/spec-kit"]
+	path = refs/spec-kit
+	url = git@github.com:github/spec-kit.git
+[submodule "refs/flow-kit"]
+	path = refs/flow-kit
+	url = git@github.com:rihebty/flow-kit.git
+[submodule "refs/anthropics-skills"]
+	path = refs/anthropics-skills
+	url = git@github.com:anthropics/skills.git
+[submodule "refs/gsd-core"]
+	path = refs/gsd-core
+	url = git@github.com:open-gsd/gsd-core.git
+[submodule "refs/BMAD-METHOD"]
+	path = refs/BMAD-METHOD
+	url = git@github.com:bmad-code-org/BMAD-METHOD.git
+[submodule "refs/gstack"]
+	path = refs/gstack
+	url = git@github.com:garrytan/gstack.git
+[submodule "refs/claude-task-master"]
+	path = refs/claude-task-master
+	url = git@github.com:eyaltoledano/claude-task-master.git
