@@ -22,3 +22,6 @@
 [submodule "refs/claude-task-master"]
 	path = refs/claude-task-master
 	url = git@github.com:eyaltoledano/claude-task-master.git
+[submodule "refs/OpenSpec"]
+	path = refs/OpenSpec
+	url = git@github.com:Fission-AI/OpenSpec.git
