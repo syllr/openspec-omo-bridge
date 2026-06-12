@@ -2,31 +2,21 @@
 
 {{TLDR}}
 
-> See [proposal.md](spec/{{CHANGE_NAME}}/proposal.md)
-
 ## Context
 
 {{CONTEXT}}
-
-> See [proposal.md](spec/{{CHANGE_NAME}}/proposal.md)
 
 ## Work Objectives
 
 {{WORK_OBJECTIVES}}
 
-> See [spec.md#added-requirements](spec/{{CHANGE_NAME}}/spec.md)
-
 ## Verification Strategy
 
 {{VERIFICATION_STRATEGY}}
 
-> See [specs](spec/{{CHANGE_NAME}}/specs/)
-
 ## Execution Strategy
 
 {{EXECUTION_STRATEGY}}
-
-> See [design.md](spec/{{CHANGE_NAME}}/design.md)
 
 ## Tasks
 
@@ -43,8 +33,6 @@
 ## Success Criteria
 
 {{SUCCESS_CRITERIA}}
-
-> See [spec.md#added-requirements](spec/{{CHANGE_NAME}}/spec.md)
 
 <!-- Progress Tracking (Meta: sync protocol for task states) -->
 

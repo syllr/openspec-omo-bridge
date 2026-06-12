@@ -3,13 +3,9 @@
 <TODO: 1-3 句话概述本次变更 —— 做什么、为什么做、影响范围。
 参考格式:"将 X 从 A 改为 B,目的是 C,影响 D。">
 
-> See [proposal.md](spec/add-user-auth/proposal.md)
-
 ## Context
 
 <TODO: 2-5 句话说明背景 —— 当前系统状态、为什么需要这次变更、相关的技术债务或业务需求。>
-
-> See [proposal.md](spec/add-user-auth/proposal.md)
 
 ## Work Objectives
 
@@ -24,8 +20,6 @@
 **Must NOT Have**:
 - <TODO: 列出明确不做的事项>
 
-> See [spec.md#added-requirements](spec/add-user-auth/spec.md)
-
 ## Verification Strategy
 
 <TODO: 如何验证 artifacts 生成正确。覆盖:结构完整性、内容质量、跨 artifact 一致性。>
@@ -35,9 +29,7 @@
 - <TODO: 验证 design 的内容质量>
 - <TODO: 验证 spec 的内容质量>
 
-> `openspec validate <CHANGE_NAME>` 通过(specs 阶段后)
-
-> See [specs](spec/add-user-auth/specs/)
+> `openspec validate add-user-auth` 通过(specs 阶段后)
 
 ## Execution Strategy
 
@@ -52,103 +44,121 @@
 
 任何 task 失败 → 立即停止(Fast Fail)。
 
-> See [design.md](spec/add-user-auth/design.md)
-
 ## Tasks
 
-### 6.1 Wave 1: proposal
+### Wave 1: 基础 artifacts
 
-#### 1. [ ] 生成 proposal
+  - [ ] 1.1 生成 proposal
 
-- **What to do**:
-  1. 读取对话上下文(最近 30 条消息或当前需求描述)
-  2. 按 instruction 行为约束执行
-  3. 按 template 结构填字段
-  4. 写入 `spec/add-user-auth/proposal.md`
-- **Must NOT do**:
-  - 写入 `<context>` / `<rules>` / `<project_context>` 字面量到 artifact 文件
-  - 修改任何源代码(本阶段只生成 spec 文件)
-- **Recommended Agent Profile**: `category="unspecified-low"`
-- **References**:
-  - instruction: `omo-spec/artifacts/proposal/instruction.md`
-  - template: `omo-spec/artifacts/proposal/template.md`
-  - output: `spec/add-user-auth/proposal.md`
-- **Acceptance Criteria**:
-  - `test -f spec/add-user-auth/proposal.md`
-  - 文件包含模板必需 sections
-- **QA Scenarios**:
-  - **Happy**: 正常生成,无错误
-  - **Exception**: 模板缺失时报错
-  - **Edge**: 空模板处理
-  - **Performance**: N/A
-  - **Security**: N/A
-- **Parallelization**: 无(严格顺序)
-- **Evidence**: `spec/add-user-auth/proposal.md`
-- **Commit**: YES
+      **What to do**:
+      1. 读取对话上下文(最近 30 条消息或当前需求描述)
+      2. 按 `omo-spec/artifacts/proposal/instruction.md` 行为约束执行
+      3. 按 `omo-spec/artifacts/proposal/template.md` 结构填字段
+      4. 写入 `spec/add-user-auth/proposal.md`
 
----
+      **Must NOT do**:
+      - 写入 `<context>` / `<rules>` / `<project_context>` 字面量
+      - 修改任何源代码
 
-### 6.2 Wave 2: design
+      **Recommended Agent Profile**: category="unspecified-low", load_skills=[]
 
-#### 2. [ ] 生成 design
+      **References**:
+      - omo-spec/artifacts/proposal/instruction.md
+      - omo-spec/artifacts/proposal/template.md
 
-- **What to do**:
-  1. 读取对话上下文(最近 30 条消息或当前需求描述)
-  2. 按 instruction 行为约束执行
-  3. 按 template 结构填字段
-  4. 写入 `spec/add-user-auth/design.md`
-- **Must NOT do**:
-  - 写入 `<context>` / `<rules>` / `<project_context>` 字面量到 artifact 文件
-  - 修改任何源代码(本阶段只生成 spec 文件)
-- **Recommended Agent Profile**: `category="unspecified-low"`
-- **References**:
-  - instruction: `omo-spec/artifacts/design/instruction.md`
-  - template: `omo-spec/artifacts/design/template.md`
-  - output: `spec/add-user-auth/design.md`
-- **Acceptance Criteria**:
-  - `test -f spec/add-user-auth/design.md`
-  - 文件包含模板必需 sections
-- **QA Scenarios**:
-  - **Happy**: 正常生成,无错误
-  - **Exception**: 模板缺失时报错
-  - **Edge**: 空模板处理
-  - **Performance**: N/A
-  - **Security**: N/A
-- **Parallelization**: 无(严格顺序)
-- **Evidence**: `spec/add-user-auth/design.md`
-- **Commit**: YES
+      **Acceptance Criteria**:
+      ```bash
+      test -f spec/add-user-auth/proposal.md
+      ```
 
----
+      **QA Scenarios**:
+      Scenario: 结构完整 / Steps: grep "## Why\|## What Changes\|## Capabilities\|## Impact" / Expected: 4 个 section 齐全
 
-### 6.3 Wave 3: spec
+  - [ ] 1.2 生成 design
 
-#### 3. [ ] 生成 spec
+      **What to do**:
+      1. 读取 `spec/add-user-auth/proposal.md`(Wave 1 产物)作为输入
+      2. 按 `omo-spec/artifacts/design/instruction.md` 行为约束执行
+      3. 按 `omo-spec/artifacts/design/template.md` 结构填字段
+      4. 写入 `spec/add-user-auth/design.md`
 
-- **What to do**:
-  1. 读取对话上下文(最近 30 条消息或当前需求描述)
-  2. 按 instruction 行为约束执行
-  3. 按 template 结构填字段
-  4. 写入 `spec/add-user-auth/spec.md`
-- **Must NOT do**:
-  - 写入 `<context>` / `<rules>` / `<project_context>` 字面量到 artifact 文件
-  - 修改任何源代码(本阶段只生成 spec 文件)
-- **Recommended Agent Profile**: `category="unspecified-low"`
-- **References**:
-  - instruction: `omo-spec/artifacts/spec/instruction.md`
-  - template: `omo-spec/artifacts/spec/template.md`
-  - output: `spec/add-user-auth/spec.md`
-- **Acceptance Criteria**:
-  - `test -f spec/add-user-auth/spec.md`
-  - 文件包含模板必需 sections
-- **QA Scenarios**:
-  - **Happy**: 正常生成,无错误
-  - **Exception**: 模板缺失时报错
-  - **Edge**: 空模板处理
-  - **Performance**: N/A
-  - **Security**: N/A
-- **Parallelization**: 无(严格顺序)
-- **Evidence**: `spec/add-user-auth/spec.md`
-- **Commit**: YES
+      **Must NOT do**:
+      - 写入 `<context>` / `<rules>` / `<project_context>` 字面量
+      - 修改任何源代码
+
+      **Recommended Agent Profile**: category="unspecified-low", load_skills=[]
+
+      **References**:
+      - spec/add-user-auth/proposal.md
+      - omo-spec/artifacts/design/instruction.md
+      - omo-spec/artifacts/design/template.md
+
+      **Acceptance Criteria**:
+      ```bash
+      test -f spec/add-user-auth/design.md
+      ```
+
+      **QA Scenarios**:
+      Scenario: 结构完整 / Steps: grep "## Context\|## Goals\|## Decisions\|## Risks" / Expected: 4 个 section 齐全
+
+### Wave 2: spec + target-plan
+
+  - [ ] 2.1 生成 spec
+
+      **What to do**:
+      1. 读取 `spec/add-user-auth/proposal.md` + `spec/add-user-auth/design.md`(Wave 1 产物)作为输入
+      2. 按 `omo-spec/artifacts/spec/instruction.md` 行为约束执行
+      3. 按 `omo-spec/artifacts/spec/template.md` 结构填字段
+      4. 写入 `spec/add-user-auth/spec.md`
+
+      **Must NOT do**:
+      - 写入 `<context>` / `<rules>` / `<project_context>` 字面量
+      - 修改任何源代码
+
+      **Recommended Agent Profile**: category="unspecified-low", load_skills=[]
+
+      **References**:
+      - spec/add-user-auth/proposal.md
+      - spec/add-user-auth/design.md
+      - omo-spec/artifacts/spec/instruction.md
+      - omo-spec/artifacts/spec/template.md
+
+      **Acceptance Criteria**:
+      ```bash
+      test -f spec/add-user-auth/spec.md
+      openspec validate add-user-auth
+      ```
+
+      **QA Scenarios**:
+      Scenario: validate 通过 / Steps: openspec validate add-user-auth / Expected: 返回 OK
+
+  - [ ] 2.2 生成 target-plan
+
+      **What to do**:
+      1. 读取 `spec/add-user-auth/proposal.md` + `spec/add-user-auth/design.md` + `spec/add-user-auth/spec.md`(Wave 1+2.1 产物)作为输入
+      2. 按本 source plan(`spec-source-add-user-auth.md`)中 `## 1. TL;DR` `## 2. Context` `## 3. Work Objectives` `## 4. Verification Strategy` `## 5. Execution Strategy` `## 7. Final Verification Wave` `## 8. Commit Strategy` `## 9. Success Criteria` 9 个章节的 TODO 占位符,翻译成 target-plan
+      3. 写入 `.omo/plans/add-user-auth.md`
+
+      **Must NOT do**:
+      - 修改 source plan(`spec-source-add-user-auth.md`)
+      - 修改任何源代码
+
+      **Recommended Agent Profile**: category="unspecified-low", load_skills=[]
+
+      **References**:
+      - spec-source-add-user-auth.md(本文件)
+      - spec/add-user-auth/proposal.md
+      - spec/add-user-auth/design.md
+      - spec/add-user-auth/spec.md
+
+      **Acceptance Criteria**:
+      ```bash
+      test -f .omo/plans/add-user-auth.md
+      grep -c "## Tasks" .omo/plans/add-user-auth.md  # 必须有 ## Tasks 章节
+      ```
+
+      **QA Scenarios**:
+      Scenario: target-plan 结构正确 / Steps: 9 个 OMO 章节齐全 / Expected: TL;DR/Context/Work Objectives/Verification/Execution/Tasks/Final Verification Wave/Commit Strategy/Success Criteria
 
 ## Final Verification Wave
 
@@ -174,8 +184,6 @@
 - [ ] `spec/add-user-auth/spec.md` 生成且通过结构验证(F3)
 - [ ] 所有 artifact 模板 HTML 注释不残留
 - [ ] omo-spec 工作流自身未污染老仓库
-
-> See [spec.md#added-requirements](spec/add-user-auth/spec.md)
 
 <!-- Progress Tracking (Meta: sync protocol for task states) -->
 

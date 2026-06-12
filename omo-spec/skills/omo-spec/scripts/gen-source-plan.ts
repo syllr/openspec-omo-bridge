@@ -175,42 +175,120 @@ export function generateTargetArtifactsYaml(artifactIds: string[]): string {
  * 每个 artifact → 1 个 ### 6.N Wave N 章节 + 1 个 task。
  */
 export function generateWavesBlock(artifacts: ArtifactDef[], changeName: string): string {
-  return artifacts
-    .map((artifact, idx) => {
-      const waveNum = idx + 1;
-      const taskNum = idx + 1;
+  const targetPlanPath = `.omo/plans/${changeName}.md`;
+  return `### Wave 1: 基础 artifacts
 
-      return `### 6.${waveNum} Wave ${waveNum}: ${artifact.id}
+  - [ ] 1.1 生成 proposal
 
-#### ${taskNum}. [ ] 生成 ${artifact.id}
+      **What to do**:
+      1. 读取对话上下文(最近 30 条消息或当前需求描述)
+      2. 按 \`omo-spec/artifacts/proposal/instruction.md\` 行为约束执行
+      3. 按 \`omo-spec/artifacts/proposal/template.md\` 结构填字段
+      4. 写入 \`spec/${changeName}/proposal.md\`
 
-- **What to do**:
-  1. 读取对话上下文(最近 30 条消息或当前需求描述)
-  2. 按 instruction 行为约束执行
-  3. 按 template 结构填字段
-  4. 写入 \`spec/${changeName}/${artifact.id}.md\`
-- **Must NOT do**:
-  - 写入 \`<context>\` / \`<rules>\` / \`<project_context>\` 字面量到 artifact 文件
-  - 修改任何源代码(本阶段只生成 spec 文件)
-- **Recommended Agent Profile**: \`category="unspecified-low"\`
-- **References**:
-  - instruction: \`omo-spec/artifacts/${artifact.id}/instruction.md\`
-  - template: \`omo-spec/artifacts/${artifact.id}/template.md\`
-  - output: \`spec/${changeName}/${artifact.id}.md\`
-- **Acceptance Criteria**:
-  - \`test -f spec/${changeName}/${artifact.id}.md\`
-  - 文件包含模板必需 sections
-- **QA Scenarios**:
-  - **Happy**: 正常生成,无错误
-  - **Exception**: 模板缺失时报错
-  - **Edge**: 空模板处理
-  - **Performance**: N/A
-  - **Security**: N/A
-- **Parallelization**: 无(严格顺序)
-- **Evidence**: \`spec/${changeName}/${artifact.id}.md\`
-- **Commit**: YES`;
-    })
-    .join("\n\n---\n\n");
+      **Must NOT do**:
+      - 写入 \`<context>\` / \`<rules>\` / \`<project_context>\` 字面量
+      - 修改任何源代码
+
+      **Recommended Agent Profile**: category="unspecified-low", load_skills=[]
+
+      **References**:
+      - omo-spec/artifacts/proposal/instruction.md
+      - omo-spec/artifacts/proposal/template.md
+
+      **Acceptance Criteria**:
+      \`\`\`bash
+      test -f spec/${changeName}/proposal.md
+      \`\`\`
+
+      **QA Scenarios**:
+      Scenario: 结构完整 / Steps: grep "## Why\\|## What Changes\\|## Capabilities\\|## Impact" / Expected: 4 个 section 齐全
+
+  - [ ] 1.2 生成 design
+
+      **What to do**:
+      1. 读取 \`spec/${changeName}/proposal.md\`(Wave 1 产物)作为输入
+      2. 按 \`omo-spec/artifacts/design/instruction.md\` 行为约束执行
+      3. 按 \`omo-spec/artifacts/design/template.md\` 结构填字段
+      4. 写入 \`spec/${changeName}/design.md\`
+
+      **Must NOT do**:
+      - 写入 \`<context>\` / \`<rules>\` / \`<project_context>\` 字面量
+      - 修改任何源代码
+
+      **Recommended Agent Profile**: category="unspecified-low", load_skills=[]
+
+      **References**:
+      - spec/${changeName}/proposal.md
+      - omo-spec/artifacts/design/instruction.md
+      - omo-spec/artifacts/design/template.md
+
+      **Acceptance Criteria**:
+      \`\`\`bash
+      test -f spec/${changeName}/design.md
+      \`\`\`
+
+      **QA Scenarios**:
+      Scenario: 结构完整 / Steps: grep "## Context\\|## Goals\\|## Decisions\\|## Risks" / Expected: 4 个 section 齐全
+
+### Wave 2: spec + target-plan
+
+  - [ ] 2.1 生成 spec
+
+      **What to do**:
+      1. 读取 \`spec/${changeName}/proposal.md\` + \`spec/${changeName}/design.md\`(Wave 1 产物)作为输入
+      2. 按 \`omo-spec/artifacts/spec/instruction.md\` 行为约束执行
+      3. 按 \`omo-spec/artifacts/spec/template.md\` 结构填字段
+      4. 写入 \`spec/${changeName}/spec.md\`
+
+      **Must NOT do**:
+      - 写入 \`<context>\` / \`<rules>\` / \`<project_context>\` 字面量
+      - 修改任何源代码
+
+      **Recommended Agent Profile**: category="unspecified-low", load_skills=[]
+
+      **References**:
+      - spec/${changeName}/proposal.md
+      - spec/${changeName}/design.md
+      - omo-spec/artifacts/spec/instruction.md
+      - omo-spec/artifacts/spec/template.md
+
+      **Acceptance Criteria**:
+      \`\`\`bash
+      test -f spec/${changeName}/spec.md
+      openspec validate ${changeName}
+      \`\`\`
+
+      **QA Scenarios**:
+      Scenario: validate 通过 / Steps: openspec validate ${changeName} / Expected: 返回 OK
+
+  - [ ] 2.2 生成 target-plan
+
+      **What to do**:
+      1. 读取 \`spec/${changeName}/proposal.md\` + \`spec/${changeName}/design.md\` + \`spec/${changeName}/spec.md\`(Wave 1+2.1 产物)作为输入
+      2. 按本 source plan(\`spec-source-${changeName}.md\`)中 \`## 1. TL;DR\` \`## 2. Context\` \`## 3. Work Objectives\` \`## 4. Verification Strategy\` \`## 5. Execution Strategy\` \`## 7. Final Verification Wave\` \`## 8. Commit Strategy\` \`## 9. Success Criteria\` 9 个章节的 TODO 占位符,翻译成 target-plan
+      3. 写入 \`${targetPlanPath}\`
+
+      **Must NOT do**:
+      - 修改 source plan(\`spec-source-${changeName}.md\`)
+      - 修改任何源代码
+
+      **Recommended Agent Profile**: category="unspecified-low", load_skills=[]
+
+      **References**:
+      - spec-source-${changeName}.md(本文件)
+      - spec/${changeName}/proposal.md
+      - spec/${changeName}/design.md
+      - spec/${changeName}/spec.md
+
+      **Acceptance Criteria**:
+      \`\`\`bash
+      test -f ${targetPlanPath}
+      grep -c "## Tasks" ${targetPlanPath}  # 必须有 ## Tasks 章节
+      \`\`\`
+
+      **QA Scenarios**:
+      Scenario: target-plan 结构正确 / Steps: 9 个 OMO 章节齐全 / Expected: TL;DR/Context/Work Objectives/Verification/Execution/Tasks/Final Verification Wave/Commit Strategy/Success Criteria`;
 }
 
 /**
@@ -288,7 +366,7 @@ ${artifactList}
 /**
  * 生成 Verification Strategy 默认骨架。
  */
-export function generateVerificationBlock(artifacts: ArtifactDef[]): string {
+export function generateVerificationBlock(artifacts: ArtifactDef[], changeName: string): string {
   const checks = artifacts
     .map((a) => `- <TODO: 验证 ${a.id} 的内容质量>`)
     .join("\n");
@@ -297,7 +375,7 @@ export function generateVerificationBlock(artifacts: ArtifactDef[]): string {
 每个 spec requirement 有对应的 scenario 作为验收标准：
 ${checks}
 
-> \`openspec validate ${"<CHANGE_NAME>"}\` 通过(specs 阶段后)`;
+> \`openspec validate ${changeName}\` 通过(specs 阶段后)`;
 }
 
 /**
@@ -378,7 +456,7 @@ export function generateSourcePlan(opts: {
   );
   result = result.replaceAll(
     "{{VERIFICATION_STRATEGY}}",
-    generateVerificationBlock(opts.artifacts)
+    generateVerificationBlock(opts.artifacts, opts.changeName)
   );
   result = result.replaceAll(
     "{{EXECUTION_STRATEGY}}",

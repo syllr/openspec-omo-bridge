@@ -280,36 +280,48 @@ describe("generateWavesBlock", () => {
     },
   ]
 
-  test("3 artifacts 生成 3 个 Wave 章节", () => {
-    const block = generateWavesBlock(fakeArtifacts)
-    expect(block).toContain("### 6.1 Wave 1: proposal")
-    expect(block).toContain("### 6.2 Wave 2: design")
-    expect(block).toContain("### 6.3 Wave 3: spec")
+  test("生成 2 个 Wave 章节", () => {
+    const block = generateWavesBlock(fakeArtifacts, "test-change")
+    expect(block).toContain("### Wave 1: 基础 artifacts")
+    expect(block).toContain("### Wave 2: spec + target-plan")
   })
 
-  test("每个 Wave 含 1 个 task(#### N. [ ])", () => {
-    const block = generateWavesBlock(fakeArtifacts)
-    const taskMatches = block.match(/#### \d+\. \[ \]/g)
-    expect(taskMatches).not.toBeNull()
-    expect(taskMatches?.length).toBe(3)
+  test("每个 Wave 含正确的 task 编号", () => {
+    const block = generateWavesBlock(fakeArtifacts, "test-change")
+    expect(block).toContain("  - [ ] 1.1 生成 proposal")
+    expect(block).toContain("  - [ ] 1.2 生成 design")
+    expect(block).toContain("  - [ ] 2.1 生成 spec")
+    expect(block).toContain("  - [ ] 2.2 生成 target-plan")
   })
 
   test("每个 task 含 References 字段", () => {
-    const block = generateWavesBlock(fakeArtifacts)
-    expect(block).toContain("**References**:")
+    const block = generateWavesBlock(fakeArtifacts, "test-change")
+    expect(block).toContain("omo-spec/artifacts/proposal/instruction.md")
+    expect(block).toContain("omo-spec/artifacts/design/instruction.md")
+    expect(block).toContain("omo-spec/artifacts/spec/instruction.md")
   })
 
-  test("每个 task 含 Recommended Agent Profile 字段", () => {
-    const block = generateWavesBlock(fakeArtifacts)
-    expect(block.match(/Recommended Agent Profile/g)?.length).toBe(3)
+  test("每个 task 含 Acceptable Agent Profile 字段", () => {
+    const block = generateWavesBlock(fakeArtifacts, "test-change")
+    expect(block).toContain("category=\"unspecified-low\"")
   })
 
-  test("2 artifacts 生成 2 Waves", () => {
-    const twoArtifacts = fakeArtifacts.slice(0, 2)
-    const block = generateWavesBlock(twoArtifacts)
-    expect(block).toContain("### 6.1 Wave 1: proposal")
-    expect(block).toContain("### 6.2 Wave 2: design")
-    expect(block).not.toContain("### 6.3")
+  test("含 4 个 task(单空格缩进格式)", () => {
+    const block = generateWavesBlock(fakeArtifacts, "test-change")
+    const taskMatches = block.match(/  - \[ \] \d+\.\d+ /g)
+    expect(taskMatches).not.toBeNull()
+    expect(taskMatches?.length).toBe(4)
+  })
+
+  test("spec 和 design 引用前置产物", () => {
+    const block = generateWavesBlock(fakeArtifacts, "test-change")
+    expect(block).toContain("spec/test-change/proposal.md")
+    expect(block).toContain("spec/test-change/design.md")
+  })
+
+  test("target-plan 写入 .omo/plans/", () => {
+    const block = generateWavesBlock(fakeArtifacts, "test-change")
+    expect(block).toContain(".omo/plans/test-change.md")
   })
 })
 

@@ -156,6 +156,7 @@ bun run omo-spec/skills/omo-spec/scripts/gen-source-plan.ts <change-name> --arti
 
 - <TODO: 验证 proposal 的内容质量>
   ...
+  > `openspec validate <CHANGE_NAME>` 通过(specs 阶段后)
 
 ## Execution Strategy
 
@@ -169,11 +170,19 @@ bun run omo-spec/skills/omo-spec/scripts/gen-source-plan.ts <change-name> --arti
 
 ## Tasks
 
-### 6.1 Wave 1: proposal
+### Wave 1: 基础 artifacts
 
-#### 1. [ ] 生成 proposal
+- [ ] 1.1 生成 proposal
+      **What to do**: ...
+- [ ] 1.2 生成 design
+      **What to do**: ...
 
-- **What to do**: ...
+### Wave 2: spec + target-plan
+
+- [ ] 2.1 生成 spec
+      **What to do**: ...
+- [ ] 2.2 生成 target-plan
+      **What to do**: ...
 - **Must NOT do**: ...
 - **References**: instruction/template/output paths
 - **Acceptance Criteria**: ...
