@@ -174,7 +174,7 @@ export function generateTargetArtifactsYaml(artifactIds: string[]): string {
  * 生成第 6 章的 Wave 块。
  * 每个 artifact → 1 个 ### 6.N Wave N 章节 + 1 个 task。
  */
-export function generateWavesBlock(artifacts: ArtifactDef[]): string {
+export function generateWavesBlock(artifacts: ArtifactDef[], changeName: string): string {
   return artifacts
     .map((artifact, idx) => {
       const waveNum = idx + 1;
@@ -188,7 +188,7 @@ export function generateWavesBlock(artifacts: ArtifactDef[]): string {
   1. 读取对话上下文(最近 30 条消息或当前需求描述)
   2. 按 instruction 行为约束执行
   3. 按 template 结构填字段
-  4. 写入 \`spec/<change-name>/${artifact.id}.md\`
+  4. 写入 \`spec/${changeName}/${artifact.id}.md\`
 - **Must NOT do**:
   - 写入 \`<context>\` / \`<rules>\` / \`<project_context>\` 字面量到 artifact 文件
   - 修改任何源代码(本阶段只生成 spec 文件)
@@ -196,9 +196,9 @@ export function generateWavesBlock(artifacts: ArtifactDef[]): string {
 - **References**:
   - instruction: \`omo-spec/artifacts/${artifact.id}/instruction.md\`
   - template: \`omo-spec/artifacts/${artifact.id}/template.md\`
-  - output: \`spec/<change-name>/${artifact.id}.md\`
+  - output: \`spec/${changeName}/${artifact.id}.md\`
 - **Acceptance Criteria**:
-  - \`test -f spec/<change-name>/${artifact.id}.md\`
+  - \`test -f spec/${changeName}/${artifact.id}.md\`
   - 文件包含模板必需 sections
 - **QA Scenarios**:
   - **Happy**: 正常生成,无错误
@@ -207,7 +207,7 @@ export function generateWavesBlock(artifacts: ArtifactDef[]): string {
   - **Performance**: N/A
   - **Security**: N/A
 - **Parallelization**: 无(严格顺序)
-- **Evidence**: \`spec/<change-name>/${artifact.id}.md\`
+- **Evidence**: \`spec/${changeName}/${artifact.id}.md\`
 - **Commit**: YES`;
     })
     .join("\n\n---\n\n");
@@ -256,30 +256,105 @@ ${content}
 }
 
 /**
- * 在 OMO 9 章节标题后插入 LLM 填充标记。
- * 第 6 章(TODOs)由脚本生成,不需要 LLM 填充标记。
+ * 生成 TL;DR 默认骨架。
  */
-export function insertLlmFillMarkers(content: string): string {
-  const sections: Record<string, string> = {
-    "## 1. TL;DR": "用 1 句话概述本次变更做什么",
-    "## 2. Context": "2-3 句话说明背景",
-    "## 3. Work Objectives": "Must Have / Must NOT Have",
-    "## 4. Verification Strategy": "如何验证 artifacts 生成正确",
-    "## 5. Execution Strategy": "关键路径 / 并发上限 / 顺序约束",
-    "## 7. Final Verification Wave": "最终验证项",
-    "## 8. Commit Strategy": "commit 策略",
-    "## 9. Success Criteria": "成功标准",
-  };
+export function generateTldrBlock(_artifacts: ArtifactDef[]): string {
+  return `<TODO: 1-3 句话概述本次变更 —— 做什么、为什么做、影响范围。
+参考格式:"将 X 从 A 改为 B,目的是 C,影响 D。">`;
+}
 
-  let result = content;
-  for (const [heading, hint] of Object.entries(sections)) {
-    if (result.includes(heading)) {
-      const marker = `\n<!-- LLM_FILL: ${hint} -->\n\n_(待 LLM 填充)_\n`;
-      result = result.replace(heading, heading + marker);
-    }
-  }
+/**
+ * 生成 Context 默认骨架。
+ */
+export function generateContextBlock(_artifacts: ArtifactDef[]): string {
+  return `<TODO: 2-5 句话说明背景 —— 当前系统状态、为什么需要这次变更、相关的技术债务或业务需求。>`;
+}
 
-  return result;
+/**
+ * 生成 Work Objectives 默认骨架。
+ */
+export function generateWorkObjectivesBlock(artifacts: ArtifactDef[]): string {
+  const artifactList = artifacts.map((a) => `- **${a.id}**: <TODO: 此 artifact 的目标>`).join("\n");
+  return `<TODO: 明确本次变更的范围边界。Must Have 列出必须完成的事项,Must NOT Have 列出明确不做的事项。>
+
+**Must Have**:
+${artifactList}
+- <TODO: 补充其他必须达成的目标>
+
+**Must NOT Have**:
+- <TODO: 列出明确不做的事项>`;
+}
+
+/**
+ * 生成 Verification Strategy 默认骨架。
+ */
+export function generateVerificationBlock(artifacts: ArtifactDef[]): string {
+  const checks = artifacts
+    .map((a) => `- <TODO: 验证 ${a.id} 的内容质量>`)
+    .join("\n");
+  return `<TODO: 如何验证 artifacts 生成正确。覆盖:结构完整性、内容质量、跨 artifact 一致性。>
+
+每个 spec requirement 有对应的 scenario 作为验收标准：
+${checks}
+
+> \`openspec validate ${"<CHANGE_NAME>"}\` 通过(specs 阶段后)`;
+}
+
+/**
+ * 生成 Execution Strategy 默认骨架。
+ */
+export function generateExecutionBlock(artifacts: ArtifactDef[]): string {
+  const criticalPath = artifacts.map((a) => a.id).join(" → ");
+  return `<TODO: 关键路径、并发约束、顺序依赖、风险点。>
+
+核心设计决策来自 design.md:
+- <TODO: Decision 1>
+- <TODO: Decision 2>
+
+**Critical Path**: ${criticalPath}
+**Max Concurrent**: 1(artifacts 之间存在硬依赖)
+
+任何 task 失败 → 立即停止(Fast Fail)。`;
+}
+
+/**
+ * 生成 FVW 默认骨架。
+ */
+export function generateFvwBlock(artifacts: ArtifactDef[]): string {
+  const fvwItems = artifacts
+    .map((a, idx) => {
+      const fNum = idx + 1;
+      return `- [ ] F${fNum}. **${a.id} 验证** — <TODO: 验证 ${a.id} 的内容质量>`;
+    })
+    .join("\n");
+  return `${fvwItems}
+- [ ] F${artifacts.length + 1}. **omo-spec 工作流验证** — <TODO: 验证老 skill 0 diff,产物与 1.0 一致>`;
+}
+
+/**
+ * 生成 Commit Strategy 默认骨架。
+ */
+export function generateCommitStrategyBlock(artifacts: ArtifactDef[]): string {
+  const commits = artifacts
+    .map((a) => `- <TODO: Wave ${artifacts.indexOf(a) + 1} (${a.id}) 的 commit message,如 \`feat(spec): add user-auth ${a.id}\`>`)
+    .join("\n");
+  return `<TODO: commit 策略。每个 artifact 一个 commit,Conventional Commits 格式。>
+
+${commits}`;
+}
+
+/**
+ * 生成 Success Criteria 默认骨架。
+ */
+export function generateSuccessCriteriaBlock(artifacts: ArtifactDef[], changeName: string): string {
+  const criteria = artifacts
+    .map((a) => `- [ ] \`spec/${changeName}/${a.id}.md\` 生成且通过结构验证(F${artifacts.indexOf(a) + 1})`)
+    .join("\n");
+  return `<TODO: 成功标准 —— 所有条件满足才算完成。用 checkbox 列表。应与 FVW 验证项对应。>
+
+${criteria}
+- [ ] 所有 artifact 模板 HTML 注释不残留
+- [ ] omo-spec 工作流自身未污染老仓库`;
 }
 
 /**
@@ -292,23 +367,32 @@ export function generateSourcePlan(opts: {
   lang?: LangMode;
 }): string {
   const lang = opts.lang ?? "auto";
-  const date = new Date().toISOString().split("T")[0];
 
   let result = opts.templateContent;
   result = result.replaceAll("{{CHANGE_NAME}}", opts.changeName);
-  result = result.replaceAll("{{DATE}}", date);
+  result = result.replaceAll("{{TLDR}}", generateTldrBlock(opts.artifacts));
+  result = result.replaceAll("{{CONTEXT}}", generateContextBlock(opts.artifacts));
   result = result.replaceAll(
-    "{{TARGET_ARTIFACTS_YAML}}",
-    generateTargetArtifactsYaml(opts.artifacts.map((a) => a.id))
-  );
-  result = result.replaceAll("{{WAVES_BLOCK}}", generateWavesBlock(opts.artifacts));
-  result = result.replaceAll(
-    "{{SCHEMAS_BLOCK}}",
-    generateSchemasBlock(opts.artifacts, lang)
+    "{{WORK_OBJECTIVES}}",
+    generateWorkObjectivesBlock(opts.artifacts)
   );
   result = result.replaceAll(
-    "{{TEMPLATES_BLOCK}}",
-    generateTemplatesBlock(opts.artifacts)
+    "{{VERIFICATION_STRATEGY}}",
+    generateVerificationBlock(opts.artifacts)
+  );
+  result = result.replaceAll(
+    "{{EXECUTION_STRATEGY}}",
+    generateExecutionBlock(opts.artifacts)
+  );
+  result = result.replaceAll("{{WAVES_BLOCK}}", generateWavesBlock(opts.artifacts, opts.changeName));
+  result = result.replaceAll("{{FVW_BLOCK}}", generateFvwBlock(opts.artifacts));
+  result = result.replaceAll(
+    "{{COMMIT_STRATEGY}}",
+    generateCommitStrategyBlock(opts.artifacts)
+  );
+  result = result.replaceAll(
+    "{{SUCCESS_CRITERIA}}",
+    generateSuccessCriteriaBlock(opts.artifacts, opts.changeName)
   );
 
   // 残留占位符检测
@@ -316,9 +400,6 @@ export function generateSourcePlan(opts: {
   if (remaining) {
     throw new Error(`未替换的占位符残留: ${remaining.join(", ")}`);
   }
-
-  // 在 LLM 可填的章节后插入 LLM_FILL 标记
-  result = insertLlmFillMarkers(result);
 
   return result;
 }
@@ -446,7 +527,7 @@ if (import.meta.main) {
   console.log(`📝 下一步:`);
   console.log(`   1. Read ${specDir}/ 目录中的模板文件`);
   console.log(`   2. Read ${planPath}`);
-  console.log(`   3. LLM 填充第 1-5/9 章业务内容(<!-- LLM_FILL: ... --> 标记)`);
+  console.log(`   3. LLM 替换 <TODO: ...> 占位符为实际业务内容`);
   console.log(`   4. 用户 review source plan`);
   console.log(`   5. 跑 /start-work spec-source-${changeName} 实施`);
 }

@@ -423,23 +423,32 @@ describe("generateSourcePlan", () => {
       requires: [],
     },
   ]
-  const tplContent = `---
-changeName: {{CHANGE_NAME}}
-date: "{{DATE}}"
-artifacts:
-{{TARGET_ARTIFACTS_YAML}}
----
+  const tplContent = `## TL;DR
+{{TLDR}}
 
-# Source Plan: {{CHANGE_NAME}}
+## Context
+{{CONTEXT}}
 
-## 1. TL;DR
+## Work Objectives
+{{WORK_OBJECTIVES}}
+
+## Verification Strategy
+{{VERIFICATION_STRATEGY}}
+
+## Execution Strategy
+{{EXECUTION_STRATEGY}}
+
+## Tasks
 {{WAVES_BLOCK}}
 
-## 7. Schema
-{{SCHEMAS_BLOCK}}
+## Final Verification Wave
+{{FVW_BLOCK}}
 
-## 8. Template
-{{TEMPLATES_BLOCK}}
+## Commit Strategy
+{{COMMIT_STRATEGY}}
+
+## Success Criteria
+{{SUCCESS_CRITERIA}}
 `
 
   test("替换所有占位符", () => {
@@ -450,14 +459,14 @@ artifacts:
       lang: "auto",
     })
     expect(result).not.toMatch(/\{\{[A-Z_0-9]+\}\}/)
-    expect(result).toContain("changeName: test-change")
+    expect(result).toContain("test-change")
   })
 
   test("残留占位符抛错", () => {
-    const brokenTpl = `---
-changeName: {{CHANGE_NAME}}
+    const brokenTpl = `## TL;DR
+{{TLDR}}
+
 unknown: {{UNRESOLVED_X}}
----
 `
     expect(() =>
       generateSourcePlan({
@@ -468,13 +477,12 @@ unknown: {{UNRESOLVED_X}}
     ).toThrow("未替换的占位符残留")
   })
 
-  test("DATE 占位符格式为 YYYY-MM-DD", () => {
+  test("生成 plan 含 spec 路径引用 change 名", () => {
     const result = generateSourcePlan({
-      changeName: "x",
+      changeName: "test-change",
       artifacts: fakeArtifacts,
       templateContent: tplContent,
     })
-    const dateMatch = result.match(/date: "(\d{4}-\d{2}-\d{2})"/)
-    expect(dateMatch).not.toBeNull()
+    expect(result).toContain("spec/test-change/")
   })
 })
