@@ -21,17 +21,12 @@
 - 任何**Must Have**列表之外的产物(只能产出 Must Have 列出的文档,不能多也不能少)
 - 任何对老文件的修改
 - 任何代码改动
-- 任何动态 fetch 调用
 
 ## Verification Strategy
 
-<TODO: 如何验证 artifacts 生成正确。覆盖:结构完整性、内容质量、跨 artifact 一致性。>
+每个 spec requirement 有对应的 scenario 作为验收标准。
 
-每个 spec requirement 有对应的 scenario 作为验收标准：
-
-- <TODO: 验证 proposal 的内容质量>
-- <TODO: 验证 design 的内容质量>
-- <TODO: 验证 spec 的内容质量>
+`openspec validate add-user-auth` 在 spec 阶段后通过。
 
 > `openspec validate add-user-auth` 通过(specs 阶段后)
 
