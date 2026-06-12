@@ -8,18 +8,20 @@
 
 ## Work Objectives
 
-<TODO: 明确本次变更的范围边界。Must Have 列出必须完成的事项,Must NOT Have 列出明确不做的事项。>
-
 **Must Have**:
 
-- **proposal**: <TODO: 此 artifact 的目标>
-- **design**: <TODO: 此 artifact 的目标>
-- **spec**: <TODO: 此 artifact 的目标>
-- <TODO: 补充其他必须达成的目标>
+- 生成 `spec/add-user-auth/proposal.md` — 含 Why / What Changes / Capabilities / Impact 四节
+- 生成 `spec/add-user-auth/design.md` — 含 Context / Goals / Decisions / Risks 四节
+- 生成 `spec/add-user-auth/spec.md` — Requirement 描述必须含大写 MUST/SHALL,Scenario 用 #### 4 个 `#` + WHEN/THEN 关键词
+- 产出目标计划 `spec-target-add-user-auth.md` — 9 个 OMO 章节齐全,供后续 /start-work 执行
+- 严格按线性 sdd 流程顺序:proposal → design → spec → target-plan(不可并行/不可重排)
 
 **Must NOT Have**:
 
-- <TODO: 列出明确不做的事项>
+- 任何**Must Have**列表之外的产物(只能产出 Must Have 列出的文档,不能多也不能少)
+- 任何对老文件的修改
+- 任何代码改动
+- 任何动态 fetch 调用
 
 ## Verification Strategy
 
