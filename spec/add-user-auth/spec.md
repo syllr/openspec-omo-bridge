@@ -1,25 +1,25 @@
 ## ADDED Requirements
 
-### Requirement: <!-- requirement name -->
+### Requirement: <!-- 需求名 -->
 
-<!-- requirement text MUST contain uppercase MUST or SHALL -->
+<!-- 需求描述必须包含大写 MUST 或 SHALL -->
 
-#### Scenario: <!-- scenario name -->
+#### Scenario: <!-- 场景名 -->
 
-- **WHEN** <!-- condition -->
-- **THEN** <!-- expected outcome -->
+- **WHEN** <!-- 条件 -->
+- **THEN** <!-- 预期结果 -->
 
 ## MODIFIED Requirements
 
-<!-- For delta specs. Copy FULL requirement block (including all scenarios) from original spec. -->
-<!-- ### Requirement: <exact original name> -->
-<!-- Description with MUST/SHALL -->
-<!-- #### Scenario: <scenario name> -->
-<!-- - **WHEN** <condition> -->
-<!-- - **THEN** <expected outcome> -->
+<!-- 用于 delta specs。从原始 spec 复制完整的 requirement 块(包括所有 scenarios)。 -->
+<!-- ### Requirement: <精确的原始名称> -->
+<!-- 描述含 MUST/SHALL -->
+<!-- #### Scenario: <场景名> -->
+<!-- - **WHEN** <条件> -->
+<!-- - **THEN** <预期结果> -->
 
 ## REMOVED Requirements
 
-<!-- ### Requirement: <name> -->
-<!-- **Reason**: why deprecated -->
-<!-- **Migration**: alternative approach -->
+<!-- ### Requirement: <名称> -->
+<!-- **Reason**: 为何废弃 -->
+<!-- **Migration**: 替代方案 -->

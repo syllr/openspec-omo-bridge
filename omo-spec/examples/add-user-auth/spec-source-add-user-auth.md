@@ -24,10 +24,6 @@
 
 ## Verification Strategy
 
-每个 spec requirement 有对应的 scenario 作为验收标准。
-
-`openspec validate add-user-auth` 在 spec 阶段后通过。
-
 每个阶段开始前,调 Oracle subagent 评审上一阶段产物(self-review,read-only 顾问):
 
 ```typescript
@@ -39,9 +35,13 @@ task(
 );
 ```
 
+### proposal.md评审prompt
+
+### design.md评审prompt
+
+### spec.md评审prompt
+
 ## Execution Strategy
-
-
 
 **Critical Path**: proposal → design → spec
 **Max Concurrent**: 1(artifacts 之间存在硬依赖)
@@ -50,7 +50,7 @@ task(
 
 ## Tasks
 
-### Wave 1: 基础 artifacts
+### Wave 1: 生成spec/add-user-auth/proposal.md
 
 - [ ] 1.1 生成 proposal
 

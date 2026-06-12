@@ -1,39 +1,39 @@
 ## Context
 
-<!-- Background and current state -->
+<!-- 背景和当前状态 -->
 
 ## Goals / Non-Goals
 
 **Goals:**
 
-<!-- What this design aims to achieve -->
+<!-- 本设计要达成的目标 -->
 
 **Non-Goals:**
 
-<!-- What is explicitly out of scope -->
+<!-- 明确不在范围内的事项 -->
 
 ## Decisions
 
-### Decision: <!-- decision name -->
+### Decision: <!-- 决策名 -->
 
-<!-- Brief context for this decision -->
+<!-- 此决策的简要背景 -->
 
 **Rationale**:
 
-<!-- Why this choice over alternatives -->
+<!-- 为何选择这个方案而不是其他 -->
 
 **Alternatives Considered**:
 
-<!-- What else was considered and why rejected -->
+<!-- 还考虑了哪些其他方案以及为何拒绝 -->
 
 ## Risks / Trade-offs
 
-<!-- Known risks and trade-offs -->
+<!-- 已知的风险和权衡 -->
 
 ## Migration Plan
 
-<!-- Steps to deploy, rollback strategy (if applicable) -->
+<!-- 部署步骤、回滚策略(如适用) -->
 
 ## Open Questions
 
-<!-- Outstanding decisions or unknowns to resolve -->
+<!-- 尚未解决的决策或未知项 -->
