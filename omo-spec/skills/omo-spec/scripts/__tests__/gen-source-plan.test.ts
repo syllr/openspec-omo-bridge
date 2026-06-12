@@ -294,22 +294,14 @@ describe("generateWavesBlock", () => {
     expect(taskMatches?.length).toBe(3)
   })
 
-  test("每个 task 显式引用第 7/8 章(Embedded Reference)", () => {
+  test("每个 task 含 References 字段", () => {
     const block = generateWavesBlock(fakeArtifacts)
-    expect(block).toContain("第 7.1 节")
-    expect(block).toContain("第 8.1 节")
-    expect(block).toContain("第 7.2 节")
-    expect(block).toContain("第 8.2 节")
+    expect(block).toContain("**References**:")
   })
 
-  test("每个 task 含 Review Checkpoint 字段", () => {
+  test("每个 task 含 Recommended Agent Profile 字段", () => {
     const block = generateWavesBlock(fakeArtifacts)
-    expect(block.match(/Review Checkpoint/g)?.length).toBe(3)
-  })
-
-  test("每个 task 含 Agent Profile 字段", () => {
-    const block = generateWavesBlock(fakeArtifacts)
-    expect(block.match(/Agent Profile/g)?.length).toBe(3)
+    expect(block.match(/Recommended Agent Profile/g)?.length).toBe(3)
   })
 
   test("2 artifacts 生成 2 Waves", () => {

@@ -182,24 +182,33 @@ export function generateWavesBlock(artifacts: ArtifactDef[]): string {
 
       return `### 6.${waveNum} Wave ${waveNum}: ${artifact.id}
 
-#### ${taskNum}. [ ] 生成 ${artifact.id} artifact
+#### ${taskNum}. [ ] 生成 ${artifact.id}
 
 - **What to do**:
   1. 读取对话上下文(最近 30 条消息或当前需求描述)
-  2. 按第 7.${waveNum} 节嵌入的 \`${artifact.id}.instruction\` 行为约束执行
-  3. 按第 8.${waveNum} 节嵌入的 \`${artifact.id} template\` 结构填字段
-  4. 写入 OpenSpec artifact 文件
-- **Output Path**: \`openspec/changes/<change-name>/${artifact.id}.md\`(或 \`specs/<capability>/spec.md\`)
-- **Embedded Reference**: 第 7.${waveNum} 节(\`${artifact.id}.instruction\` 全文)+ 第 8.${waveNum} 节(\`${artifact.id} template\` 全文)
-- **Acceptance Criteria**:
-  - 文件存在
-  - 包含模板必需 sections(详见第 8.${waveNum} 节)
-  - \`openspec validate <change-name>\` 通过(若 schema 含 validate 步骤)
-- **Forbidden**:
+  2. 按 instruction 行为约束执行
+  3. 按 template 结构填字段
+  4. 写入 \`spec/<change-name>/${artifact.id}.md\`
+- **Must NOT do**:
   - 写入 \`<context>\` / \`<rules>\` / \`<project_context>\` 字面量到 artifact 文件
   - 修改任何源代码(本阶段只生成 spec 文件)
-- **Review Checkpoint**: 完成本 Wave 后停下,用 question 工具问用户是否继续
-- **Agent Profile**: \`category="unspecified-low"\` (内容生成,非复杂逻辑)`;
+- **Recommended Agent Profile**: \`category="unspecified-low"\`
+- **References**:
+  - instruction: \`omo-spec/artifacts/${artifact.id}/instruction.md\`
+  - template: \`omo-spec/artifacts/${artifact.id}/template.md\`
+  - output: \`spec/<change-name>/${artifact.id}.md\`
+- **Acceptance Criteria**:
+  - \`test -f spec/<change-name>/${artifact.id}.md\`
+  - 文件包含模板必需 sections
+- **QA Scenarios**:
+  - **Happy**: 正常生成,无错误
+  - **Exception**: 模板缺失时报错
+  - **Edge**: 空模板处理
+  - **Performance**: N/A
+  - **Security**: N/A
+- **Parallelization**: 无(严格顺序)
+- **Evidence**: \`spec/<change-name>/${artifact.id}.md\`
+- **Commit**: YES`;
     })
     .join("\n\n---\n\n");
 }
@@ -247,6 +256,33 @@ ${content}
 }
 
 /**
+ * 在 OMO 9 章节标题后插入 LLM 填充标记。
+ * 第 6 章(TODOs)由脚本生成,不需要 LLM 填充标记。
+ */
+export function insertLlmFillMarkers(content: string): string {
+  const sections: Record<string, string> = {
+    "## 1. TL;DR": "用 1 句话概述本次变更做什么",
+    "## 2. Context": "2-3 句话说明背景",
+    "## 3. Work Objectives": "Must Have / Must NOT Have",
+    "## 4. Verification Strategy": "如何验证 artifacts 生成正确",
+    "## 5. Execution Strategy": "关键路径 / 并发上限 / 顺序约束",
+    "## 7. Final Verification Wave": "最终验证项",
+    "## 8. Commit Strategy": "commit 策略",
+    "## 9. Success Criteria": "成功标准",
+  };
+
+  let result = content;
+  for (const [heading, hint] of Object.entries(sections)) {
+    if (result.includes(heading)) {
+      const marker = `\n<!-- LLM_FILL: ${hint} -->\n\n_(待 LLM 填充)_\n`;
+      result = result.replace(heading, heading + marker);
+    }
+  }
+
+  return result;
+}
+
+/**
  * 组合所有占位符替换,生成最终 source plan markdown。
  */
 export function generateSourcePlan(opts: {
@@ -280,6 +316,9 @@ export function generateSourcePlan(opts: {
   if (remaining) {
     throw new Error(`未替换的占位符残留: ${remaining.join(", ")}`);
   }
+
+  // 在 LLM 可填的章节后插入 LLM_FILL 标记
+  result = insertLlmFillMarkers(result);
 
   return result;
 }

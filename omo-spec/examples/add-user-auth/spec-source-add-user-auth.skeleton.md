@@ -53,70 +53,97 @@ _(待 LLM 填充)_
 
 ### 6.1 Wave 1: proposal
 
-#### 1. [ ] 生成 proposal artifact
+#### 1. [ ] 生成 proposal
 
 - **What to do**:
   1. 读取对话上下文(最近 30 条消息或当前需求描述)
-  2. 按第 7.1 节嵌入的 `proposal.instruction` 行为约束执行
-  3. 按第 8.1 节嵌入的 `proposal template` 结构填字段
-  4. 写入 OpenSpec artifact 文件
-- **Output Path**: `openspec/changes/<change-name>/proposal.md`(或 `specs/<capability>/spec.md`)
-- **Embedded Reference**: 第 7.1 节(`proposal.instruction` 全文)+ 第 8.1 节(`proposal template` 全文)
-- **Acceptance Criteria**:
-  - 文件存在
-  - 包含模板必需 sections(详见第 8.1 节)
-  - `openspec validate <change-name>` 通过(若 schema 含 validate 步骤)
-- **Forbidden**:
+  2. 按 instruction 行为约束执行
+  3. 按 template 结构填字段
+  4. 写入 `spec/<change-name>/proposal.md`
+- **Must NOT do**:
   - 写入 `<context>` / `<rules>` / `<project_context>` 字面量到 artifact 文件
   - 修改任何源代码(本阶段只生成 spec 文件)
-- **Review Checkpoint**: 完成本 Wave 后停下,用 question 工具问用户是否继续
-- **Agent Profile**: `category="unspecified-low"` (内容生成,非复杂逻辑)
+- **Recommended Agent Profile**: `category="unspecified-low"`
+- **References**:
+  - instruction: `omo-spec/artifacts/proposal/instruction.md`
+  - template: `omo-spec/artifacts/proposal/template.md`
+  - output: `spec/<change-name>/proposal.md`
+- **Acceptance Criteria**:
+  - `test -f spec/<change-name>/proposal.md`
+  - 文件包含模板必需 sections
+- **QA Scenarios**:
+  - **Happy**: 正常生成,无错误
+  - **Exception**: 模板缺失时报错
+  - **Edge**: 空模板处理
+  - **Performance**: N/A
+  - **Security**: N/A
+- **Parallelization**: 无(严格顺序)
+- **Evidence**: `spec/<change-name>/proposal.md`
+- **Commit**: YES
 
 ---
 
 ### 6.2 Wave 2: design
 
-#### 2. [ ] 生成 design artifact
+#### 2. [ ] 生成 design
 
 - **What to do**:
   1. 读取对话上下文(最近 30 条消息或当前需求描述)
-  2. 按第 7.2 节嵌入的 `design.instruction` 行为约束执行
-  3. 按第 8.2 节嵌入的 `design template` 结构填字段
-  4. 写入 OpenSpec artifact 文件
-- **Output Path**: `openspec/changes/<change-name>/design.md`(或 `specs/<capability>/spec.md`)
-- **Embedded Reference**: 第 7.2 节(`design.instruction` 全文)+ 第 8.2 节(`design template` 全文)
-- **Acceptance Criteria**:
-  - 文件存在
-  - 包含模板必需 sections(详见第 8.2 节)
-  - `openspec validate <change-name>` 通过(若 schema 含 validate 步骤)
-- **Forbidden**:
+  2. 按 instruction 行为约束执行
+  3. 按 template 结构填字段
+  4. 写入 `spec/<change-name>/design.md`
+- **Must NOT do**:
   - 写入 `<context>` / `<rules>` / `<project_context>` 字面量到 artifact 文件
   - 修改任何源代码(本阶段只生成 spec 文件)
-- **Review Checkpoint**: 完成本 Wave 后停下,用 question 工具问用户是否继续
-- **Agent Profile**: `category="unspecified-low"` (内容生成,非复杂逻辑)
+- **Recommended Agent Profile**: `category="unspecified-low"`
+- **References**:
+  - instruction: `omo-spec/artifacts/design/instruction.md`
+  - template: `omo-spec/artifacts/design/template.md`
+  - output: `spec/<change-name>/design.md`
+- **Acceptance Criteria**:
+  - `test -f spec/<change-name>/design.md`
+  - 文件包含模板必需 sections
+- **QA Scenarios**:
+  - **Happy**: 正常生成,无错误
+  - **Exception**: 模板缺失时报错
+  - **Edge**: 空模板处理
+  - **Performance**: N/A
+  - **Security**: N/A
+- **Parallelization**: 无(严格顺序)
+- **Evidence**: `spec/<change-name>/design.md`
+- **Commit**: YES
 
 ---
 
 ### 6.3 Wave 3: spec
 
-#### 3. [ ] 生成 spec artifact
+#### 3. [ ] 生成 spec
 
 - **What to do**:
   1. 读取对话上下文(最近 30 条消息或当前需求描述)
-  2. 按第 7.3 节嵌入的 `spec.instruction` 行为约束执行
-  3. 按第 8.3 节嵌入的 `spec template` 结构填字段
-  4. 写入 OpenSpec artifact 文件
-- **Output Path**: `openspec/changes/<change-name>/spec.md`(或 `specs/<capability>/spec.md`)
-- **Embedded Reference**: 第 7.3 节(`spec.instruction` 全文)+ 第 8.3 节(`spec template` 全文)
-- **Acceptance Criteria**:
-  - 文件存在
-  - 包含模板必需 sections(详见第 8.3 节)
-  - `openspec validate <change-name>` 通过(若 schema 含 validate 步骤)
-- **Forbidden**:
+  2. 按 instruction 行为约束执行
+  3. 按 template 结构填字段
+  4. 写入 `spec/<change-name>/spec.md`
+- **Must NOT do**:
   - 写入 `<context>` / `<rules>` / `<project_context>` 字面量到 artifact 文件
   - 修改任何源代码(本阶段只生成 spec 文件)
-- **Review Checkpoint**: 完成本 Wave 后停下,用 question 工具问用户是否继续
-- **Agent Profile**: `category="unspecified-low"` (内容生成,非复杂逻辑)
+- **Recommended Agent Profile**: `category="unspecified-low"`
+- **References**:
+  - instruction: `omo-spec/artifacts/spec/instruction.md`
+  - template: `omo-spec/artifacts/spec/template.md`
+  - output: `spec/<change-name>/spec.md`
+- **Acceptance Criteria**:
+  - `test -f spec/<change-name>/spec.md`
+  - 文件包含模板必需 sections
+- **QA Scenarios**:
+  - **Happy**: 正常生成,无错误
+  - **Exception**: 模板缺失时报错
+  - **Edge**: 空模板处理
+  - **Performance**: N/A
+  - **Security**: N/A
+- **Parallelization**: 无(严格顺序)
+- **Evidence**: `spec/<change-name>/spec.md`
+- **Commit**: YES
 
 ---
 
