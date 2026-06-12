@@ -1,6 +1,6 @@
 ---
 name: omo-spec
-description: omo-spec 入口。按依赖树列出 artifacts, 用户逐轮选择后脚本生成 spec/<name>/ 目录(复制 template.md) + spec-source-<name>.md plan(OMO 9 章节格式), 跑 /start-work 一次性生成所有 artifacts。
+description: omo-spec 入口。按依赖树列出 artifacts, 用户逐轮选择后脚本生成 spec/<name>/ 目录(复制 <id>.template) + spec-source-<name>.md plan(OMO 9 章节格式), 跑 /start-work 一次性生成所有 artifacts。
 metadata:
   author: omo-spec
   version: "1.0"
@@ -14,7 +14,7 @@ metadata:
 
 **产物**:
 
-- `spec/<change-name>/` 目录(每个选中 artifact 一个 `<id>.md` 模板文件,脚本从 `omo-spec/artifacts/<id>/template.md` 复制)
+- `spec/<change-name>/` 目录(每个选中 artifact 一个 `<id>.md` 模板文件,脚本从 `omo-spec/artifacts/<id>/<id>.template` 复制)
 - `spec-source-<change-name>.md` plan 文件(OMO 9 章节格式,章节标题用 `## TL;DR` / `## Context` / `## Work Objectives` 等真实 OMO 风格)
 - plan 中的 `<TODO: ...>` 占位符由 LLM 替换为业务内容
 
@@ -45,11 +45,11 @@ metadata:
 
 ### Step 2: 按依赖树逐轮选择 artifacts
 
-`omo-spec/artifacts/` 目录下每个 artifact 有一个 `instruction.md`,头部包含 `requires: [...]` 字段(列表)。
+`omo-spec/artifacts/` 目录下每个 artifact 有一个 `<id>.instruction`,头部包含 `requires: [...]` 字段(列表)。
 
 **依赖树构建**:
 
-1. 扫描 `omo-spec/artifacts/*/instruction.md`,解析每个 artifact 的 `requires` 字段
+1. 扫描 `omo-spec/artifacts/*/<id>.instruction`,解析每个 artifact 的 `requires` 字段
 2. 构建依赖树:root 节点 = requires 为空的 artifacts
 
 **逐轮选择**:
@@ -99,7 +99,7 @@ metadata:
 
 **requires 解析**:
 
-- 从 `omo-spec/artifacts/<name>/instruction.md` 头部解析 `requires: [...]` 格式
+- 从 `omo-spec/artifacts/<name>/<id>.instruction` 头部解析 `requires: [...]` 格式
 - 如果没有 requires 字段,视为 root 节点(requires = [])
 
 ### Step 3: 校验 spec 目录是否已存在
@@ -125,7 +125,7 @@ bun run omo-spec/skills/omo-spec/scripts/gen-source-plan.ts <change-name> --arti
 
 **脚本输出**:
 
-- `spec/<change-name>/` 目录(创建 + 复制 template.md 文件)
+- `spec/<change-name>/` 目录(创建 + 复制 <id>.template 文件)
 - `spec-source-<change-name>.md` plan 文件(OMO 9 章节格式,无编号,模仿真实 OMO plan 风格如 `.omo/plans/schema-capabilities.md`)
 - 控制台:成功消息 + Artifacts/Language 摘要 + 下一步提示
 

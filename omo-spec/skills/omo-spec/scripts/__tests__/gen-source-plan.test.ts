@@ -296,9 +296,9 @@ describe("generateWavesBlock", () => {
 
   test("每个 task 含 References 字段", () => {
     const block = generateWavesBlock(fakeArtifacts, "test-change")
-    expect(block).toContain("omo-spec/artifacts/proposal/instruction.md")
-    expect(block).toContain("omo-spec/artifacts/design/instruction.md")
-    expect(block).toContain("omo-spec/artifacts/spec/instruction.md")
+    expect(block).toContain("omo-spec/artifacts/proposal/proposal.instruction")
+    expect(block).toContain("omo-spec/artifacts/design/design.instruction")
+    expect(block).toContain("omo-spec/artifacts/spec/spec.instruction")
   })
 
   test("每个 task 含 Acceptable Agent Profile 字段", () => {

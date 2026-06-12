@@ -6,8 +6,8 @@
 //   bun gen-source-plan.ts <change-name> --artifacts <list> [--lang <zh|en|auto>]
 //
 // 作用:
-//   1. 读 omo-spec/artifacts/<name>/instruction.md + template.md
-//   2. 读 omo-spec/templates/source-plan.md 骨架模板
+//   1. 读 omo-spec/artifacts/<name>/<id>.instruction + <id>.template(防 OMO 误扫,非 .md 后缀)
+//   2. 读 omo-spec/templates/source-plan.template 骨架模板(也是 .template 后缀防 OMO 误扫)
 //   3. 处理 instruction 中的 __LANG_PLACEHOLDER__ 替换
 //   4. 生成第 6/7/8 章内容(脚本自动填)
 //   5. 输出到 .omo/plans/source-<change-name>.md
@@ -39,7 +39,7 @@ export type LangMode = "zh" | "en" | "auto";
 // ============================================================
 
 /**
- * 从 instruction.md 头部解析 requires 字段。
+ * 从 <id>.instruction 头部解析 requires 字段。
  * 格式: requires: [artifact1, artifact2] 或 requires: []
  * 如果没有 requires 字段,返回空数组。
  */
@@ -53,8 +53,8 @@ export function parseRequires(instructionContent: string): string[] {
 
 /**
  * 从 omo-spec/artifacts/ 目录加载指定的 artifacts。
- * 每个 artifact 目录必须包含 instruction.md 和 template.md。
- * instruction.md 头部可选包含 requires: [...] 字段。
+ * 每个 artifact 目录必须包含 <id>.instruction 和 <id>.template。
+ * <id>.instruction 头部可选包含 requires: [...] 字段。
  */
 export function loadArtifacts(repoRoot: string, artifactIds: string[]): ArtifactDef[] {
   const artifactsDir = join(repoRoot, "omo-spec", "artifacts");
@@ -66,14 +66,14 @@ export function loadArtifacts(repoRoot: string, artifactIds: string[]): Artifact
       throw new Error(`Artifact 目录不存在: ${artifactDir}`);
     }
 
-    const instructionPath = join(artifactDir, "instruction.md");
-    const templatePath = join(artifactDir, "template.md");
+    const instructionPath = join(artifactDir, `${id}.instruction`);
+    const templatePath = join(artifactDir, `${id}.template`);
 
     if (!existsSync(instructionPath)) {
-      throw new Error(`instruction.md 不存在: ${instructionPath}`);
+      throw new Error(`${id}.instruction 不存在: ${instructionPath}`);
     }
     if (!existsSync(templatePath)) {
-      throw new Error(`template.md 不存在: ${templatePath}`);
+      throw new Error(`${id}.template 不存在: ${templatePath}`);
     }
 
     const instructionContent = readFileSync(instructionPath, "utf8");
@@ -182,8 +182,8 @@ export function generateWavesBlock(artifacts: ArtifactDef[], changeName: string)
 
       **What to do**:
       1. 读取对话上下文(最近 30 条消息或当前需求描述)
-      2. 按 \`omo-spec/artifacts/proposal/instruction.md\` 行为约束执行
-      3. 按 \`omo-spec/artifacts/proposal/template.md\` 结构填字段
+      2. 按 \`omo-spec/artifacts/proposal/proposal.instruction\` 行为约束执行
+      3. 按 \`omo-spec/artifacts/proposal/proposal.template\` 结构填字段
       4. 写入 \`spec/${changeName}/proposal.md\`
 
       **Must NOT do**:
@@ -193,8 +193,8 @@ export function generateWavesBlock(artifacts: ArtifactDef[], changeName: string)
       **Recommended Agent Profile**: category="unspecified-low", load_skills=[]
 
       **References**:
-      - omo-spec/artifacts/proposal/instruction.md
-      - omo-spec/artifacts/proposal/template.md
+      - omo-spec/artifacts/proposal/proposal.instruction
+      - omo-spec/artifacts/proposal/proposal.template
 
       **Acceptance Criteria**:
       \`\`\`bash
@@ -208,8 +208,8 @@ export function generateWavesBlock(artifacts: ArtifactDef[], changeName: string)
 
       **What to do**:
       1. 读取 \`spec/${changeName}/proposal.md\`(Wave 1 产物)作为输入
-      2. 按 \`omo-spec/artifacts/design/instruction.md\` 行为约束执行
-      3. 按 \`omo-spec/artifacts/design/template.md\` 结构填字段
+      2. 按 \`omo-spec/artifacts/design/design.instruction\` 行为约束执行
+      3. 按 \`omo-spec/artifacts/design/design.template\` 结构填字段
       4. 写入 \`spec/${changeName}/design.md\`
 
       **Must NOT do**:
@@ -220,8 +220,8 @@ export function generateWavesBlock(artifacts: ArtifactDef[], changeName: string)
 
       **References**:
       - spec/${changeName}/proposal.md
-      - omo-spec/artifacts/design/instruction.md
-      - omo-spec/artifacts/design/template.md
+      - omo-spec/artifacts/design/design.instruction
+      - omo-spec/artifacts/design/design.template
 
       **Acceptance Criteria**:
       \`\`\`bash
@@ -237,8 +237,8 @@ export function generateWavesBlock(artifacts: ArtifactDef[], changeName: string)
 
       **What to do**:
       1. 读取 \`spec/${changeName}/proposal.md\` + \`spec/${changeName}/design.md\`(Wave 1 产物)作为输入
-      2. 按 \`omo-spec/artifacts/spec/instruction.md\` 行为约束执行
-      3. 按 \`omo-spec/artifacts/spec/template.md\` 结构填字段
+      2. 按 \`omo-spec/artifacts/spec/spec.instruction\` 行为约束执行
+      3. 按 \`omo-spec/artifacts/spec/spec.template\` 结构填字段
       4. 写入 \`spec/${changeName}/spec.md\`
 
       **Must NOT do**:
@@ -250,8 +250,8 @@ export function generateWavesBlock(artifacts: ArtifactDef[], changeName: string)
       **References**:
       - spec/${changeName}/proposal.md
       - spec/${changeName}/design.md
-      - omo-spec/artifacts/spec/instruction.md
-      - omo-spec/artifacts/spec/template.md
+      - omo-spec/artifacts/spec/spec.instruction
+      - omo-spec/artifacts/spec/spec.template
 
       **Acceptance Criteria**:
       \`\`\`bash
@@ -561,9 +561,10 @@ if (import.meta.main) {
     mkdirSync(specDir, { recursive: true });
   }
 
-  // 复制 template.md 文件到 spec/<change-name>/
+  // 复制 <id>.template 文件到 spec/<change-name>/<id>.md
+  // 注: artifacts/ 下的模板是 <id>.template 命名 + .template 后缀(防 OMO 误扫),复制到 spec/ 时改回 .md(因为是 LLM 输出的最终产物)
   for (const artifact of artifacts) {
-    const templatePath = join(repoRoot, "omo-spec", "artifacts", artifact.id, "template.md");
+    const templatePath = join(repoRoot, "omo-spec", "artifacts", artifact.id, `${artifact.id}.template`);
     const destPath = join(specDir, `${artifact.id}.md`);
     if (existsSync(templatePath)) {
       const content = readFileSync(templatePath, "utf8");
@@ -572,7 +573,7 @@ if (import.meta.main) {
   }
 
   // 读 source plan 骨架模板
-  const sourcePlanTplPath = join(repoRoot, "omo-spec", "templates", "source-plan.md");
+  const sourcePlanTplPath = join(repoRoot, "omo-spec", "templates", "source-plan.template");
   if (!existsSync(sourcePlanTplPath)) {
     console.error(`❌ Source plan 模板不存在: ${sourcePlanTplPath}`);
     process.exit(1);

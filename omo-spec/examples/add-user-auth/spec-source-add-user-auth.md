@@ -56,8 +56,8 @@ task(
 
   **What to do**:
   1. 读取对话上下文(最近 30 条消息或当前需求描述)
-  2. 按 `omo-spec/artifacts/proposal/instruction.md` 行为约束执行
-  3. 按 `omo-spec/artifacts/proposal/template.md` 结构填字段
+  2. 按 `omo-spec/artifacts/proposal/proposal.instruction` 行为约束执行
+  3. 按 `omo-spec/artifacts/proposal/proposal.template` 结构填字段
   4. 写入 `spec/add-user-auth/proposal.md`
 
   **Must NOT do**:
@@ -67,8 +67,8 @@ task(
   **Recommended Agent Profile**: category="unspecified-low", load_skills=[]
 
   **References**:
-  - omo-spec/artifacts/proposal/instruction.md
-  - omo-spec/artifacts/proposal/template.md
+  - omo-spec/artifacts/proposal/proposal.instruction
+  - omo-spec/artifacts/proposal/proposal.template
 
   **Acceptance Criteria**:
 
@@ -83,8 +83,8 @@ task(
 
   **What to do**:
   1. 读取 `spec/add-user-auth/proposal.md`(Wave 1 产物)作为输入
-  2. 按 `omo-spec/artifacts/design/instruction.md` 行为约束执行
-  3. 按 `omo-spec/artifacts/design/template.md` 结构填字段
+  2. 按 `omo-spec/artifacts/design/design.instruction` 行为约束执行
+  3. 按 `omo-spec/artifacts/design/design.template` 结构填字段
   4. 写入 `spec/add-user-auth/design.md`
 
   **Must NOT do**:
@@ -95,8 +95,8 @@ task(
 
   **References**:
   - spec/add-user-auth/proposal.md
-  - omo-spec/artifacts/design/instruction.md
-  - omo-spec/artifacts/design/template.md
+  - omo-spec/artifacts/design/design.instruction
+  - omo-spec/artifacts/design/design.template
 
   **Acceptance Criteria**:
 
@@ -113,8 +113,8 @@ task(
 
   **What to do**:
   1. 读取 `spec/add-user-auth/proposal.md` + `spec/add-user-auth/design.md`(Wave 1 产物)作为输入
-  2. 按 `omo-spec/artifacts/spec/instruction.md` 行为约束执行
-  3. 按 `omo-spec/artifacts/spec/template.md` 结构填字段
+  2. 按 `omo-spec/artifacts/spec/spec.instruction` 行为约束执行
+  3. 按 `omo-spec/artifacts/spec/spec.template` 结构填字段
   4. 写入 `spec/add-user-auth/spec.md`
 
   **Must NOT do**:
@@ -126,8 +126,8 @@ task(
   **References**:
   - spec/add-user-auth/proposal.md
   - spec/add-user-auth/design.md
-  - omo-spec/artifacts/spec/instruction.md
-  - omo-spec/artifacts/spec/template.md
+  - omo-spec/artifacts/spec/spec.instruction
+  - omo-spec/artifacts/spec/spec.template
 
   **Acceptance Criteria**:
 
