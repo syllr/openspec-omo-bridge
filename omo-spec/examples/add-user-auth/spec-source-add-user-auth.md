@@ -28,16 +28,20 @@
 
 `openspec validate add-user-auth` 在 spec 阶段后通过。
 
-> `openspec validate add-user-auth` 通过(specs 阶段后)
+每个阶段开始前,调 Oracle subagent 评审上一阶段产物(self-review,read-only 顾问):
+
+```typescript
+task(
+  (subagent_type = "oracle"),
+  (prompt =
+    "评审 spec/<change-name>/{artifact}.md,验证 Must NOT Have(无额外产物 / 不改老文件 / 不改代码 / 静态嵌入) + 结构完整"),
+  (load_skills = []),
+);
+```
 
 ## Execution Strategy
 
-<TODO: 关键路径、并发约束、顺序依赖、风险点。>
 
-核心设计决策来自 design.md:
-
-- <TODO: Decision 1>
-- <TODO: Decision 2>
 
 **Critical Path**: proposal → design → spec
 **Max Concurrent**: 1(artifacts 之间存在硬依赖)
